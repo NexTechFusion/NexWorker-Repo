@@ -26,28 +26,66 @@ cat <<EOF > system-prompt.md
 $(cat /root/.openclaw/workspace/NexWorker/System-Prompt.md)
 EOF
 
-# 3. Generate config.yaml
-echo "⚙️ Configuring OpenClaw Gateway..."
+# 3. Generate config.yaml with Hybrid Sync & Multi-User Support
+echo "⚙️ Configuring OpenClaw Gateway PRO Setup..."
 cat <<EOF > config.yaml
 # NexWorker Client Instance: $CLIENT_NAME
 gateway:
   port: 19000
   auth:
     token: "nextech-admin-$(base64 <<< $CLIENT_NAME | cut -c1-8)"
+  reload:
+    mode: "hybrid"
 
 agent:
   systemPrompt: |
 $(sed 's/^/    /' system-prompt.md)
 
+session:
+  dmScope: "per-channel-peer"  # Recognizes different workers automatically
+
 channels:
   telegram:
     token: "$IFACE_TOKEN"
     enabled: true
+    groupChat:
+      mentionPatterns: ["!fix", "!status", "Bericht"]
 
-# Database Auto-Logging
+# Database & Sheets Sync (Draft)
+# Note: To enable Google Sheets, add credentials to .env
 memory:
   path: "./memory"
   autoArchive: true
+
+# Webhook for real-time Sheet Sync (if configured)
+# hooks:
+#   enabled: true
+#   token: "\${SHEETS_WEBHOOK_TOKEN}"
+EOF
+
+# 4. Update System-Prompt with ASCII formatting and Auto-Alert Logic
+echo "🧠 Refining System Brain for ASCII Output..."
+cat <<EOF >> system-prompt.md
+
+## 📊 Visual Output Style (MANDATORY)
+Bestätige JEDEN Bericht mit diesem ASCII-Bericht-Format:
+
+\`\`\`text
+Bericht erfasst: [PROJEKTNAME]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👷 Wer:     [MONTEUR_NAME]
+📍 Ort:      [ETAGE/BEREICH]
+🛠️ Arbeit:  [TATIGKEIT_KURZ]
+📦 Mat:     [MATERIAL_MENGEN]
+⏱️ Zeit:     [STUNDEN]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👉 Daten wurden ins Büro übertragen.
+\`\`\`
+
+## 🔴 Auto-Alert Logic
+Wenn der Monteur einen 'Mangel', 'Blocker' oder 'Problem' meldet:
+1. Schreibe ⚠️ ACHTUNG: Mangel gemeldet! in den Bericht.
+2. Markiere dies im Export-Log als PRIORITÄT 1.
 EOF
 
 # 4. Create the 'Welcome' Script
