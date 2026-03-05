@@ -88,12 +88,47 @@ Wenn der Monteur einen 'Mangel', 'Blocker' oder 'Problem' meldet:
 2. Markiere dies im Export-Log als PRIORITÄT 1.
 EOF
 
-# 4. Create the 'Welcome' Script
+# 4. Create Utility Scripts (Welcome & Reset)
 cat <<EOF > welcome.sh
 #!/bin/bash
-echo "Moin! 🏗️ Ich bin **NexWorker**, dein neuer digitaler Bauhelfer. Ab sofort kannst du mir einfach hier im Chat alles zur Baustelle schicken. Keine Zettel, kein Stress. Viel Erfolg heute! 👍"
+echo "Moin! 🏗️ Ich bin **NexWorker**, dein digitaler Bauhelfer. Schick mir einen Bericht!"
 EOF
 chmod +x welcome.sh
+
+cat <<EOF > reset-instance.sh
+#!/bin/bash
+# NexWorker Reset Script
+echo "⚠️ WARNING: This will delete ALL local logs and the database for this client."
+read -p "Are you sure? (y/n) " -n 1 -r
+echo
+if [[ \$REPLY =~ ^[Yy]$ ]]; then
+    rm -rf ./memory/*
+    rm -f nexworker.db
+    echo "✅ Instance reset. Starting fresh."
+    sqlite3 nexworker.db "CREATE TABLE IF NOT EXISTS logs (id INTEGER PRIMARY KEY, project TEXT, worker TEXT, activity TEXT, material TEXT, duration REAL, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP);"
+fi
+EOF
+chmod +x reset-instance.sh
+
+cat <<EOF > remove-instance.sh
+#!/bin/bash
+# NexWorker Removal Script
+cd ..
+CLIENT_DIR="nexworker-\$1"
+if [ -d "\$CLIENT_DIR" ]; then
+    echo "⚠️ WARNING: Deleting EVERYTHING for client \$1 (Folder: \$CLIENT_DIR)"
+    read -p "Confirm total deletion? (y/n) " -n 1 -r
+    echo
+    if [[ \$REPLY =~ ^[Yy]$ ]]; then
+        rm -rf "\$CLIENT_DIR"
+        echo "🗑️ Client '\$1' removed permanently."
+    fi
+else
+    echo "❌ Client folder '\$CLIENT_DIR' not found."
+fi
+EOF
+chmod +x remove-instance.sh
+
 
 # 5. Setup empty SQLite DB for structured logs
 echo "🗄️ Initializing Local Matrix..."
