@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexWorker - Der digitale Bauhelfer im Messenger</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'construct-orange': '#FF5A1F',
+                        'construct-orange-dark': '#E04A12',
+                        'hilti-red': '#D31145',
+                        'charcoal': '#0D0D0D',
+                        'steel': '#1A1A1A',
+                        'safety-yellow': '#FFD700',
+                    },
+                    fontFamily: {
+                        'display': ['Space Grotesk', 'sans-serif'],
+                        'mono': ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0D0D0D;
+            color: #F5F5F5;
+            font-family: 'Space Grotesk', sans-serif;
+            overflow-x: hidden;
+        }
+        
+        .noise-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.03;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+        }
+        
+        .chat-bubble {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 90, 31, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        
+        .chat-bubble-worker {
+            background: linear-gradient(135deg, rgba(255, 90, 31, 0.2), rgba(255, 90, 31, 0.05));
+            border: 1px solid rgba(255, 90, 31, 0.5);
+        }
+        
+        .hero-gradient {
+            background: radial-gradient(ellipse at 70% 30%, rgba(255, 90, 31, 0.15) 0%, transparent 50%),
+                        radial-gradient(ellipse at 30% 70%, rgba(211, 17, 69, 0.1) 0%, transparent 40%);
+        }
+        
+        .grid-pattern {
+            background-image: linear-gradient(rgba(255, 90, 31, 0.05) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(255, 90, 31, 0.05) 1px, transparent 1px);
+            background-size: 60px 60px;
+        }
+        
+        .strikethrough-animated {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .strikethrough-animated::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            width: 0;
+            height: 2px;
+            background: #FF5A1F;
+            transform: rotate(-2deg);
+            animation: strike 1s ease-out forwards;
+            animation-delay: 1s;
+        }
+        
+        @keyframes strike {
+            to { width: 100%; }
+        }
+        
+        .glitch-text:hover {
+            animation: glitch 0.3s ease-in-out;
+        }
+        
+        @keyframes glitch {
+            0%, 100% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+        }
+        
+        .phone-mockup {
+            transform: perspective(1000px) rotateY(-5deg) rotateX(5deg);
+            transition: transform 0.5s ease;
+        }
+        
+        .phone-mockup:hover {
+            transform: perspective(1000px) rotateY(0deg) rotateX(0deg);
+        }
+        
+        .scramble-text {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        .orange-glow {
+            box-shadow: 0 0 60px rgba(255, 90, 31, 0.3);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #FF5A1F, #E04A12);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+        }
+        
+        .btn-primary:hover::before {
+            left: 100%;
+        }
+        
+        .counter-digit {
+            font-variant-numeric: tabular-nums;
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <div class="noise-overlay"></div>
+    
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full z-50 px-6 py-4 bg-charcoal/80 backdrop-blur-md border-b border-white/10">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 construct-orange rounded-sm flex items-center justify-center font-bold text-charcoal text-xl">N</div>
+                <span class="font-display font-bold text-xl tracking-tight">NexWorker</span>
+            </div>
+            <div class="hidden md:flex gap-8 text-sm font-mono text-gray-400">
+                <a href="#problem" class="hover:text-construct-orange transition-colors">PROBLEM</a>
+                <a href="#loesung" class="hover:text-construct-orange transition-colors">LÖSUNG</a>
+                <a href="#demo" class="hover:text-construct-orange transition-colors">DEMO</a>
+                <a href="#kontakt" class="hover:text-construct-orange transition-colors">KONTAKT</a>
+            </div>
+            <button class="btn-primary px-6 py-2 rounded-sm font-mono text-sm font-bold text-white">
+                DEMO STARTEN →
+            </button>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="relative min-h-screen flex items-center pt-20 hero-gradient grid-pattern">
+        <div class="max-w-7xl mx-auto px-6 w-full">
+            <div class="grid lg:grid-cols-2 gap-12 items-center">
+                <!-- Left Content -->
+                <div class="space-y-8 hero-content">
+                    <div class="inline-block">
+                        <span class="px-3 py-1 rounded-full border border-construct-orange/50 text-construct-orange text-xs font-mono tracking-wider">
+                            NEXTECH FUSION • KARLSRUHE
+                        </span>
+                    </div>
+                    
+                    <h1 class="font-display text-5xl md:text-7xl font-bold leading-tight">
+                        <span class="block">Der digitale</span>
+                        <span class="block text-construct-orange glitch-text">Bauhelfer</span>
+                        <span class="block text-3xl md:text-4xl font-light mt-4 text-gray-400">im Messenger</span>
+                    </h1>
+                    
+                    <p class="text-xl text-gray-300 max-w-xl leading-relaxed">
+                        Ein smarter KI-Agent, der direkt in <span class="text-construct-orange font-mono">WhatsApp</span>, <span class="text-construct-orange font-mono">Telegram</span> oder <span class="text-construct-orange font-mono">Teams</span> lebt. 
+                        Ihre Monteure chatten – Ihr ERP schreibt sich von selbst.
+                    </p>
+                    
+                    <div class="flex flex-wrap gap-4 pt-4">
+                        <button class="btn-primary px-8 py-4 rounded-sm font-bold text-lg flex items-center gap-2">
+                            <span>KOSTENLOSEN PROTOTYP TESTEN</span>
+                            <span class="text-xl">→</span>
+                        </button>
+                        <button class="px-8 py-4 rounded-sm border border-white/20 hover:border-construct-orange hover:text-construct-orange transition-all font-mono">
+                            VIDEO ANSEHEN
+                        </button>
+                    </div>
+                    
+                    <div class="flex items-center gap-6 pt-4 text-sm text-gray-400 font-mono">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                            <span>100% DSGVO-konform</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 bg-safety-yellow rounded-full"></span>
+                            <span>SOC-zertifiziert</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Right Content - Phone Mockup -->
+                <div class="relative phone-mockup-container">
+                    <div class="phone-mockup bg-steel rounded-[40px] p-4 border border-white/10 shadow-2xl orange-glow">
+                        <div class="bg-charcoal rounded-[32px] overflow-hidden">
+                            <!-- Phone Header -->
+                            <div class="bg-steel px-4 py-3 flex items-center gap-3 border-b border-white/10">
+                                <div class="w-10 h-10 construct-orange rounded-full flex items-center justify-center">
+                                    <span class="font-bold text-charcoal">N</span>
+                                </div>
+                                <div>
+                                    <div class="font-medium">NexWorker</div>
+                                    <div class="text-xs text-green-400 flex items-center gap-1">
+                                        <span class="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
+                                        Online
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Chat Messages -->
+                            <div class="p-4 space-y-4 h-[400px] overflow-hidden">
+                                <div class="chat-message opacity-0" style="transform: translateY(20px);">
+                                    <div class="flex items-end gap-2">
+                                        <div class="bg-white/10 rounded-2xl rounded-bl-none px-4 py-2 max-w-[80%]">
+                                            <p class="text-sm">Moin, bin da. Mit Axel. Projekt Neubau Allee.</p>
+                                            <span class="text-[10px] text-gray-500 mt-1">07:00</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="chat-message opacity-0 flex justify-end" style="transform: translateY(20px);">
+                                    <div class="chat-bubble-worker rounded-2xl rounded-br-none px-4 py-3 max-w-[85%]">
+                                        <p class="text-sm font-mono text-construct-orange">✅ ERFASST</p>
+                                        <p class="text-xs mt-1">Lars + Axel | Neubau Allee</p>
+                                        <p class="text-xs text-gray-400">→ Arbeitsbeginn dokumentiert</p>
+                                        <span class="text-[10px] text-gray-500 mt-2 block">07:01</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="chat-message opacity-0" style="transform: translateY(20px);">
+                                    <div class="flex items-end gap-2">
+                                        <div class="bg-white/10 rounded-2xl rounded-bl-none px-4 py-2 max-w-[80%]">
+                                            <p class="text-sm">Brauchen Nachschub. 3x1.5er aufgebraucht.</p>
+                                            <div class="mt-2 bg-steel rounded-lg p-2">
+                                                <span class="text-xs text-gray-400">📷 Foto angehängt</span>
+                                            </div>
+                                            <span class="text-[10px] text-gray-500 mt-1">10:30</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="chat-message opacity-0 flex justify-end" style="transform: translateY(20px);">
+                                    <div class="chat-bubble-worker rounded-2xl rounded-br-none px-4 py-3 max-w-[85%]">
+                                        <p class="text-sm font-mono text-construct-orange">✅ MATERIAL ERFASST</p>
+                                        <p class="text-xs mt-1">3x NYM-J 3x1.5 (Trommel)</p>
+                                        <p class="text-xs text-gray-400">💰 147,50 € | Projekt Allee</p>
+                                        <span class="text-[10px] text-gray-500 mt-2 block">10:31</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Floating Elements -->
+                    <div class="absolute -top-4 -right-4 bg-steel border border-construct-orange/30 px-4 py-2 rounded-lg opacity-0 floating-badge">
+                        <span class="text-xs font-mono text-construct-orange">🏗️ Gewerke-agnostisch</span>
+                    </div>
+                    <div class="absolute -bottom-4 -left-4 bg-steel border border-white/20 px-4 py-2 rounded-lg opacity-0 floating-badge">
+                        <span class="text-xs font-mono">⚡ Echtzeit-Erfassung</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Problem Section -->
+    <section id="problem" class="py-24 bg-steel relative overflow-hidden">
+        <div class="max-w-5xl mx-auto px-6">
+            <div class="text-center mb-16">
+                <span class="text-construct-orange font-mono text-sm tracking-wider">DAS PROBLEM</span>
+                <h2 class="font-display text-4xl md:text-5xl font-bold mt-4">
+                    Freitagabend.<br>
+                    <span class="text-gray-500">Zettelwirtschaft.</span>
+                </h2>
+            </div>
+            
+            <div class="grid md:grid-cols-3 gap-8 problem-cards">
+                <div class="bg-charcoal/50 border border-white/10 p-8 rounded-lg problem-card opacity-0">
+                    <div class="text-4xl mb-4">📝</div>
+                    <h3 class="font-display text-xl font-bold mb-2">Vergessene Einträge</h3>
+                    <p class="text-gray-400 text-sm">Monteure vergessen Material aufzuschreiben. Stundenzettel werden zum Ratespiel.</p>
+                </div>
+                <div class="bg-charcoal/50 border border-white/10 p-8 rounded-lg problem-card opacity-0">
+                    <div class="text-4xl mb-4">📱</div>
+                    <h3 class="font-display text-xl font-bold mb-2">Foto-Chaos</h3>
+                    <p class="text-gray-400 text-sm">Baustellenfotos verteilt auf 5 private Handys. Nichts ist auffindbar.</p>
+                </div>
+                <div class="bg-charcoal/50 border border-white/10 p-8 rounded-lg problem-card opacity-0">
+                    <div class="text-4xl mb-4">⏰</div>
+                    <h3 class="font-display text-xl font-bold mb-2">Tipp-Marathon</h3>
+                    <p class="text-gray-400 text-sm">Das Büro verbringt Stunden damit, handschriftliche Zettel zu entziffern.</p>
+                </div>
+            </div>
+            
+            <div class="mt-16 text-center">
+                <p class="text-2xl text-gray-500 font-display">
+                    <span class="strikethrough-animated">Zettelchaos</span> → Strukturiert
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Solution / Kill-Shots Section -->
+    <section id="loesung" class="py-24 bg-charcoal relative">
+        <div class="max-w-6xl mx-auto px-6">
+            <div class="text-center mb-20">
+                <span class="text-construct-orange font-mono text-sm tracking-wider">DIE 3 KILL-SHOTS</span>
+                <h2 class="font-display text-4xl md:text-5xl font-bold mt-4">
+                    Warum NexWorker gewinnt.
+                </h2>
+            </div>
+            
+            <!-- Kill Shot 1 -->
+            <div class="grid lg:grid-cols-2 gap-12 items-center mb-24 kill-shot opacity-0">
+                <div class="space-y-6">
+                    <div class="flex items-center gap-4">
+                        <span class="text-6xl font-display font-bold text-construct-orange/30">01</span>
+                        <h3 class="font-display text-3xl font-bold">Der WhatsApp-Putzmann</h3>
+                    </div>
+                    <p class="text-xl text-gray-300">Keine Schulung. Keine neue App.</p>
+                    <p class="text-gray-400 leading-relaxed">
+                        Ihre Jungs schicken einfach Sprachnachrichten, Fotos oder Text per Messenger – 
+                        so wie sie es privat sowieso tun. NexWorker sortiert das Chaos im Hintergrund.
+                    </p>
+                    <div class="flex gap-4 pt-2">
+                        <span class="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono">WhatsApp</span>
+                        <span class="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono">Telegram</span>
+                        <span class="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono">Teams</span>
+                    </div>
+                </div>
+                <div class="bg-steel rounded-2xl p-8 border border-white/10">
+                    <div class="space-y-4 font-mono text-sm">
+                        <div class="flex items-center gap-3 text-green-400">
+                            <span>✓</span>
+                            <span>Keine Einarbeitung nötig</span>
+                        </div>
+                        <div class="flex items-center gap-3 text-green-400">
+                            <span>✓</span>
+                            <span>Wer chatten kann, kann NexWorker</span>
+                        </div>
+                        <div class="flex items-center gap-3 text-green-400">
+                            <span>✓</span>
+                            <span>Maximale User-Akzeptanz</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Kill Shot 2 -->
+            <div class="grid lg:grid-cols-2 gap-12 items-center mb-24 kill-shot opacity-0">
+                <div class="order-2 lg:order-1 bg-steel rounded-2xl p-8 border border-construct-orange/30">
+                    <div class="flex items-center justify-center h-48">
+                        <div class="text-center">
+                            <div class="w-24 h-24 construct-orange rounded-lg mx-auto mb-4 flex items-center justify-center">
+                                <span class="text-4xl">🏠</span>
+                            </div>
+                            <p class="text-sm font-mono text-gray-400">EDGE COMPUTING</p>
+                            <p class="text-xs text-gray-500 mt-1">Ihre Daten bleiben bei Ihnen</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="order-1 lg:order-2 space-y-6">
+                    <div class="flex items-center gap-4">
+                        <span class="text-6xl font-display font-bold text-construct-orange/30">02</span>
+                        <h3 class="font-display text-3xl font-bold">Die Sicherheits-Box</h3>
+                    </div>
+                    <p class="text-xl text-gray-300">Maximale Datensouveränität.</p>
+                    <p class="text-gray-400 leading-relaxed">
+                        Die KI läuft wahlweise auf einer Box in Ihrem Büro (Edge) oder in einer 
+                        isolierten, SOC-konformen deutschen Cloud. <strong>100% DSGVO-konform.</strong>
+                    </p>
+                    <div class="bg-construct-orange/10 border border-construct-orange/30 p-4 rounded-lg">
+                        <p class="text-construct-orange font-mono text-sm">💡 "Sicherer als alles andere" – ein unschlagbares Argument im deutschen Mittelstand.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Kill Shot 3 -->
+            <div class="grid lg:grid-cols-2 gap-12 items-center kill-shot opacity-0">
+                <div class="space-y-6">
+                    <div class="flex items-center gap-4">
+                        <span class="text-6xl font-display font-bold text-construct-orange/30">03</span>
+                        <h3 class="font-display text-3xl font-bold">Der ERP-Geist</h3>
+                    </div>
+                    <p class="text-xl text-gray-300">80% Zeitersparnis im Büro.</p>
+                    <p class="text-gray-400 leading-relaxed">
+                        Daten fließen direkt in Lexware, pds, Streit oder Excel. 
+                        Die <strong>"Ein-Klick-Rechnung"</strong> am Freitag ist kein Traum mehr.
+                    </p>
+                    <div class="flex gap-4 pt-2">
+                        <span class="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono">Lexware</span>
+                        <span class="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono">pds</span>
+                        <span class="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono">DATEV</span>
+                    </div>
+                </div>
+                <div class="bg-steel rounded-2xl p-8 border border-white/10">
+                    <div class="text-center">
+                        <div class="text-6xl font-display font-bold text-white counter" data-target="80">0</div>
+                        <p class="text-construct-orange font-mono mt-2">% WENIGER BÜROARBEIT</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Live Demo Section -->
+    <section id="demo" class="py-24 bg-steel">
+        <div class="max-w-5xl mx-auto px-6">
+            <div class="text-center mb-16">
+                <span class="text-construct-orange font-mono text-sm tracking-wider">LIVE DEMO</span>
+                <h2 class="font-display text-4xl md:text-5xl font-bold mt-4">
+                    Ein Tag mit NexWorker.
+                </h2>
+            </div>
+            
+            <div class="space-y-6">
+                <!-- Timeline Item 1 -->
+                <div class="demo-item opacity-0 flex gap-6 items-start">
+                    <div class="flex-shrink-0 w-16 text-right">
+                        <span class="font-mono text-construct-orange">07:00</span>
+                    </div>
+                    <div class="flex-grow bg-charcoal/50 rounded-2xl p-6 border border-white/10">
+                        <div class="flex items-start gap-4">
+                            <span class="text-2xl">👷</span>
+                            <div>
+                                <p class="text-gray-300">Lars schreibt: <span class="text-white">"Moin, bin da. Mit Axel. Projekt Neubau Allee."</span></p>
+                                <div class="mt-4 chat-bubble-worker inline-block rounded-lg px-4 py-2">
+                                    <p class="text-sm font-mono text-construct-orange">✅ ERFASST: Lars + Axel | Neubau Allee</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Timeline Item 2 -->
+                <div class="demo-item opacity-0 flex gap-6 items-start">
+                    <div class="flex-shrink-0 w-16 text-right">
+                        <span class="font-mono text-construct-orange">10:30</span>
+                    </div>
+                    <div class="flex-grow bg-charcoal/50 rounded-2xl p-6 border border-white/10">
+                        <div class="flex items-start gap-4">
+                            <span class="text-2xl">📦</span>
+                            <div>
+                                <p class="text-gray-300">Axel schickt Material-Foto + Sprachnachricht</p>
+                                <div class="mt-4 chat-bubble-worker inline-block rounded-lg px-4 py-2">
+                                    <p class="text-sm font-mono text-construct-orange">✅ MATERIAL: 3x NYM-J 3x1.5</p>
+                                    <p class="text-xs text-gray-400 mt-1">💰 147,50 € | Automatisch gebucht</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Timeline Item 3 -->
+                <div class="demo-item opacity-0 flex gap-6 items-start">
+                    <div class="flex-shrink-0 w-16 text-right">
+                        <span class="font-mono text-construct-orange">14:15</span>
+                    </div>
+                    <div class="flex-grow bg-charcoal/50 rounded-2xl p-6 border border-white/10">
+                        <div class="flex items-start gap-4">
+                            <span class="text-2xl">⚠️</span>
+                            <div>
+                                <p class="text-gray-300">Lars meldet Blocker: <span class="text-white">"Kann nicht weiter. Trockenbau fehlt."</span></p>
+                                <div class="mt-4 chat-bubble-worker inline-block rounded-lg px-4 py-2 border-yellow-500/50">
+                                    <p class="text-sm font-mono text-yellow-500">⚠️ BLOCKER DOKUMENTIERT</p>
+                                    <p class="text-xs text-gray-400 mt-1">Projektleiter informiert • Beweisfoto archiviert</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Timeline Item 4 -->
+                <div class="demo-item opacity-0 flex gap-6 items-start">
+                    <div class="flex-shrink-0 w-16 text-right">
+                        <span class="font-mono text-construct-orange">16:30</span>
+                    </div>
+                    <div class="flex-grow bg-charcoal/50 rounded-2xl p-6 border border-white/10">
+                        <div class="flex items-start gap-4">
+                            <span class="text-2xl">✅</span>
+                            <div>
+                                <p class="text-gray-300">Tagesabschluss: <span class="text-white">"Fertig. 20 Steckdosen gesetzt. 8h gearbeitet."</span></p>
+                                <div class="mt-4 chat-bubble-worker inline-block rounded-lg px-4 py-2">
+                                    <p class="text-sm font-mono text-construct-orange">✅ TAGESABSCHLUSS ERFASST</p>
+                                    <p class="text-xs text-gray-400 mt-1">👷 Axel: 8h | Lars: 8h | Meilenstein ✓</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Friday Magic Moment -->
+    <section class="py-24 bg-charcoal relative overflow-hidden">
+        <div class="absolute inset-0 opacity-10">
+            <div class="absolute inset-0" style="background: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,90,31,0.1) 10px, rgba(255,90,31,0.1) 20px);"></div>
+        </div>
+        
+        <div class="max-w-4xl mx-auto px-6 relative">
+            <div class="text-center mb-12">
+                <span class="text-safety-yellow font-mono text-sm tracking-wider">DER MAGIC MOMENT</span>
+                <h2 class="font-display text-4xl md:text-5xl font-bold mt-4">
+                    Freitag. 16:00 Uhr.
+                </h2>
+                <p class="text-xl text-gray-400 mt-4">Der Chef öffnet sein Postfach...</p>
+            </div>
+            
+            <div class="bg-steel rounded-2xl p-8 border border-construct-orange/30 shadow-2xl magic-pdf opacity-0">
+                <div class="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
+                    <div>
+                        <p class="font-mono text-construct-orange">WOCHENBERICHT</p>
+                        <p class="text-sm text-gray-500">Projekt Neubau Allee • KW 10</p>
+                    </div>
+                    <span class="text-4xl">📊</span>
+                </div>
+                
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl">👷</span>
+                            <div>
+                                <p class="text-sm text-gray-400">Personal</p>
+                                <p class="font-mono">Lars (40h) • Axel (40h)</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl">🛠️</span>
+                            <div>
+                                <p class="text-sm text-gray-400">Leistung</p>
+                                <p class="font-mono">120 Steckdosen • 500m Kabel</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl">📦</span>
+                            <div>
+                                <p class="text-sm text-gray-400">Material</p>
+                                <p class="font-mono">2.847 € <span class="text-green-400">(98% vs. Kalkulation)</span></p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl">📸</span>
+                            <div>
+                                <p class="text-sm text-gray-400">Dokumentation</p>
+                                <p class="font-mono">47 Fotos • alle zeitgestempelt</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-6 pt-6 border-t border-white/10 flex items-center justify-between">
+                    <span class="text-sm text-gray-500">Status: Bereit für Rechnung</span>
+                    <span class="px-4 py-2 bg-green-500/20 text-green-400 rounded-lg text-sm font-mono">✓ ABGESCHLOSSEN</span>
+                </div>
+            </div>
+            
+            <p class="text-center text-gray-400 mt-8 text-lg">
+                Keine Zettelwirtschaft. Kein Foto-Chaos. Nur saubere Daten.
+            </p>
+        </div>
+    </section>
+
+    <!-- Trust / Social Proof -->
+    <section class="py-20 bg-steel">
+        <div class="max-w-5xl mx-auto px-6">
+            <div class="grid md:grid-cols-3 gap-8 text-center">
+                <div class="trust-item opacity-0">
+                    <div class="text-4xl font-display font-bold text-construct-orange">100%</div>
+                    <p class="text-sm text-gray-400 mt-2 font-mono">DSGVO-KONFORM</p>
+                </div>
+                <div class="trust-item opacity-0">
+                    <div class="text-4xl font-display font-bold text-construct-orange">15</div>
+                    <p class="text-sm text-gray-400 mt-2 font-mono">MINUTEN EINSATZBEREIT</p>
+                </div>
+                <div class="trust-item opacity-0">
+                    <div class="text-4xl font-display font-bold text-construct-orange">0</div>
+                    <p class="text-sm text-gray-400 mt-2 font-mono">SCHULUNG NÖTIG</p>
+                </div>
+            </div>
+            
+            <div class="mt-16 flex flex-wrap justify-center gap-4">
+                <span class="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-gray-400">SOC 2 ZERTIFIZIERT</span>
+                <span class="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-gray-400">DEUTSCHE SERVER</span>
+                <span class="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-gray-400">EDGE-READY</span>
+                <span class="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-gray-400">API-FÄHIG</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section id="kontakt" class="py-24 bg-charcoal relative">
+        <div class="absolute inset-0 hero-gradient"></div>
+        <div class="max-w-3xl mx-auto px-6 text-center relative">
+            <h2 class="font-display text-4xl md:text-6xl font-bold mb-6">
+                Bereit für den<br>
+                <span class="text-construct-orange">digitalen Bauhelfer?</span>
+            </h2>
+            <p class="text-xl text-gray-300 mb-8">
+                Testen Sie NexWorker 7 Tage kostenlos. In 15 Minuten einsatzbereit.
+            </p>
+            <div class="flex flex-wrap justify-center gap-4">
+                <button class="btn-primary px-10 py-5 rounded-sm font-bold text-lg flex items-center gap-3">
+                    <span>KOSTENLOSEN PROTOTYP TESTEN</span>
+                    <span>→</span>
+                </button>
+            </div>
+            <p class="text-sm text-gray-500 mt-6 font-mono">Keine Kreditkarte erforderlich • Jederzeit kündbar</p>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-12 bg-steel border-t border-white/10">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-6">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 construct-orange rounded-sm flex items-center justify-center font-bold text-charcoal">N</div>
+                    <span class="font-display font-bold">NexWorker</span>
+                </div>
+                <div class="text-sm text-gray-500 font-mono">
+                    © 2026 NexTech Fusion GmbH • Karlsruhe, Deutschland
+                </div>
+                <div class="flex gap-6 text-sm text-gray-400">
+                    <a href="#" class="hover:text-construct-orange transition-colors">Impressum</a>
+                    <a href="#" class="hover:text-construct-orange transition-colors">Datenschutz</a>
+                    <a href="#" class="hover:text-construct-orange transition-colors">Kontakt</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- GSAP Animations -->
+    <script>
+        gsap.registerPlugin(ScrollTrigger);
+        
+        // Hero content reveal
+        gsap.from(".hero-content > *", {
+            y: 60,
+            opacity: 0,
+            duration: 0.8,
+            stagger: 0.15,
+            ease: "power3.out",
+            delay: 0.3
+        });
+        
+        // Chat messages animation
+        gsap.to(".chat-message", {
+            y: 0,
+            opacity: 1,
+            duration: 0.6,
+            stagger: 0.3,
+            ease: "power2.out",
+            delay: 1
+        });
+        
+        // Floating badges
+        gsap.to(".floating-badge", {
+            opacity: 1,
+            y: 0,
+            duration: 0.5,
+            stagger: 0.2,
+            delay: 2
+        });
+        
+        // Problem cards
+        gsap.to(".problem-card", {
+            scrollTrigger: {
+                trigger: ".problem-cards",
+                start: "top 80%",
+                toggleActions: "play none none reverse"
+            },
+            y: 0,
+            opacity: 1,
+            duration: 0.6,
+            stagger: 0.15,
+            ease: "power2.out"
+        });
+        
+        // Kill shots
+        gsap.utils.toArray(".kill-shot").forEach((shot, i) => {
+            gsap.to(shot, {
+                scrollTrigger: {
+                    trigger: shot,
+                    start: "top 80%",
+                    toggleActions: "play none none reverse"
+                },
+                y: 0,
+                opacity: 1,
+                duration: 0.8,
+                delay: i * 0.1,
+                ease: "power2.out"
+            });
+        });
+        
+        // Counter animation
+        gsap.to(".counter", {
+            scrollTrigger: {
+                trigger: ".counter",
+                start: "top 80%",
+                toggleActions: "play none none reverse"
+            },
+            innerHTML: 80,
+            duration: 2,
+            snap: { innerHTML: 1 },
+            ease: "power2.out"
+        });
+        
+        // Demo items
+        gsap.utils.toArray(".demo-item").forEach((item, i) => {
+            gsap.to(item, {
+                scrollTrigger: {
+                    trigger: item,
+                    start: "top 85%",
+                    toggleActions: "play none none reverse"
+                },
+                y: 0,
+                opacity: 1,
+                duration: 0.6,
+                delay: i * 0.1,
+                ease: "power2.out"
+            });
+        });
+        
+        // Magic PDF
+        gsap.to(".magic-pdf", {
+            scrollTrigger: {
+                trigger: ".magic-pdf",
+                start: "top 80%",
+                toggleActions: "play none none reverse"
+            },
+            scale: 1,
+            opacity: 1,
+            duration: 0.8,
+            ease: "back.out(1.7)"
+        });
+        
+        // Trust items
+        gsap.utils.toArray(".trust-item").forEach((item, i) => {
+            gsap.to(item, {
+                scrollTrigger: {
+                    trigger: item,
+                    start: "top 85%",
+                    toggleActions: "play none none reverse"
+                },
+                y: 0,
+                opacity: 1,
+                duration: 0.5,
+                delay: i * 0.1,
+                ease: "power2.out"
+            });
+        });
+        
+        // Parallax effect on phone mockup
+        document.addEventListener("mousemove", (e) => {
+            const phone = document.querySelector(".phone-mockup");
+            if (phone) {
+                const x = (window.innerWidth / 2 - e.clientX) / 50;
+                const y = (window.innerHeight / 2 - e.clientY) / 50;
+                phone.style.transform = `perspective(1000px) rotateY(${-5 + x}deg) rotateX(${5 + y}deg)`;
+            }
+        });
+    </script>
+</body>
+</html>
