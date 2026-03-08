@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nie wieder Zettelwirtschaft | NexWorker – Dokumentation per Messenger</title>
-    <meta name="description" content="NexWorker ersetzt Zettelwirtschaft durch digitale Dokumentation per WhatsApp. Wissenssicherung, Beweissicherung und Zeiterfassung fuer Bauleiter, Monteure, Reinigungsfirmen und Field Service. Keine App, 15 Min. Setup, DSGVO-konform.">
+    <title>NexWorker – WhatsApp Baudokumentation & Wissenssicherung fuer Handwerk</title>
+    <meta name="description" content="NexWorker ist die KI-gestuetzte Wissensdatenbank fuer Handwerk via WhatsApp. DSGVO-konforme Baudokumentation, Beweissicherung und Zeiterfassung ohne neue App. NIS2-ready, GoBD-konform, 15 Min. Setup.">
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
     <link rel="canonical" href="https://nexworker.de/">
     <meta property="og:type" content="website">
@@ -27,6 +27,115 @@
     <!-- GSAP for Animations -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+
+    <!-- JSON-LD Structured Data for AEO/SEO -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "NexWorker",
+        "applicationCategory": "BusinessApplication, ConstructionSoftware",
+        "operatingSystem": "Web, iOS, Android (via Messenger)",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "EUR",
+            "description": "Kostenlose Demo verfuegbar"
+        },
+        "description": "KI-gestuetzte Wissensdatenbank und Baudokumentation fuer Handwerk via WhatsApp. Automatische Dokumentation, Beweissicherung und Zeiterfassung ohne neue App.",
+        "provider": {
+            "@type": "Organization",
+            "name": "NexTech Fusion GmbH",
+            "url": "https://www.nextech-fusion.com"
+        },
+        "featureList": [
+            "WhatsApp Baudokumentation",
+            "Automatische Zeiterfassung",
+            "Beweissicherung Baustelle",
+            "Wissenssicherung Handwerk",
+            "DSGVO-konforme Archivierung",
+            "Keine App Installation noetig"
+        ]
+    }
+    </script>
+
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "NexTech Fusion GmbH",
+        "url": "https://nexworker.de",
+        "logo": "https://nexworker.de/logo.png",
+        "description": "NexTech Fusion entwickelt KI-gestuetzte Loesungen fuer den Mittelstand. NexWorker verwandelt WhatsApp-Chats in durchsuchbare Wissensdatenbanken.",
+        "address": {
+            "@type": "PostalAddress",
+            "addressCountry": "DE"
+        },
+        "contactPoint": {
+            "@type": "ContactPoint",
+            "contactType": "sales",
+            "email": "kontakt@nextech-fusion.com",
+            "availableLanguage": ["German", "English"]
+        }
+    }
+    </script>
+
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            {
+                "@type": "Question",
+                "name": "Ist WhatsApp fuer Baudokumentation DSGVO-konform?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "WhatsApp privat ist nicht DSGVO-konform fuer gewerbliche Dokumentation. NexWorker loest das Problem: Die KI-Instanz laeuft auf deutschen Servern und archiviert alle Daten GoBD-konform. Ihre Monteure nutzen weiterhin WhatsApp, aber die Daten landen rechtsicher in Ihrer Wissensdatenbank."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Wie erfuellen Handwerker die Materialnachweispflicht nach BauPVO 2026?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Die EU-Bauproduktenverordnung 2024/3110 gilt seit dem 8. Januar 2026. Handwerker muessen Material lueckenlos zu Projekten zuordnen. NexWorker erfasst automatisch Fotos, Zeitstempel und Projektzuordnung per WhatsApp – so entsteht der digitale Produktpass ohne Mehraufwand."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Was aendert sich durch NIS2 fuer Handwerksbetriebe im Maerz 2026?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Das NIS2-Umsetzungsgesetz trat am 6. Dezember 2025 in Kraft. Die 3-monatige Registrierungsfrist endete am 6. Maerz 2026. Betroffene Betriebe (>50 Mitarbeiter, >10 Mio. Euro Umsatz) muessen IT-Sicherheitskonzepte und Dokumentation nachweisen. NexWorker sichert Ihre Kommunikationsdaten automatisch und revisionssicher."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Brauche ich eine neue App fuer NexWorker?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Nein. NexWorker funktioniert ueber WhatsApp, Telegram oder MS Teams. Ihre Monteure nutzen genau das, was sie schon kennen. Setup-Zeit: 15 Minuten. Keine Schulung, keine vergessenen Passwoerter, keine App-Muedigkeit."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Wie sichere ich das Wissen meiner Monteere vor der Rente?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "NexWorker analysiert alle Sprachnachrichten, Fotos und Texte automatisch. Das Erfahrungswissen Ihrer Monteere wird in einer durchsuchbaren Wissensdatenbank strukturiert. Neue Mitarbeiter finden Loesungen per Suche statt durch monatelanges Abfragen."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Kann NexWorker in mein bestehendes ERP integrieren?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Ja. NexWorker unterstuetzt gängige ERP-Systeme wie Lexware, DATEV, pds und Excel-Export. Arbeitszeiten, Material und Maengel fliessen direkt in Ihr Buero-System – die Ein-Klick-Rechnung am Freitag wird Realitaet."
+                }
+            }
+        ]
+    }
+    </script>
 
     <!-- Tailwind Configuration -->
     <script>
@@ -1057,6 +1166,106 @@
         </div>
     </section>
 
+    <!-- FAQ Section - AEO Optimized -->
+    <section id="faq" class="py-24 bg-white border-t border-slate-200">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16 gs-fade-up">
+                <span class="text-brand font-bold uppercase tracking-widest text-xs mb-3 block">Haeufige Fragen</span>
+                <h2 class="text-3xl md:text-4xl font-bold text-surface mb-4 tracking-tight">Rechtssicherheit &amp; Compliance 2026</h2>
+                <p class="text-slate-500">Die wichtigsten Fragen zur Messenger-Dokumentation im Handwerk.</p>
+            </div>
+
+            <div class="space-y-4 gs-fade-up">
+                <!-- FAQ Item 1 -->
+                <div class="border border-slate-200 rounded-2xl overflow-hidden hover:border-brand/30 transition-colors">
+                    <button class="faq-toggle w-full px-6 py-5 text-left flex items-center justify-between bg-slate-50 hover:bg-slate-100 transition-colors" onclick="toggleFaq(this)">
+                        <span class="font-semibold text-surface pr-4">Ist WhatsApp fuer Baudokumentation DSGVO-konform?</span>
+                        <svg class="w-5 h-5 text-brand transform transition-transform faq-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="faq-content hidden px-6 py-5 bg-white border-t border-slate-100">
+                        <p class="text-slate-600 leading-relaxed">
+                            <strong class="text-surface">WhatsApp privat ist nicht DSGVO-konform</strong> fuer gewerbliche Dokumentation. NexWorker loest das Problem: Die KI-Instanz laeuft auf deutschen Servern und archiviert alle Daten GoBD-konform. Ihre Monteure nutzen weiterhin WhatsApp, aber die Daten landen rechtsicher in Ihrer Wissensdatenbank.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- FAQ Item 2 -->
+                <div class="border border-slate-200 rounded-2xl overflow-hidden hover:border-brand/30 transition-colors">
+                    <button class="faq-toggle w-full px-6 py-5 text-left flex items-center justify-between bg-slate-50 hover:bg-slate-100 transition-colors" onclick="toggleFaq(this)">
+                        <span class="font-semibold text-surface pr-4">Wie erfuellen Handwerker die Materialnachweispflicht nach BauPVO 2026?</span>
+                        <svg class="w-5 h-5 text-brand transform transition-transform faq-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="faq-content hidden px-6 py-5 bg-white border-t border-slate-100">
+                        <p class="text-slate-600 leading-relaxed">
+                            Die <strong class="text-surface">EU-Bauproduktenverordnung 2024/3110</strong> gilt seit dem 8. Januar 2026. Handwerker muessen Material lueckenlos zu Projekten zuordnen. NexWorker erfasst automatisch Fotos, Zeitstempel und Projektzuordnung per WhatsApp – so entsteht der digitale Produktpass ohne Mehraufwand.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- FAQ Item 3 -->
+                <div class="border border-slate-200 rounded-2xl overflow-hidden hover:border-brand/30 transition-colors">
+                    <button class="faq-toggle w-full px-6 py-5 text-left flex items-center justify-between bg-slate-50 hover:bg-slate-100 transition-colors" onclick="toggleFaq(this)">
+                        <span class="font-semibold text-surface pr-4">Was aendert sich durch NIS2 fuer Handwerksbetriebe im Maerz 2026?</span>
+                        <svg class="w-5 h-5 text-brand transform transition-transform faq-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="faq-content hidden px-6 py-5 bg-white border-t border-slate-100">
+                        <p class="text-slate-600 leading-relaxed">
+                            Das <strong class="text-surface">NIS2-Umsetzungsgesetz</strong> trat am 6. Dezember 2025 in Kraft. Die 3-monatige Registrierungsfrist endete am 6. Maerz 2026. Betroffene Betriebe (>50 Mitarbeiter, >10 Mio. Euro Umsatz) muessen IT-Sicherheitskonzepte und Dokumentation nachweisen. NexWorker sichert Ihre Kommunikationsdaten automatisch und revisionssicher.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- FAQ Item 4 -->
+                <div class="border border-slate-200 rounded-2xl overflow-hidden hover:border-brand/30 transition-colors">
+                    <button class="faq-toggle w-full px-6 py-5 text-left flex items-center justify-between bg-slate-50 hover:bg-slate-100 transition-colors" onclick="toggleFaq(this)">
+                        <span class="font-semibold text-surface pr-4">Brauche ich eine neue App fuer NexWorker?</span>
+                        <svg class="w-5 h-5 text-brand transform transition-transform faq-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="faq-content hidden px-6 py-5 bg-white border-t border-slate-100">
+                        <p class="text-slate-600 leading-relaxed">
+                            <strong class="text-brand">Nein.</strong> NexWorker funktioniert ueber WhatsApp, Telegram oder MS Teams. Ihre Monteure nutzen genau das, was sie schon kennen. Setup-Zeit: 15 Minuten. Keine Schulung, keine vergessenen Passwoerter, keine App-Muedigkeit.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- FAQ Item 5 -->
+                <div class="border border-slate-200 rounded-2xl overflow-hidden hover:border-brand/30 transition-colors">
+                    <button class="faq-toggle w-full px-6 py-5 text-left flex items-center justify-between bg-slate-50 hover:bg-slate-100 transition-colors" onclick="toggleFaq(this)">
+                        <span class="font-semibold text-surface pr-4">Wie sichere ich das Wissen meiner Monteere vor der Rente?</span>
+                        <svg class="w-5 h-5 text-brand transform transition-transform faq-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="faq-content hidden px-6 py-5 bg-white border-t border-slate-100">
+                        <p class="text-slate-600 leading-relaxed">
+                            NexWorker analysiert alle Sprachnachrichten, Fotos und Texte automatisch. Das Erfahrungswissen Ihrer Monteere wird in einer durchsuchbaren Wissensdatenbank strukturiert. Neue Mitarbeiter finden Loesungen per Suche statt durch monatelanges Abfragen.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- FAQ Item 6 -->
+                <div class="border border-slate-200 rounded-2xl overflow-hidden hover:border-brand/30 transition-colors">
+                    <button class="faq-toggle w-full px-6 py-5 text-left flex items-center justify-between bg-slate-50 hover:bg-slate-100 transition-colors" onclick="toggleFaq(this)">
+                        <span class="font-semibold text-surface pr-4">Kann NexWorker in mein bestehendes ERP integrieren?</span>
+                        <svg class="w-5 h-5 text-brand transform transition-transform faq-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="faq-content hidden px-6 py-5 bg-white border-t border-slate-100">
+                        <p class="text-slate-600 leading-relaxed">
+                            Ja. NexWorker unterstuetzt gaengige ERP-Systeme wie <strong class="text-surface">Lexware, DATEV, pds</strong> und Excel-Export. Arbeitszeiten, Material und Maengel fliessen direkt in Ihr Buero-System – die Ein-Klick-Rechnung am Freitag wird Realitaet.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CTA -->
+            <div class="text-center mt-12 gs-fade-up">
+                <p class="text-slate-500 mb-4">Weitere Fragen?</p>
+                <a href="#contact" class="inline-flex items-center gap-2 text-brand font-semibold hover:text-brand-dark transition-colors">
+                    Demo anfordern
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                </a>
+            </div>
+        </div>
+    </section>
+
     <!-- Footer -->
     <footer class="bg-surface py-10 text-center relative overflow-hidden">
         <!-- Subtle glow -->
@@ -1081,6 +1290,22 @@
             <p class="text-slate-600 text-xs font-mono">© 2026 NexTech Fusion GmbH. All rights reserved.</p>
         </div>
     </footer>
+
+    <!-- FAQ Toggle Script -->
+    <script>
+    function toggleFaq(button) {
+        const content = button.nextElementSibling;
+        const icon = button.querySelector('.faq-icon');
+        
+        if (content.classList.contains('hidden')) {
+            content.classList.remove('hidden');
+            icon.classList.add('rotate-180');
+        } else {
+            content.classList.add('hidden');
+            icon.classList.remove('rotate-180');
+        }
+    }
+    </script>
 
     <script>
         window.addEventListener('load', () => {
