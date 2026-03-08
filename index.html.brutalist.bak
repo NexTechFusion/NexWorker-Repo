@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="de" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexWorker — Bauen ohne Büro</title>
+    
+    <!-- RAW TYPOGRAPHY -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Space+Grotesk:wght@700;800&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        white: '#FFFFFF',
+                        black: '#000000',
+                        lime: '#CCFF00',
+                        pink: '#FF2E63',
+                        cyan: '#00F0FF',
+                    },
+                    fontFamily: {
+                        display: ['Space Grotesk', 'sans-serif'],
+                        mono: ['Courier Prime', 'monospace'],
+                    },
+                    boxShadow: {
+                        'hard': '4px 4px 0px 0px #000',
+                        'hard-lg': '8px 8px 0px 0px #000',
+                        'hard-hover': '6px 6px 0px 0px #000',
+                    },
+                    borderWidth: {
+                        '3': '3px',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        /* Brutalist Base */
+        body { 
+            background-color: #FFFFFF;
+            color: #000000;
+            overflow-x: hidden;
+        }
+        
+        /* Hard Borders & Shadows */
+        .brutalist-card {
+            border: 3px solid #000;
+            box-shadow: 4px 4px 0px 0px #000;
+            transition: all 0.15s ease-out;
+        }
+        .brutalist-card:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 6px 6px 0px 0px #000;
+        }
+        
+        /* Buttons */
+        .btn-brutal {
+            border: 3px solid #000;
+            box-shadow: 4px 4px 0px 0px #000;
+            transition: all 0.1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+        }
+        .btn-brutal:hover {
+            transform: translate(-3px, -3px);
+            box-shadow: 6px 6px 0px 0px #000;
+        }
+        .btn-brutal:active {
+            transform: translate(1px, 1px);
+            box-shadow: 2px 2px 0px 0px #000;
+        }
+        
+        /* Glitch Effect */
+        .glitch {
+            position: relative;
+            display: inline-block;
+        }
+        .glitch::before,
+        .glitch::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .glitch::before {
+            left: 2px;
+            text-shadow: -2px 0 #FF2E63;
+            clip: rect(24px, 550px, 90px, 0);
+            animation: glitch-anim-1 2s infinite linear alternate-reverse;
+        }
+        .glitch::after {
+            left: -2px;
+            text-shadow: -2px 0 #00F0FF;
+            clip: rect(85px, 550px, 140px, 0);
+            animation: glitch-anim-2 2.5s infinite linear alternate-reverse;
+        }
+        @keyframes glitch-anim-1 {
+            0% { clip: rect(20px, 9999px, 15px, 0); }
+            100% { clip: rect(60px, 9999px, 70px, 0); }
+        }
+        @keyframes glitch-anim-2 {
+            0% { clip: rect(90px, 9999px, 100px, 0); }
+            100% { clip: rect(10px, 9999px, 40px, 0); }
+        }
+        
+        /* Marquee */
+        .marquee {
+            white-space: nowrap;
+            overflow: hidden;
+        }
+        .marquee span {
+            display: inline-block;
+            padding-left: 100%;
+            animation: marquee 20s linear infinite;
+        }
+        @keyframes marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-100%); }
+        }
+        
+        /* Diagonal Lines Pattern */
+        .diagonal-lines {
+            background: repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 20px,
+                rgba(0,0,0,0.03) 20px,
+                rgba(0,0,0,0.03) 21px
+            );
+        }
+        
+        /* Custom Cursor */
+        .cursor-dot,
+        .cursor-outline {
+            position: fixed;
+            top: 0;
+            left: 0;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            z-index: 9999;
+            pointer-events: none;
+        }
+        .cursor-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #000;
+        }
+        .cursor-outline {
+            width: 40px;
+            height: 40px;
+            border: 2px solid #000;
+            transition: width 0.2s, height 0.2s, background-color 0.2s;
+        }
+    </style>
+</head>
+<body class="font-mono antialiased cursor-none">
+    <!-- Custom Cursor -->
+    <div class="cursor-dot"></div>
+    <div class="cursor-outline"></div>
+    
+    <!-- Diagonal Pattern Background -->
+    <div class="fixed inset-0 diagonal-lines z-0 pointer-events-none"></div>
+    
+    <!-- Hard Accent Bar -->
+    <div class="fixed top-0 left-0 right-0 h-2 bg-lime z-50"></div>
+    <div class="fixed bottom-0 left-0 right-0 h-2 bg-pink z-50"></div>
+
+    <!-- Navigation -->
+    <nav class="relative z-40 py-6 px-8 flex justify-between items-center bg-white border-b-3 border-black">
+        <div class="flex items-center gap-3">
+            <div class="w-12 h-12 bg-lime border-3 border-black flex items-center justify-center transform -rotate-3">
+                <span class="font-display text-2xl font-black">NX</span>
+            </div>
+            <span class="font-display text-3xl font-black tracking-tighter">NEXWORKER</span>
+        </div>
+        <div class="hidden md:flex gap-6 items-center">
+            <a href="#funktionen" class="font-bold text-lg hover:underline decoration-4 underline-offset-8">FUNktionen</a>
+            <a href="#preise" class="font-bold text-lg hover:underline decoration-4 underline-offset-8">PREISE</a>
+            <button class="btn-brutal px-8 py-4 bg-cyan text-black hover:bg-cyan/80">DEMO ANFRAGEN</button>
+        </div>
+    </nav>
+
+    <!-- Marquee Banner -->
+    <div class="marquee bg-black text-lime py-4 font-display text-xl font-bold uppercase border-b-3 border-black z-30 relative">
+        <span>☆ KOSTENLOS TESTEN • KEIN VERTRAG • 24/7 SUPPORT • MADE IN GERMANY • ☆ KOSTENLOS TESTEN • KEIN VERTRAG • 24/7 SUPPORT • MADE IN GERMANY •</span>
+    </div>
+
+    <main class="relative z-10 pt-8">
+        <!-- Hero -->
+        <section class="max-w-[1400px] mx-auto px-8 py-20 grid lg:grid-cols-12 gap-12 items-center">
+            <!-- Left: Copy -->
+            <div class="lg:col-span-6 space-y-8">
+                <div class="inline-block bg-pink text-white px-4 py-2 font-bold border-3 border-black transform rotate-1">
+                    🛠 VERSION 2.0 — JETZT LIVE
+                </div>
+                
+                <h1 class="font-display text-7xl md:text-9xl font-black leading-[0.85] tracking-tighter uppercase mix-blend-difference">
+                    Bauen ohne <br>
+                    <span class="text-lime bg-black px-2 inline-block transform -rotate-1">Büro.</span>
+                </h1>
+                
+                <p class="text-2xl font-light max-w-lg leading-relaxed">
+                    Der KI-Assistent für Handwerker. Sprechen Sie einfach. Dokumentieren Sie automatisch. <span class="bg-cyan px-1 font-bold">Keine neue App.</span>
+                </p>
+
+                <div class="flex flex-wrap gap-6">
+                    <button class="btn-brutal px-10 py-6 bg-lime text-black text-xl hover:bg-lime/90 transform hover:-translate-y-1">
+                        KOSTENLOS STARTEN →
+                    </button>
+                    <button class="btn-brutal px-10 py-6 bg-white text-black text-xl border-3 border-black hover:bg-black hover:text-white">
+                        LIVE SEHEN
+                    </button>
+                </div>
+
+                <!-- Client Logos (strip) -->
+                <div class="pt-12 border-t-3 border-black">
+                    <div class="marquee font-display text-6xl font-black text-gray-200 opacity-30">
+                        <span>BAU • HANDWERK • MONTAGE • INSTALLATION •</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Visual -->
+            <div class="lg:col-span-6 relative">
+                <div class="absolute -top-10 -right-10 w-40 h-40 bg-cyan border-3 border-black z-0 animate-pulse"></div>
+                <div class="absolute -bottom-10 -left-10 w-32 h-32 bg-pink border-3 border-black z-0"></div>
+                
+                <div class="relative z-10 brutalist-card bg-white p-6 transform rotate-1 hover:rotate-0 transition-transform duration-300">
+                    <!-- Image with vibemedia -->
+                    <img src="https://vibemedia.space/hero_newwave_nexworker.png?prompt=construction%20worker%20using%20tablet%20on%20bright%20sunny%20construction%20site%20hyperrealistic%20bold%20colors%20sharp%20edges&key=NOGON" 
+                         class="w-full h-auto border-2 border-black mb-6 -translate-y-4 -translate-x-4" 
+                         alt="Hero">
+                    
+                    <!-- Floating Note -->
+                    <div class="bg-lime border-3 border-black p-4 max-w-[80%] transform -rotate-3 shadow-hard absolute -bottom-8 -left-8 z-20">
+                        <p class="font-mono font-bold text-sm">
+                            „Perfekt für Baustellen 📸“ <span class="float-right">🔧</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAPE SECTION (visual divider) -->
+        <div class="max-w-[1400px] mx-auto my-20 flex justify-center">
+            <div class="w-full h-12 bg-pink border-t-3 border-b-3 border-black flex items-center justify-center font-display font-black text-black text-xl" style="transform: rotate(-1deg);">
+                🎯 DAS PROBLEM: ZETTELWIRTSHAFT
+            </div>
+        </div>
+
+        <!-- Problems (Features) -->
+        <section class="max-w-[1400px] mx-auto px-8 py-20">
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="brutalist-card bg-white p-8 relative group">
+                    <div class="absolute -top-6 -left-6 w-12 h-12 bg-black text-lime flex items-center justify-center font-bold border-3 border-black">01</div>
+                    <h3 class="font-display text-3xl font-black mb-4 uppercase">Zettelchaos</h3>
+                    <p class="font-light text-lg leading-relaxed">
+                        Skizzen auf nassen Papieren, unleserliche Notizen, verlorene Aufmaße. Klingt bekannt?
+                    </p>
+                </div>
+                <div class="brutalist-card bg-white p-8 relative group">
+                    <div class="absolute -top-6 -left-6 w-12 h-12 bg-black text-cyan flex items-center justify-center font-bold border-3 border-black">02</div>
+                    <h3 class="font-display text-3xl font-black mb-4 uppercase">Büro nach Feierabend</h3>
+                    <p class="font-light text-lg leading-relaxed">
+                        Stundenlange Nacharbeit im Homeoffice, statt Zeit mit der Familie zu verbringen.
+                    </p>
+                </div>
+                <div class="brutalist-card bg-white p-8 relative group">
+                    <div class="absolute -top-6 -left-6 w-12 h-12 bg-black text-pink flex items-center justify-center font-bold border-3 border-black">03</div>
+                    <h3 class="font-display text-3xl font-black mb-4 uppercase">Fehlende Belege</h3>
+                    <p class="font-light text-lg leading-relaxed">
+                        Jede fehlende Stunde oder Schraube kostet Geld. Was nicht dokumentiert ist, existiert nicht.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SOLUTIONS SECTION OVERLAP -->
+        <section class="max-w-[1400px] mx-auto px-8 py-20 relative">
+            <div class="absolute -top-20 left-0 w-full h-2 bg-lime"></div>
+            
+            <div class="grid lg:grid-cols-2 gap-20 items-center">
+                <div>
+                    <h2 class="font-display text-6xl font-black mb-8 uppercase leading-none">
+                        Lösung: <span class="text-pink bg-black px-3 inline-block -rotate-1">KI im Chat</span>
+                    </h2>
+                    <p class="text-2xl font-light mb-12 max-w-md">
+                        NexWorker ist ein KI-Agent, der in Ihrem Messenger lebt. Einfach sprechen, Fotos senden, fertig ist der Bericht.
+                    </p>
+                    
+                    <ul class="space-y-6">
+                        <li class="flex items-start gap-4">
+                            <div class="w-8 h-8 bg-cyan border-3 border-black flex items-center justify-center flex-shrink-0 mt-1">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="4"><polyline points="20 6 9 17 4 12"/></svg>
+                            </div>
+                            <span class="text-xl">Chatten per WhatsApp, Telegram oder Signal.</span>
+                        </li>
+                        <li class="flex items-start gap-4">
+                            <div class="w-8 h-8 bg-pink border-3 border-black flex items-center justify-center flex-shrink-0 mt-1">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="4"><polyline points="20 6 9 17 4 12"/></svg>
+                            </div>
+                            <span class="text-xl">KI analysiert Sprache und Fotos automatisch.</span>
+                        </li>
+                        <li class="flex items-start gap-4">
+                            <div class="w-8 h-8 bg-lime border-3 border-black flex items-center justify-center flex-shrink-0 mt-1">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="4"><polyline points="20 6 9 17 4 12"/></svg>
+                            </div>
+                            <span class="text-xl">Berichte landen direkt in LexOffice & Co.</span>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="relative">
+                    <!-- Visual with Vibemedia image -->
+                    <div class="brutalist-card bg-white p-4 transform rotate-1 hover:rotate-0 transition-transform duration-300 relative">
+                        <img src="https://vibemedia.space/demo_7b2c_messenger.png?prompt=modern%20messenger%20chat%20interface%20with%20construction%20photos%20and%20AI%20analysis%20bold%20colors%20neo%20brutalist%20design&key=NOGON" 
+                             class="w-full h-auto border-2 border-black mb-4" 
+                             alt="Messenger Demo">
+                        <div class="text-center font-mono text-sm text-gray-600">Screenshot: NexWorker in Action</div>
+                    </div>
+                    
+                    <!-- Decorative Tape -->
+                    <div class="absolute top-1/2 left-0 w-32 h-8 bg-lime border-3 border-black transform rotate-45 -translate-y-1/2 -translate-x-8 flex items-center justify-center font-bold text-xs text-black">
+                        NEU!
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA BANNER -->
+        <section class="bg-black text-white py-32 relative overflow-hidden my-20">
+            <div class="absolute top-0 left-0 w-16 h-full bg-lime"></div>
+            <div class="absolute bottom-0 right-0 w-16 h-full bg-pink"></div>
+            
+            <div class="max-w-[1400px] mx-auto px-8 text-center relative z-10">
+                <h2 class="font-display text-6xl md:text-8xl font-black mb-10 uppercase leading-tight mix-blend-difference">
+                    BEREIT FÜR <br> <span class="text-cyan">DIE REVOLUTION?</span>
+                </h2>
+                <div class="flex flex-col sm:flex-row justify-center gap-6">
+                    <button class="btn-brutal px-16 py-8 bg-lime text-black text-2xl hover:bg-lime/90">
+                        KOSTENLOS TESTEN
+                    </button>
+                    <button class="btn-brutal px-16 py-8 bg-white text-black text-2xl hover:bg-black hover:text-white">
+                        ANGEBOT ANFRAGEN
+                    </button>
+                </div>
+                <p class="mt-8 font-mono text-sm opacity-70 uppercase tracking-widest">
+                    Kein Vertrag • 14 Tage kostenlos • Jederzeit kündbar
+                </p>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="max-w-[1400px] mx-auto px-8 py-16 border-t-3 border-black">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-8">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-black text-lime flex items-center justify-center font-display font-black text-2xl border-3 border-black">NX</div>
+                    <div>
+                        <div class="font-display font-black text-2xl">NEXWORKER</div>
+                        <div class="font-mono text-sm">© 2026 NexWorker GmbH</div>
+                    </div>
+                </div>
+                <div class="flex gap-8 font-bold text-lg">
+                    <a href="#" class="hover:underline decoration-4 underline-offset-4">Impressum</a>
+                    <a href="#" class="hover:underline decoration-4 underline-offset-4">Datenschutz</a>
+                    <a href="#" class="hover:underline decoration-4 underline-offset-4">AGB</a>
+                </div>
+            </div>
+        </footer>
+    </main>
+
+    <script>
+        // Custom Cursor
+        const cursorDot = document.querySelector('.cursor-dot');
+        const cursorOutline = document.querySelector('.cursor-outline');
+        window.addEventListener('mousemove', (e) => {
+            cursorDot.style.left = e.clientX + 'px';
+            cursorDot.style.top = e.clientY + 'px';
+            cursorOutline.style.left = e.clientX + 'px';
+            cursorOutline.style.top = e.clientY + 'px';
+        });
+        document.querySelectorAll('a, button').forEach(el => {
+            el.addEventListener('mouseenter', () => {
+                cursorOutline.style.width = '60px';
+                cursorOutline.style.height = '60px';
+                cursorOutline.style.backgroundColor = 'rgba(0, 240, 255, 0.1)';
+            });
+            el.addEventListener('mouseleave', () => {
+                cursorOutline.style.width = '40px';
+                cursorOutline.style.height = '40px';
+                cursorOutline.style.backgroundColor = 'transparent';
+            });
+        });
+
+        // GSAP Animations
+        gsap.registerPlugin(ScrollTrigger);
+
+        // Hero Stagger
+        const tl = gsap.timeline();
+        tl.from("h1 span, h1 br", { y: 200, opacity: 0, duration: 0.8, stagger: 0.1, ease: "back.out(1.7)" })
+          .from("p", { y: 40, opacity: 0, duration: 0.8, ease: "power2.out" }, "-=0.4")
+          .from(".btn-brutal", { scale: 0, duration: 0.6, stagger: 0.1, ease: "back.out(1.7)" }, "-=0.4")
+          .from(".marquee", { x: -1000, opacity: 0, duration: 1, ease: "power2.out" }, "-=0.8")
+          .from(".lg\\:col-span-6 img", { x: 100, opacity: 0, duration: 1, ease: "expo.out" }, "-=1");
+
+        // ScrollTrigger: Cards
+        gsap.utils.toArray(".brutalist-card").forEach((card, i) => {
+            gsap.from(card, {
+                scrollTrigger: {
+                    trigger: card,
+                    start: "top 85%",
+                },
+                y: 50,
+                opacity: 0,
+                duration: 0.8,
+                ease: "power2.out"
+            });
+        });
+
+        // Parallax on accents
+        gsap.to(".bg-lime, .bg-pink", {
+            scrollTrigger: {
+                trigger: "body",
+                start: "top top",
+                end: "bottom bottom",
+                scrub: true
+            },
+            x: 200,
+            ease: "none"
+        });
+
+        // Glitch effect intensity on hover
+        const glitchEl = document.querySelector('.glitch');
+        if (glitchEl) {
+            glitchEl.addEventListener('mouseenter', () => {
+                gsap.to(glitchEl, { duration: 0.1, repeat: 5, yoyo: true, x: 2 });
+            });
+        }
+    </script>
+</body>
+</html>

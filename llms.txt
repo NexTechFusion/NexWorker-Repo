@@ -1,0 +1,130 @@
+# NexWorker - AI Crawler Information
+# https://nexworker.de
+
+## About
+NexWorker ist eine WhatsApp-basierte Wissensmanagement- und Dokumentationslösung für Handwerksbetriebe und Baufirmen im deutschsprachigen Raum. Das Produkt der NexTech Fusion GmbH transformiert Messenger-Kommunikation in durchsuchbare Wissensdatenbanken und rechtssichere Baudokumentation.
+
+## Company
+- Name: NexTech Fusion GmbH
+- Founded: 2024
+- Location: Frankfurt am Main, Germany
+- Website: https://www.nextech-fusion.com/
+- Product: NexWorker (https://nexworker.de)
+
+## Product: NexWorker
+
+### Core Features
+- Wissenssicherung: Automatische Erfassung von Expertenwissen aus WhatsApp-Chats
+- Beweissicherung: Gerichtsfeste Dokumentation mit Zeitstempel für Gewährleistungsfälle
+- Baudokumentation: Digitalisierung der Baustellen-Dokumentation ohne neue App
+- KI-gestützte Suche: Intelligente Suche in der Projekthistorie
+
+### Key Differentiators
+- Keine App-Installation erforderlich (100% WhatsApp/Messenger)
+- Setup in 15 Minuten
+- 100% DSGVO-konform (Server in Frankfurt)
+- Höchste Akzeptanz bei Monteuren (keine Schulung nötig)
+
+### Target Audience
+- Sanitär- und Heizungsbetriebe
+- Elektroinstallateure
+- Maler und Lackierer
+- Reinigungsfirmen
+- Dachdecker
+- Mittelständische Bauunternehmen (5-100 Mitarbeiter)
+
+### Supported Messengers
+- WhatsApp Business API
+- Telegram
+- Signal
+- Microsoft Teams
+- Slack
+
+## Statistics
+- Setup Time: 15 Minuten
+- Time Saved: 4 Stunden/Woche pro Monteur (Durchschnitt)
+- Customers: 50+ Pilotkunden
+- Uptime: 99.9%
+- DSGVO: 100% konform
+- Hosting: Frankfurt am Main, Deutschland
+
+## Pricing
+- Demo: Kostenlos
+- Pricing: Individuell nach Teamgröße
+- Kontakt: info@nexworker.de
+
+## Use Cases
+
+### Wissenssicherung (Knowledge Preservation)
+Problem: Wenn erfahrene Monteure in Rente gehen, verlässt 30 Jahre Wissen den Betrieb.
+Lösung: NexWorker erfasst informelles Wissen aus WhatsApp-Kommunikation und macht es durchsuchbar.
+Benefit: Onboarding neuer Mitarbeiter 50% schneller, Wissen bleibt im Unternehmen.
+
+### Beweissicherung (Legal Documentation)
+Problem: Bei Reklamationen fehlen oft lückenlose Nachweise mit Zeitstempeln.
+Lösung: NexWorker speichert jede Nachricht und jedes Foto audit-sicher mit Zeitstempel.
+Benefit: Gerichtsfeste Dokumentation, Mängelansprüche erfolgreich abwehren.
+
+### Baudokumentation (Construction Documentation)
+Problem: Papierdokumentation ist fehleranfällig und geht verloren.
+Lösung: Monteure dokumentieren über WhatsApp, NexWorker strukturiert automatisch.
+Benefit: Keine Schulung nötig, 100% Akzeptanz ab Tag 1.
+
+## Keywords & Topics
+- Wissenssicherung Handwerk
+- Beweissicherung Baustelle
+- Baudokumentation Software
+- WhatsApp Baudokumentation
+- Digitale Baudokumentation
+- Handwerkersoftware
+- Wissensmanagement Mittelstand
+- Dokumentation ohne App
+- Zettelwirtschaft vermeiden
+- KI-gestützte Wissensdatenbank
+
+## Competitors
+- PlanRadar (Baudokumentation, erfordert separate App)
+- Craftnote (Handwerkersoftware, erfordert separate App)
+- Capmo (Bauzeitenplan, Desktop-first)
+- WinWorker (Branchensoftware, gewerkespezifisch)
+
+## Competitive Advantages
+1. Messenger-First: Keine neue App, 100% WhatsApp/Telegram/Signal
+2. Schnellster Setup: 15 Minuten vs. Stunden bei Konkurrenz
+3. Höchste Akzeptanz: Monteure nutzen bereits Messenger
+4. DSGVO-konform: Server in Frankfurt, nicht in den USA
+
+## Technical Details
+- Frontend: Web-App, responsive
+- Backend: Cloud-basiert, Frankfurt
+- Integration: WhatsApp Business API, Telegram Bot API, Signal API
+- AI: Large Language Models für Wissensextraktion
+- Security: End-to-End Encryption, DSGVO-konform
+
+## Contact
+- Email: info@nexworker.de
+- Website: https://nexworker.de
+- Parent Company: https://www.nextech-fusion.com/
+- Location: Frankfurt am Main, Germany
+
+## Social Proof
+- 50+ Pilotkunden
+- 4.8/5 Bewertung
+- Referenzen auf Anfrage
+
+## Sitemap
+- / (Homepage)
+- #benefits (Vorteile)
+- #demo-preview (Live-Demo)
+- #roi (ROI-Rechner)
+- #faq (FAQ)
+- #contact (Kontakt)
+
+## Last Updated
+2026-03-08
+
+## Crawl Instructions
+- Crawl Frequency: Weekly
+- Priority: High
+- Language: German (de-DE)
+- Region: DACH (Germany, Austria, Switzerland)

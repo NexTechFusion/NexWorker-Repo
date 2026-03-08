@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="de" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexWorker — Die Zukunft des Handwerks</title>
+    
+    <!-- Distinctive Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;12..96,600;12..96,800&family=Geist:wght@300;500;700&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/api/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        indigo: {
+                            50: '#f0f4ff',
+                            100: '#d9e2ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            900: '#312e81',
+                        },
+                        purple: {
+                            500: '#a855f7',
+                            600: '#9333ea',
+                        },
+                        brand: {
+                            dark: '#020617',
+                        }
+                    },
+                    fontFamily: {
+                        display: ['Bricolage Grotesque', 'sans-serif'],
+                        sans: ['Geist', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        ::selection { background: #6366f1; color: white; }
+        body { 
+            background-color: #020617;
+            color: #f8fafc;
+            -webkit-font-smoothing: antialiased;
+        }
+        .hero-gradient {
+            background: radial-gradient(circle at 20% 30%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
+                        radial-gradient(circle at 80% 70%, rgba(168, 85, 247, 0.15) 0%, transparent 40%);
+        }
+        .glass-card {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .nav-blur {
+            background: rgba(2, 6, 23, 0.8);
+            backdrop-filter: blur(12px);
+        }
+        .text-gradient {
+            background: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="font-sans hero-gradient min-h-screen">
+    
+    <!-- Navigation -->
+    <nav class="fixed top-0 inset-x-0 z-50 py-4 px-6 flex justify-between items-center nav-blur border-b border-white/5">
+        <div class="flex items-center gap-2">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            </div>
+            <span class="font-display text-2xl font-extrabold tracking-tight">NexWorker</span>
+        </div>
+        <div class="hidden md:flex gap-8 items-center text-sm font-medium">
+            <a href="#features" class="text-slate-400 hover:text-white transition-colors">Vorteile</a>
+            <a href="#demo" class="text-slate-400 hover:text-white transition-colors">Demo</a>
+            <button class="px-6 py-2.5 rounded-full bg-white text-brand-dark font-bold hover:bg-slate-200 transition-all shadow-xl">Starten</button>
+        </div>
+    </nav>
+
+    <main class="relative pt-24">
+        <!-- Hero Section -->
+        <section class="max-w-7xl mx-auto px-6 pt-16 pb-32 grid lg:grid-cols-2 gap-16 items-center">
+            <div class="space-y-8">
+                <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-500/10 border border-indigo-500/20">
+                    <span class="relative flex h-2 w-2">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                    </span>
+                    <span class="text-xs font-bold text-indigo-400 uppercase tracking-widest">Jetzt Live: Handwerk 2.0</span>
+                </div>
+                
+                <h1 class="font-display text-6xl md:text-7xl font-black leading-[1.05] tracking-tight">
+                    Weniger Büro. <br>
+                    <span class="text-gradient">Mehr Handwerk.</span>
+                </h1>
+                
+                <p class="text-xl text-slate-400 leading-relaxed max-w-lg">
+                    NexWorker ist Ihr KI-Polier im Messenger. Dokumentation, Aufmaß und Berichte erledigen sich per Sprachnotiz von selbst – direkt von der Baustelle.
+                </p>
+
+                <div class="flex flex-col sm:flex-row gap-4">
+                    <button class="px-8 py-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-display text-xl font-bold shadow-2xl shadow-indigo-600/40 hover:scale-[1.02] transition-transform">
+                        Kostenlos ausprobieren
+                    </button>
+                    <button class="px-8 py-4 rounded-2xl glass-card text-white font-display text-xl font-bold hover:bg-white/5 transition-colors">
+                        Live Demo
+                    </button>
+                </div>
+
+                <div class="pt-8 flex items-center gap-6">
+                    <div class="flex -space-x-3">
+                        <img src="https://vibemedia.space/avatar_9823_user1.png?prompt=portrait%20of%20a%20happy%20construction%20worker%20man%20realism&key=NOGON" class="w-10 h-10 rounded-full border-2 border-brand-dark object-cover" alt="User">
+                        <img src="https://vibemedia.space/avatar_9823_user2.png?prompt=portrait%20of%20a%20professional%20handyman%20smiling%20realism&key=NOGON" class="w-10 h-10 rounded-full border-2 border-brand-dark object-cover" alt="User">
+                        <img src="https://vibemedia.space/avatar_9823_user3.png?prompt=portrait%20of%20a%20female%20architect%20smiling%20realism&key=NOGON" class="w-10 h-10 rounded-full border-2 border-brand-dark object-cover" alt="User">
+                    </div>
+                    <p class="text-sm text-slate-500 font-medium">Vertraut von über 500 Betrieben</p>
+                </div>
+            </div>
+
+            <!-- Hero Visual -->
+            <div class="relative group">
+                <div class="absolute inset-0 bg-indigo-500/20 blur-[100px] rounded-full group-hover:bg-indigo-500/30 transition-colors"></div>
+                <div class="relative glass-card rounded-[2.5rem] p-4 shadow-3xl transform rotate-1 group-hover:rotate-0 transition-transform duration-700">
+                    <img src="https://vibemedia.space/hero_a831_handwerk.png?prompt=modern%20tech%20startup%20office%20space%20with%20indigo%20blue%20and%20purple%20neon%20lighting%20minimalist%20clean%20design%20dark%20background&key=NOGON" 
+                         class="w-full h-auto rounded-[2rem] shadow-2xl" 
+                         alt="NexWorker Dashboard Hero">
+                    
+                    <!-- Floating UI -->
+                    <div class="absolute -bottom-10 -left-10 glass-card p-6 rounded-3xl shadow-2xl max-w-xs animate-bounce" style="animation-duration: 4s">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-full bg-indigo-500 flex items-center justify-center">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                            </div>
+                            <div>
+                                <p class="text-xs text-indigo-400 font-bold uppercase tracking-wider">Spracherkennung</p>
+                                <p class="text-sm font-medium">"Aufmaß Fenster im EG fertig..."</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features -->
+        <section id="features" class="max-w-7xl mx-auto px-6 py-32">
+            <div class="text-center mb-20 space-y-4">
+                <h2 class="font-display text-4xl md:text-5xl font-black italic uppercase">Intelligent. Integriert. <span class="text-indigo-500">Einfach.</span></h2>
+                <p class="text-slate-400 max-w-2xl mx-auto">Vom Messenger direkt in Ihre Software. NexWorker verbindet die Baustelle mit dem Büro.</p>
+            </div>
+            
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="glass-card p-8 rounded-3xl group hover:border-indigo-500/50 transition-all">
+                    <div class="w-14 h-14 rounded-2xl bg-indigo-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    </div>
+                    <h3 class="font-display text-2xl font-bold mb-4">Messenger First</h3>
+                    <p class="text-slate-400 leading-relaxed font-light text-sm">Nutzen Sie WhatsApp, Telegram oder Slack. Keine neue App für Ihre Mitarbeiter nötig.</p>
+                </div>
+
+                <div class="glass-card p-8 rounded-3xl group hover:border-indigo-500/50 transition-all">
+                    <div class="w-14 h-14 rounded-2xl bg-indigo-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    </div>
+                    <h3 class="font-display text-2xl font-bold mb-4">Auto-Dokumentation</h3>
+                    <p class="text-slate-400 leading-relaxed font-light text-sm">KI analysiert Fotos und Sprache. Berichte werden automatisch im Hintergrund erstellt.</p>
+                </div>
+
+                <div class="glass-card p-8 rounded-3xl group hover:border-indigo-500/50 transition-all">
+                    <div class="w-14 h-14 rounded-2xl bg-indigo-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                    </div>
+                    <h3 class="font-display text-2xl font-bold mb-4">Echtzeit-Sync</h3>
+                    <p class="text-slate-400 leading-relaxed font-light text-sm">Anbindung an LexOffice, SevDesk und Handwerkersoftware. Daten landen sofort im Büro.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Dynamic Content Section -->
+        <section class="max-w-7xl mx-auto px-6 py-24">
+            <div class="glass-card rounded-[3rem] p-12 overflow-hidden relative">
+                <div class="absolute top-0 right-0 w-96 h-96 bg-purple-600/10 blur-[100px] -mr-48 -mt-48"></div>
+                <div class="grid lg:grid-cols-2 gap-16 items-center">
+                    <div>
+                        <h2 class="font-display text-5xl font-black mb-8 leading-tight">Überall <span class="text-indigo-400">Einsetzbar.</span></h2>
+                        <ul class="space-y-6">
+                            <li class="flex items-start gap-4">
+                                <div class="w-6 h-6 rounded-full bg-indigo-500/20 flex items-center justify-center mt-1">
+                                    <div class="w-2 h-2 rounded-full bg-indigo-500"></div>
+                                </div>
+                                <p class="text-slate-300 font-medium">Bautagebuch & Berichte</p>
+                            </li>
+                            <li class="flex items-start gap-4">
+                                <div class="w-6 h-6 rounded-full bg-indigo-500/20 flex items-center justify-center mt-1">
+                                    <div class="w-2 h-2 rounded-full bg-indigo-500"></div>
+                                </div>
+                                <p class="text-slate-300 font-medium">Foto-Dokumentation & KI-Analyse</p>
+                            </li>
+                            <li class="flex items-start gap-4">
+                                <div class="w-6 h-6 rounded-full bg-indigo-500/20 flex items-center justify-center mt-1">
+                                    <div class="w-2 h-2 rounded-full bg-indigo-500"></div>
+                                </div>
+                                <p class="text-slate-300 font-medium">Aufmaß per Foto & Sprache</p>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="relative">
+                        <img src="https://vibemedia.space/office_987x_team.png?prompt=professional%20business%20meeting%20in%20modern%20conference%20room%20with%20ambient%20purple%20lighting%20and%20floor%20to%20ceiling%20windows&key=NOGON" 
+                             class="rounded-[2rem] shadow-2xl" alt="NexWorker Team">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Final Call to Action -->
+        <section class="max-w-4xl mx-auto px-6 py-40 text-center">
+            <h2 class="font-display text-6xl md:text-7xl font-black mb-12 tracking-tighter">Bereit für den <br><span class="text-indigo-400 tracking-normal italic uppercase">Level Up?</span></h2>
+            <div class="flex flex-col md:flex-row justify-center gap-6">
+                <button class="px-12 py-6 rounded-2xl bg-white text-brand-dark font-display text-2xl font-black hover:scale-105 transition-all shadow-2xl shadow-white/10">Kostenlos Starten</button>
+                <button class="px-12 py-6 rounded-2xl glass-card text-white font-display text-2xl font-black hover:bg-white/5 transition-all">Vertrieb kontaktieren</button>
+            </div>
+            <p class="mt-8 text-slate-500 font-mono text-xs tracking-widest uppercase">Keine Kreditkarte erforderlich • Sofort-Zugang </p>
+        </section>
+
+        <footer class="max-w-7xl mx-auto px-6 py-12 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-8">
+            <div class="flex items-center gap-2 opacity-50">
+                <div class="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center text-white font-bold text-xs uppercase">NX</div>
+                <span class="font-display font-medium text-sm">NexWorker 2026</span>
+            </div>
+            <div class="flex gap-8 text-xs font-mono uppercase tracking-widest text-slate-500">
+                <a href="#" class="hover:text-indigo-400 transition-colors">Impressum</a>
+                <a href="#" class="hover:text-indigo-400 transition-colors">Datenschutz</a>
+                <a href="#" class="hover:text-indigo-400 transition-colors">Hilfe</a>
+            </div>
+        </footer>
+    </main>
+
+    <script>
+        // Hero Animation
+        gsap.from("h1", { y: 60, opacity: 0, duration: 1.2, ease: "power4.out", delay: 0.2 });
+        gsap.from("p", { y: 30, opacity: 0, duration: 1.2, ease: "power4.out", delay: 0.4 });
+        gsap.from(".lg\\:col-span-2 > div", { x: 50, opacity: 0, duration: 1.5, ease: "power4.out", delay: 0.6 });
+    </script>
+</body>
+</html>

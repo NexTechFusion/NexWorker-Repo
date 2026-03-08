@@ -1,793 +1,699 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NexWorker - Der digitale Bauhelfer im Messenger</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'construct-orange': '#FF5A1F',
-                        'construct-orange-dark': '#E04A12',
-                        'hilti-red': '#D31145',
-                        'charcoal': '#0D0D0D',
-                        'steel': '#1A1A1A',
-                        'safety-yellow': '#FFD700',
-                    },
-                    fontFamily: {
-                        'display': ['Space Grotesk', 'sans-serif'],
-                        'mono': ['JetBrains Mono', 'monospace'],
-                    }
-                }
-            }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NexWorker | WhatsApp Baudokumentation & Wissenssicherung für Handwerksbetriebe</title>
+  <meta name="description" content="Wissenssicherung für Handwerksbetriebe: NexWorker verwandelt WhatsApp-Chats in durchsuchbare Wissensdatenbank. Beweissicherung, Baudokumentation & Wissensmanagement ohne neue App. DSGVO-konform, 15 Min. Setup.">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+  <link rel="canonical" href="https://nexworker.de/">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { 
+              50: '#EEF2FF', 100: '#E0E7FF', 200: '#C7D2FE', 
+              300: '#A5B4FC', 400: '#818CF8', 500: '#6366F1', 
+              600: '#4F46E5', 700: '#4338CA', 800: '#3730A3', 
+              900: '#312E81' 
+            },
+            slate: { 850: '#1a2332', 950: '#0f172a' }
+          },
+          fontFamily: { sans: ['Roboto', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] }
         }
-    </script>
-    <style>
-        body {
-            background-color: #0D0D0D;
-            color: #F5F5F5;
-            font-family: 'Space Grotesk', sans-serif;
-            overflow-x: hidden;
-        }
-        
-        .noise-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 9999;
-            opacity: 0.03;
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-        }
-        
-        .chat-bubble {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 90, 31, 0.3);
-            backdrop-filter: blur(10px);
-        }
-        
-        .chat-bubble-worker {
-            background: linear-gradient(135deg, rgba(255, 90, 31, 0.2), rgba(255, 90, 31, 0.05));
-            border: 1px solid rgba(255, 90, 31, 0.5);
-        }
-        
-        .hero-gradient {
-            background: radial-gradient(ellipse at 70% 30%, rgba(255, 90, 31, 0.15) 0%, transparent 50%),
-                        radial-gradient(ellipse at 30% 70%, rgba(211, 17, 69, 0.1) 0%, transparent 40%);
-        }
-        
-        .grid-pattern {
-            background-image: linear-gradient(rgba(255, 90, 31, 0.05) 1px, transparent 1px),
-                              linear-gradient(90deg, rgba(255, 90, 31, 0.05) 1px, transparent 1px);
-            background-size: 60px 60px;
-        }
-        
-        .strikethrough-animated {
-            position: relative;
-            display: inline-block;
-        }
-        
-        .strikethrough-animated::after {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 50%;
-            width: 0;
-            height: 2px;
-            background: #FF5A1F;
-            transform: rotate(-2deg);
-            animation: strike 1s ease-out forwards;
-            animation-delay: 1s;
-        }
-        
-        @keyframes strike {
-            to { width: 100%; }
-        }
-        
-        .glitch-text:hover {
-            animation: glitch 0.3s ease-in-out;
-        }
-        
-        @keyframes glitch {
-            0%, 100% { transform: translate(0); }
-            20% { transform: translate(-2px, 2px); }
-            40% { transform: translate(-2px, -2px); }
-            60% { transform: translate(2px, 2px); }
-            80% { transform: translate(2px, -2px); }
-        }
-        
-        .phone-mockup {
-            transform: perspective(1000px) rotateY(-5deg) rotateX(5deg);
-            transition: transform 0.5s ease;
-        }
-        
-        .phone-mockup:hover {
-            transform: perspective(1000px) rotateY(0deg) rotateX(0deg);
-        }
-        
-        .scramble-text {
-            font-family: 'JetBrains Mono', monospace;
-        }
-        
-        .orange-glow {
-            box-shadow: 0 0 60px rgba(255, 90, 31, 0.3);
-        }
-        
-        .btn-primary {
-            background: linear-gradient(135deg, #FF5A1F, #E04A12);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .btn-primary::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-            transition: left 0.5s;
-        }
-        
-        .btn-primary:hover::before {
-            left: 100%;
-        }
-        
-        .counter-digit {
-            font-variant-numeric: tabular-nums;
-        }
-    </style>
-</head>
-<body class="antialiased">
-    <div class="noise-overlay"></div>
+      }
+    }
+  </script>
+  
+  <!-- Structured Data for SEO & AI Search -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://nexworker.de/#organization",
+        "name": "Nextech Fusion GmbH",
+        "url": "https://www.nextech-fusion.com/",
+        "description": "Nextech Fusion entwickelt KI-gestützte Lösungen für den Mittelstand. NexWorker verwandelt WhatsApp-Chats in durchsuchbare Wissensdatenbanken.",
+        "address": { "@type": "PostalAddress", "addressLocality": "Frankfurt am Main", "addressCountry": "DE" }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "Was ist Wissenssicherung im Handwerk?", "acceptedAnswer": { "@type": "Answer", "text": "Wissenssicherung im Handwerk bedeutet, dass das Erfahrungswissen Ihrer Monteere dauerhaft im Betrieb verfuegbar bleibt. NexWorker erfasst dieses Wissen automatisch aus WhatsApp-Kommunikationen und macht es durchsuchbar." }},
+          { "@type": "Question", "name": "Wie funktioniert Beweissicherung auf der Baustelle?", "acceptedAnswer": { "@type": "Answer", "text": "Beweissicherung auf der Baustelle mit NexWorker funktioniert automatisch: Jede WhatsApp-Nachricht und jedes Foto wird mit Zeitstempel archiviert. Bei Reklamationen finden Sie sofort alle Beweise – gerichtsfest und DSGVO-konform." }},
+          { "@type": "Question", "name": "Kann man Dokumentation ohne App betreiben?", "acceptedAnswer": { "@type": "Answer", "text": "Ja. Dokumentation ohne App ist der Schluessel zu hoher Akzeptanz. NexWorker nutzt WhatsApp, Telegram oder Signal – Messenger, die Ihre Monteere bereits verwenden. Keine neue App, keine Schulung, 100% Akzeptanz ab Tag 1." }},
+          { "@type": "Question", "name": "Wie vermeidet man Zettelwirtschaft im Handwerk?", "acceptedAnswer": { "@type": "Answer", "text": "Zettelwirtschaft vermeiden Sie mit NexWorker, indem alle Dokumentation digital ueber WhatsApp laeuft. Keine verlorenen Zettel – alles zentral durchsuchbar in Ihrer Wissensdatenbank." }},
+          { "@type": "Question", "name": "Was ist eine KI-gestuetzte Wissensdatenbank?", "acceptedAnswer": { "@type": "Answer", "text": "Eine KI-gestuetzte Wissensdatenbank wie NexWorker nutzt kuenstliche Intelligenz, um unstrukturierte WhatsApp-Nachrichten automatisch zu strukturieren und durchsuchbar zu machen." }}
+        ]
+      },
+      {
+        "@type": "SoftwareApplication",
+        "name": "NexWorker",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web, iOS, Android (via Messenger)",
+        "description": "WhatsApp Baudokumentation und KI-gestuetzte Wissensdatenbank fuer Handwerksbetriebe. Beweissicherung, Wissensmanagement und digitale Dokumentation ohne neue App.",
+        "provider": { "@type": "Organization", "name": "Nextech Fusion GmbH", "url": "https://www.nextech-fusion.com/" }
+      }
+    ]
+  }
+  </script>
+
+  <style>
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Roboto', sans-serif; background-color: #FAFAFA; }
     
-    <!-- Navigation -->
-    <nav class="fixed top-0 w-full z-50 px-6 py-4 bg-charcoal/80 backdrop-blur-md border-b border-white/10">
-        <div class="max-w-7xl mx-auto flex justify-between items-center">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 construct-orange rounded-sm flex items-center justify-center font-bold text-charcoal text-xl">N</div>
-                <span class="font-display font-bold text-xl tracking-tight">NexWorker</span>
-            </div>
-            <div class="hidden md:flex gap-8 text-sm font-mono text-gray-400">
-                <a href="#problem" class="hover:text-construct-orange transition-colors">PROBLEM</a>
-                <a href="#loesung" class="hover:text-construct-orange transition-colors">LÖSUNG</a>
-                <a href="#demo" class="hover:text-construct-orange transition-colors">DEMO</a>
-                <a href="#kontakt" class="hover:text-construct-orange transition-colors">KONTAKT</a>
-            </div>
-            <button class="btn-primary px-6 py-2 rounded-sm font-mono text-sm font-bold text-white">
-                DEMO STARTEN →
-            </button>
-        </div>
-    </nav>
+    input[type="range"] { -webkit-appearance: none; width: 100%; height: 6px; border-radius: 3px; background: #E5E7EB; outline: none; }
+    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #4F46E5; cursor: pointer; border: 2px solid white; }
+    
+    .case-btn { transition: all 0.2s ease; }
+    .case-btn.active { background: #1a2332; color: white; }
+    
+    /* Phone Mockup */
+    .phone-mockup {
+      background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+      border-radius: 40px;
+      padding: 12px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      position: relative;
+    }
+    .phone-mockup::before {
+      content: '';
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80px;
+      height: 24px;
+      background: #000;
+      border-radius: 12px;
+      z-index: 10;
+    }
+    .phone-screen { border-radius: 32px; overflow: hidden; background: #fff; }
+    
+    /* Chat Bubble Tails */
+    .chat-bubble-user { position: relative; border-radius: 0.75rem; border-top-right-radius: 0; }
+    .chat-bubble-user::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: -8px;
+      border-left: 10px solid #DCF8C6;
+      border-bottom: 10px solid transparent;
+    }
+    
+    /* Grid Pattern */
+    .bg-grid {
+      background-size: 40px 40px;
+      background-image: linear-gradient(to right, rgba(0,0,0,0.03) 1px, transparent 1px),
+                        linear-gradient(to bottom, rgba(0,0,0,0.03) 1px, transparent 1px);
+    }
+    
+    /* Gradient Text */
+    .gradient-text {
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-image: linear-gradient(135deg, #4F46E5, #6366F1);
+    }
+  </style>
+</head>
 
-    <!-- Hero Section -->
-    <section class="relative min-h-screen flex items-center pt-20 hero-gradient grid-pattern">
-        <div class="max-w-7xl mx-auto px-6 w-full">
-            <div class="grid lg:grid-cols-2 gap-12 items-center">
-                <!-- Left Content -->
-                <div class="space-y-8 hero-content">
-                    <div class="inline-block">
-                        <span class="px-3 py-1 rounded-full border border-construct-orange/50 text-construct-orange text-xs font-mono tracking-wider">
-                            NEXTECH FUSION • KARLSRUHE
-                        </span>
-                    </div>
-                    
-                    <h1 class="font-display text-5xl md:text-7xl font-bold leading-tight">
-                        <span class="block">Der digitale</span>
-                        <span class="block text-construct-orange glitch-text">Bauhelfer</span>
-                        <span class="block text-3xl md:text-4xl font-light mt-4 text-gray-400">im Messenger</span>
-                    </h1>
-                    
-                    <p class="text-xl text-gray-300 max-w-xl leading-relaxed">
-                        Ein smarter KI-Agent, der direkt in <span class="text-construct-orange font-mono">WhatsApp</span>, <span class="text-construct-orange font-mono">Telegram</span> oder <span class="text-construct-orange font-mono">Teams</span> lebt. 
-                        Ihre Monteure chatten – Ihr ERP schreibt sich von selbst.
-                    </p>
-                    
-                    <div class="flex flex-wrap gap-4 pt-4">
-                        <button class="btn-primary px-8 py-4 rounded-sm font-bold text-lg flex items-center gap-2">
-                            <span>KOSTENLOSEN PROTOTYP TESTEN</span>
-                            <span class="text-xl">→</span>
-                        </button>
-                        <button class="px-8 py-4 rounded-sm border border-white/20 hover:border-construct-orange hover:text-construct-orange transition-all font-mono">
-                            VIDEO ANSEHEN
-                        </button>
-                    </div>
-                    
-                    <div class="flex items-center gap-6 pt-4 text-sm text-gray-400 font-mono">
-                        <div class="flex items-center gap-2">
-                            <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                            <span>100% DSGVO-konform</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span class="w-2 h-2 bg-safety-yellow rounded-full"></span>
-                            <span>SOC-zertifiziert</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Right Content - Phone Mockup -->
-                <div class="relative phone-mockup-container">
-                    <div class="phone-mockup bg-steel rounded-[40px] p-4 border border-white/10 shadow-2xl orange-glow">
-                        <div class="bg-charcoal rounded-[32px] overflow-hidden">
-                            <!-- Phone Header -->
-                            <div class="bg-steel px-4 py-3 flex items-center gap-3 border-b border-white/10">
-                                <div class="w-10 h-10 construct-orange rounded-full flex items-center justify-center">
-                                    <span class="font-bold text-charcoal">N</span>
-                                </div>
-                                <div>
-                                    <div class="font-medium">NexWorker</div>
-                                    <div class="text-xs text-green-400 flex items-center gap-1">
-                                        <span class="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
-                                        Online
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Chat Messages -->
-                            <div class="p-4 space-y-4 h-[400px] overflow-hidden">
-                                <div class="chat-message opacity-0" style="transform: translateY(20px);">
-                                    <div class="flex items-end gap-2">
-                                        <div class="bg-white/10 rounded-2xl rounded-bl-none px-4 py-2 max-w-[80%]">
-                                            <p class="text-sm">Moin, bin da. Mit Axel. Projekt Neubau Allee.</p>
-                                            <span class="text-[10px] text-gray-500 mt-1">07:00</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="chat-message opacity-0 flex justify-end" style="transform: translateY(20px);">
-                                    <div class="chat-bubble-worker rounded-2xl rounded-br-none px-4 py-3 max-w-[85%]">
-                                        <p class="text-sm font-mono text-construct-orange">✅ ERFASST</p>
-                                        <p class="text-xs mt-1">Lars + Axel | Neubau Allee</p>
-                                        <p class="text-xs text-gray-400">→ Arbeitsbeginn dokumentiert</p>
-                                        <span class="text-[10px] text-gray-500 mt-2 block">07:01</span>
-                                    </div>
-                                </div>
-                                
-                                <div class="chat-message opacity-0" style="transform: translateY(20px);">
-                                    <div class="flex items-end gap-2">
-                                        <div class="bg-white/10 rounded-2xl rounded-bl-none px-4 py-2 max-w-[80%]">
-                                            <p class="text-sm">Brauchen Nachschub. 3x1.5er aufgebraucht.</p>
-                                            <div class="mt-2 bg-steel rounded-lg p-2">
-                                                <span class="text-xs text-gray-400">📷 Foto angehängt</span>
-                                            </div>
-                                            <span class="text-[10px] text-gray-500 mt-1">10:30</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="chat-message opacity-0 flex justify-end" style="transform: translateY(20px);">
-                                    <div class="chat-bubble-worker rounded-2xl rounded-br-none px-4 py-3 max-w-[85%]">
-                                        <p class="text-sm font-mono text-construct-orange">✅ MATERIAL ERFASST</p>
-                                        <p class="text-xs mt-1">3x NYM-J 3x1.5 (Trommel)</p>
-                                        <p class="text-xs text-gray-400">💰 147,50 € | Projekt Allee</p>
-                                        <span class="text-[10px] text-gray-500 mt-2 block">10:31</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Floating Elements -->
-                    <div class="absolute -top-4 -right-4 bg-steel border border-construct-orange/30 px-4 py-2 rounded-lg opacity-0 floating-badge">
-                        <span class="text-xs font-mono text-construct-orange">🏗️ Gewerke-agnostisch</span>
-                    </div>
-                    <div class="absolute -bottom-4 -left-4 bg-steel border border-white/20 px-4 py-2 rounded-lg opacity-0 floating-badge">
-                        <span class="text-xs font-mono">⚡ Echtzeit-Erfassung</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
+<body class="bg-white text-gray-900">
 
-    <!-- Problem Section -->
-    <section id="problem" class="py-24 bg-steel relative overflow-hidden">
-        <div class="max-w-5xl mx-auto px-6">
-            <div class="text-center mb-16">
-                <span class="text-construct-orange font-mono text-sm tracking-wider">DAS PROBLEM</span>
-                <h2 class="font-display text-4xl md:text-5xl font-bold mt-4">
-                    Freitagabend.<br>
-                    <span class="text-gray-500">Zettelwirtschaft.</span>
-                </h2>
-            </div>
-            
-            <div class="grid md:grid-cols-3 gap-8 problem-cards">
-                <div class="bg-charcoal/50 border border-white/10 p-8 rounded-lg problem-card opacity-0">
-                    <div class="text-4xl mb-4">📝</div>
-                    <h3 class="font-display text-xl font-bold mb-2">Vergessene Einträge</h3>
-                    <p class="text-gray-400 text-sm">Monteure vergessen Material aufzuschreiben. Stundenzettel werden zum Ratespiel.</p>
-                </div>
-                <div class="bg-charcoal/50 border border-white/10 p-8 rounded-lg problem-card opacity-0">
-                    <div class="text-4xl mb-4">📱</div>
-                    <h3 class="font-display text-xl font-bold mb-2">Foto-Chaos</h3>
-                    <p class="text-gray-400 text-sm">Baustellenfotos verteilt auf 5 private Handys. Nichts ist auffindbar.</p>
-                </div>
-                <div class="bg-charcoal/50 border border-white/10 p-8 rounded-lg problem-card opacity-0">
-                    <div class="text-4xl mb-4">⏰</div>
-                    <h3 class="font-display text-xl font-bold mb-2">Tipp-Marathon</h3>
-                    <p class="text-gray-400 text-sm">Das Büro verbringt Stunden damit, handschriftliche Zettel zu entziffern.</p>
-                </div>
-            </div>
-            
-            <div class="mt-16 text-center">
-                <p class="text-2xl text-gray-500 font-display">
-                    <span class="strikethrough-animated">Zettelchaos</span> → Strukturiert
-                </p>
-            </div>
+  <!-- NAV -->
+  <nav class="fixed top-0 inset-x-0 bg-white/95 backdrop-blur-sm border-b border-gray-100 z-50">
+    <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center">
+          <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.001 3.001 0 0120 15v3h-4z"/></svg>
         </div>
-    </section>
+        <span class="font-semibold text-lg">NexWorker</span>
+      </div>
+      <div class="hidden md:flex items-center gap-8">
+        <a href="#benefits" class="text-sm text-gray-600 hover:text-gray-900">Vorteile</a>
+        <a href="#demo-preview" class="text-sm text-gray-600 hover:text-gray-900">Demo</a>
+        <a href="#roi" class="text-sm text-gray-600 hover:text-gray-900">ROI</a>
+        <a href="#faq" class="text-sm text-gray-600 hover:text-gray-900">FAQ</a>
+        <a href="#contact" class="bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">Demo anfordern</a>
+      </div>
+    </div>
+  </nav>
 
-    <!-- Solution / Kill-Shots Section -->
-    <section id="loesung" class="py-24 bg-charcoal relative">
-        <div class="max-w-6xl mx-auto px-6">
-            <div class="text-center mb-20">
-                <span class="text-construct-orange font-mono text-sm tracking-wider">DIE 3 KILL-SHOTS</span>
-                <h2 class="font-display text-4xl md:text-5xl font-bold mt-4">
-                    Warum NexWorker gewinnt.
-                </h2>
-            </div>
-            
-            <!-- Kill Shot 1 -->
-            <div class="grid lg:grid-cols-2 gap-12 items-center mb-24 kill-shot opacity-0">
-                <div class="space-y-6">
-                    <div class="flex items-center gap-4">
-                        <span class="text-6xl font-display font-bold text-construct-orange/30">01</span>
-                        <h3 class="font-display text-3xl font-bold">Der WhatsApp-Putzmann</h3>
-                    </div>
-                    <p class="text-xl text-gray-300">Keine Schulung. Keine neue App.</p>
-                    <p class="text-gray-400 leading-relaxed">
-                        Ihre Jungs schicken einfach Sprachnachrichten, Fotos oder Text per Messenger – 
-                        so wie sie es privat sowieso tun. NexWorker sortiert das Chaos im Hintergrund.
-                    </p>
-                    <div class="flex gap-4 pt-2">
-                        <span class="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono">WhatsApp</span>
-                        <span class="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono">Telegram</span>
-                        <span class="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono">Teams</span>
-                    </div>
-                </div>
-                <div class="bg-steel rounded-2xl p-8 border border-white/10">
-                    <div class="space-y-4 font-mono text-sm">
-                        <div class="flex items-center gap-3 text-green-400">
-                            <span>✓</span>
-                            <span>Keine Einarbeitung nötig</span>
-                        </div>
-                        <div class="flex items-center gap-3 text-green-400">
-                            <span>✓</span>
-                            <span>Wer chatten kann, kann NexWorker</span>
-                        </div>
-                        <div class="flex items-center gap-3 text-green-400">
-                            <span>✓</span>
-                            <span>Maximale User-Akzeptanz</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Kill Shot 2 -->
-            <div class="grid lg:grid-cols-2 gap-12 items-center mb-24 kill-shot opacity-0">
-                <div class="order-2 lg:order-1 bg-steel rounded-2xl p-8 border border-construct-orange/30">
-                    <div class="flex items-center justify-center h-48">
-                        <div class="text-center">
-                            <div class="w-24 h-24 construct-orange rounded-lg mx-auto mb-4 flex items-center justify-center">
-                                <span class="text-4xl">🏠</span>
-                            </div>
-                            <p class="text-sm font-mono text-gray-400">EDGE COMPUTING</p>
-                            <p class="text-xs text-gray-500 mt-1">Ihre Daten bleiben bei Ihnen</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="order-1 lg:order-2 space-y-6">
-                    <div class="flex items-center gap-4">
-                        <span class="text-6xl font-display font-bold text-construct-orange/30">02</span>
-                        <h3 class="font-display text-3xl font-bold">Die Sicherheits-Box</h3>
-                    </div>
-                    <p class="text-xl text-gray-300">Maximale Datensouveränität.</p>
-                    <p class="text-gray-400 leading-relaxed">
-                        Die KI läuft wahlweise auf einer Box in Ihrem Büro (Edge) oder in einer 
-                        isolierten, SOC-konformen deutschen Cloud. <strong>100% DSGVO-konform.</strong>
-                    </p>
-                    <div class="bg-construct-orange/10 border border-construct-orange/30 p-4 rounded-lg">
-                        <p class="text-construct-orange font-mono text-sm">💡 "Sicherer als alles andere" – ein unschlagbares Argument im deutschen Mittelstand.</p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Kill Shot 3 -->
-            <div class="grid lg:grid-cols-2 gap-12 items-center kill-shot opacity-0">
-                <div class="space-y-6">
-                    <div class="flex items-center gap-4">
-                        <span class="text-6xl font-display font-bold text-construct-orange/30">03</span>
-                        <h3 class="font-display text-3xl font-bold">Der ERP-Geist</h3>
-                    </div>
-                    <p class="text-xl text-gray-300">80% Zeitersparnis im Büro.</p>
-                    <p class="text-gray-400 leading-relaxed">
-                        Daten fließen direkt in Lexware, pds, Streit oder Excel. 
-                        Die <strong>"Ein-Klick-Rechnung"</strong> am Freitag ist kein Traum mehr.
-                    </p>
-                    <div class="flex gap-4 pt-2">
-                        <span class="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono">Lexware</span>
-                        <span class="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono">pds</span>
-                        <span class="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono">DATEV</span>
-                    </div>
-                </div>
-                <div class="bg-steel rounded-2xl p-8 border border-white/10">
-                    <div class="text-center">
-                        <div class="text-6xl font-display font-bold text-white counter" data-target="80">0</div>
-                        <p class="text-construct-orange font-mono mt-2">% WENIGER BÜROARBEIT</p>
-                    </div>
-                </div>
-            </div>
+  <!-- HERO -->
+  <section class="pt-32 pb-20 md:pt-40 md:pb-28 bg-white bg-grid">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="text-center max-w-4xl mx-auto mb-12">
+        <div class="inline-flex items-center gap-2 bg-brand-50 text-brand-700 text-xs font-medium px-3 py-1.5 rounded-full mb-6">
+          <span class="w-1.5 h-1.5 bg-brand-500 rounded-full"></span>
+          Ein Produkt von Nextech Fusion
         </div>
-    </section>
+        <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight mb-6">
+          WhatsApp Baudokumentation<br>
+          <span class="text-brand-600">fuer Handwerksbetriebe</span>
+        </h1>
+        <p class="text-lg md:text-xl text-gray-600 leading-relaxed font-medium">
+          Ihre Monteere nutzen WhatsApp – <span class="text-gray-900">NexWorker sichert das Wissen automatisch.</span> Beweissicherung, Wissensdatenbank und Baudokumentation ohne neue App.
+        </p>
+      </div>
+      
+      <div class="flex flex-col sm:flex-row gap-4 justify-center mb-16">
+        <a href="#contact" class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-8 py-4 rounded-xl transition-all shadow-lg shadow-brand-500/20 text-center">Jetzt 15 Min. Demo anfordern</a>
+        <a href="#demo-preview" class="bg-white border border-gray-200 hover:border-gray-300 text-gray-700 font-semibold px-8 py-4 rounded-xl transition-all text-center">Live-Demo ansehen</a>
+      </div>
 
-    <!-- Live Demo Section -->
-    <section id="demo" class="py-24 bg-steel">
-        <div class="max-w-5xl mx-auto px-6">
-            <div class="text-center mb-16">
-                <span class="text-construct-orange font-mono text-sm tracking-wider">LIVE DEMO</span>
-                <h2 class="font-display text-4xl md:text-5xl font-bold mt-4">
-                    Ein Tag mit NexWorker.
-                </h2>
-            </div>
-            
-            <div class="space-y-6">
-                <!-- Timeline Item 1 -->
-                <div class="demo-item opacity-0 flex gap-6 items-start">
-                    <div class="flex-shrink-0 w-16 text-right">
-                        <span class="font-mono text-construct-orange">07:00</span>
-                    </div>
-                    <div class="flex-grow bg-charcoal/50 rounded-2xl p-6 border border-white/10">
-                        <div class="flex items-start gap-4">
-                            <span class="text-2xl">👷</span>
-                            <div>
-                                <p class="text-gray-300">Lars schreibt: <span class="text-white">"Moin, bin da. Mit Axel. Projekt Neubau Allee."</span></p>
-                                <div class="mt-4 chat-bubble-worker inline-block rounded-lg px-4 py-2">
-                                    <p class="text-sm font-mono text-construct-orange">✅ ERFASST: Lars + Axel | Neubau Allee</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Timeline Item 2 -->
-                <div class="demo-item opacity-0 flex gap-6 items-start">
-                    <div class="flex-shrink-0 w-16 text-right">
-                        <span class="font-mono text-construct-orange">10:30</span>
-                    </div>
-                    <div class="flex-grow bg-charcoal/50 rounded-2xl p-6 border border-white/10">
-                        <div class="flex items-start gap-4">
-                            <span class="text-2xl">📦</span>
-                            <div>
-                                <p class="text-gray-300">Axel schickt Material-Foto + Sprachnachricht</p>
-                                <div class="mt-4 chat-bubble-worker inline-block rounded-lg px-4 py-2">
-                                    <p class="text-sm font-mono text-construct-orange">✅ MATERIAL: 3x NYM-J 3x1.5</p>
-                                    <p class="text-xs text-gray-400 mt-1">💰 147,50 € | Automatisch gebucht</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Timeline Item 3 -->
-                <div class="demo-item opacity-0 flex gap-6 items-start">
-                    <div class="flex-shrink-0 w-16 text-right">
-                        <span class="font-mono text-construct-orange">14:15</span>
-                    </div>
-                    <div class="flex-grow bg-charcoal/50 rounded-2xl p-6 border border-white/10">
-                        <div class="flex items-start gap-4">
-                            <span class="text-2xl">⚠️</span>
-                            <div>
-                                <p class="text-gray-300">Lars meldet Blocker: <span class="text-white">"Kann nicht weiter. Trockenbau fehlt."</span></p>
-                                <div class="mt-4 chat-bubble-worker inline-block rounded-lg px-4 py-2 border-yellow-500/50">
-                                    <p class="text-sm font-mono text-yellow-500">⚠️ BLOCKER DOKUMENTIERT</p>
-                                    <p class="text-xs text-gray-400 mt-1">Projektleiter informiert • Beweisfoto archiviert</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Timeline Item 4 -->
-                <div class="demo-item opacity-0 flex gap-6 items-start">
-                    <div class="flex-shrink-0 w-16 text-right">
-                        <span class="font-mono text-construct-orange">16:30</span>
-                    </div>
-                    <div class="flex-grow bg-charcoal/50 rounded-2xl p-6 border border-white/10">
-                        <div class="flex items-start gap-4">
-                            <span class="text-2xl">✅</span>
-                            <div>
-                                <p class="text-gray-300">Tagesabschluss: <span class="text-white">"Fertig. 20 Steckdosen gesetzt. 8h gearbeitet."</span></p>
-                                <div class="mt-4 chat-bubble-worker inline-block rounded-lg px-4 py-2">
-                                    <p class="text-sm font-mono text-construct-orange">✅ TAGESABSCHLUSS ERFASST</p>
-                                    <p class="text-xs text-gray-400 mt-1">👷 Axel: 8h | Lars: 8h | Meilenstein ✓</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
+      <!-- Integration Logic Symbols -->
+      <div class="flex flex-center justify-center gap-8 md:gap-12 mt-12 opacity-40 grayscale hover:grayscale-0 transition-all">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp" class="h-8">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg" alt="Telegram" class="h-8">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/8/8d/Signal-Logo.svg" alt="Signal" class="h-8">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/c/c9/Microsoft_Office_Teams_%282018%E2%80%93present%29.svg" alt="Teams" class="h-8">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/d/d5/Slack_icon_2019.svg" alt="Slack" class="h-8">
+      </div>
+    </div>
+  </section>
 
-    <!-- Friday Magic Moment -->
-    <section class="py-24 bg-charcoal relative overflow-hidden">
-        <div class="absolute inset-0 opacity-10">
-            <div class="absolute inset-0" style="background: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,90,31,0.1) 10px, rgba(255,90,31,0.1) 20px);"></div>
+  <!-- BENEFITS (Validated Cluster) -->
+  <section id="benefits" class="py-20 bg-gray-50">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="grid md:grid-cols-3 gap-8">
+        <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+          <div class="text-amber-600 font-bold text-xs uppercase tracking-widest mb-4">Beweissicherung Baustelle</div>
+          <h2 class="text-2xl font-bold mb-4">Rechtssichere Dokumentation</h2>
+          <p class="text-gray-600 text-sm leading-relaxed mb-6">Schluss mit der <strong>Zettelwirtschaft</strong>. NexWorker speichert jeden Chat und jedes Foto audit-sicher mit Zeitstempel – fuer <strong>Gerichtsfeste Beweissicherung</strong> bei Reklamationen.</p>
+          <ul class="space-y-2 text-xs text-gray-500">
+            <li class="flex items-center gap-2 font-medium text-gray-700">Mängelansprueche erfolgreich abwehren</li>
+            <li class="flex items-center gap-2 font-medium text-gray-700">Nachweispflichten automatisch erfuellt</li>
+          </ul>
         </div>
-        
-        <div class="max-w-4xl mx-auto px-6 relative">
-            <div class="text-center mb-12">
-                <span class="text-safety-yellow font-mono text-sm tracking-wider">DER MAGIC MOMENT</span>
-                <h2 class="font-display text-4xl md:text-5xl font-bold mt-4">
-                    Freitag. 16:00 Uhr.
-                </h2>
-                <p class="text-xl text-gray-400 mt-4">Der Chef öffnet sein Postfach...</p>
-            </div>
-            
-            <div class="bg-steel rounded-2xl p-8 border border-construct-orange/30 shadow-2xl magic-pdf opacity-0">
-                <div class="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
-                    <div>
-                        <p class="font-mono text-construct-orange">WOCHENBERICHT</p>
-                        <p class="text-sm text-gray-500">Projekt Neubau Allee • KW 10</p>
-                    </div>
-                    <span class="text-4xl">📊</span>
-                </div>
-                
-                <div class="grid md:grid-cols-2 gap-6">
-                    <div class="space-y-4">
-                        <div class="flex items-center gap-3">
-                            <span class="text-2xl">👷</span>
-                            <div>
-                                <p class="text-sm text-gray-400">Personal</p>
-                                <p class="font-mono">Lars (40h) • Axel (40h)</p>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <span class="text-2xl">🛠️</span>
-                            <div>
-                                <p class="text-sm text-gray-400">Leistung</p>
-                                <p class="font-mono">120 Steckdosen • 500m Kabel</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="space-y-4">
-                        <div class="flex items-center gap-3">
-                            <span class="text-2xl">📦</span>
-                            <div>
-                                <p class="text-sm text-gray-400">Material</p>
-                                <p class="font-mono">2.847 € <span class="text-green-400">(98% vs. Kalkulation)</span></p>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <span class="text-2xl">📸</span>
-                            <div>
-                                <p class="text-sm text-gray-400">Dokumentation</p>
-                                <p class="font-mono">47 Fotos • alle zeitgestempelt</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="mt-6 pt-6 border-t border-white/10 flex items-center justify-between">
-                    <span class="text-sm text-gray-500">Status: Bereit für Rechnung</span>
-                    <span class="px-4 py-2 bg-green-500/20 text-green-400 rounded-lg text-sm font-mono">✓ ABGESCHLOSSEN</span>
-                </div>
-            </div>
-            
-            <p class="text-center text-gray-400 mt-8 text-lg">
-                Keine Zettelwirtschaft. Kein Foto-Chaos. Nur saubere Daten.
-            </p>
+        <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+          <div class="text-brand-600 font-bold text-xs uppercase tracking-widest mb-4">Wissenssicherung Handwerk</div>
+          <h2 class="text-2xl font-bold mb-4">Betriebswissen digital sichern</h2>
+          <p class="text-gray-600 text-sm leading-relaxed mb-6">Sichern Sie die <strong>Erfahrungsschaetze</strong> Ihrer Monteere, bevor diese in Rente gehen. Automatische <strong>KI-Wissensdatenbank</strong> aus dem Feld – fuer schnelleres Onboarding.</p>
+          <ul class="space-y-2 text-xs text-gray-500">
+            <li class="flex items-center gap-2 font-medium text-gray-700">Wissen im Betrieb halten</li>
+            <li class="flex items-center gap-2 font-medium text-gray-700">Onboarding von Monaten auf Tage</li>
+          </ul>
         </div>
-    </section>
+        <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+          <div class="text-cyan-600 font-bold text-xs uppercase tracking-widest mb-4">Dokumentation ohne App</div>
+          <h2 class="text-2xl font-bold mb-4">100% Akzeptanz ab Tag 1</h2>
+          <p class="text-gray-600 text-sm leading-relaxed mb-6">Hoechste Akzeptanz: Ihre Teams nutzen einfach <strong>WhatsApp oder Telegram</strong>. Keine neue App, keine Schulung, keine Reibungsverluste – sofort einsatzbereit.</p>
+          <ul class="space-y-2 text-xs text-gray-500">
+            <li class="flex items-center gap-2 font-medium text-gray-700">Messenger-Integration (WhatsApp, Telegram, Signal)</li>
+            <li class="flex items-center gap-2 font-medium text-gray-700">15 Minuten Setup</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
 
-    <!-- Trust / Social Proof -->
-    <section class="py-20 bg-steel">
-        <div class="max-w-5xl mx-auto px-6">
-            <div class="grid md:grid-cols-3 gap-8 text-center">
-                <div class="trust-item opacity-0">
-                    <div class="text-4xl font-display font-bold text-construct-orange">100%</div>
-                    <p class="text-sm text-gray-400 mt-2 font-mono">DSGVO-KONFORM</p>
-                </div>
-                <div class="trust-item opacity-0">
-                    <div class="text-4xl font-display font-bold text-construct-orange">15</div>
-                    <p class="text-sm text-gray-400 mt-2 font-mono">MINUTEN EINSATZBEREIT</p>
-                </div>
-                <div class="trust-item opacity-0">
-                    <div class="text-4xl font-display font-bold text-construct-orange">0</div>
-                    <p class="text-sm text-gray-400 mt-2 font-mono">SCHULUNG NÖTIG</p>
-                </div>
+  <!-- LIVE DEMO - Ein Tag im Leben -->
+  <section id="demo-preview" class="py-20 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="text-center mb-12">
+        <h2 class="text-3xl md:text-4xl font-bold mb-4 text-white">Ein Tag im Leben</h2>
+        <p class="text-slate-400">Ganz normaler Arbeitstag. Automatisch dokumentiert.</p>
+      </div>
+      
+      <!-- Timeline Progress Bar -->
+      <div class="max-w-3xl mx-auto mb-8">
+        <div class="flex justify-between text-xs text-slate-500 mb-2">
+          <span id="time-1" class="time-label opacity-50">06:30</span>
+          <span id="time-2" class="time-label opacity-50">08:00</span>
+          <span id="time-3" class="time-label opacity-50">12:00</span>
+          <span id="time-4" class="time-label opacity-50">16:30</span>
+          <span id="time-5" class="time-label opacity-50">17:00</span>
+        </div>
+        <div class="h-2 bg-slate-700 rounded-full overflow-hidden">
+          <div id="progress-bar" class="h-full bg-brand-500 rounded-full transition-all duration-1000" style="width: 0%"></div>
+        </div>
+      </div>
+      
+      <!-- Single Phone Mockup -->
+      <div class="flex justify-center">
+        <div class="phone-mockup w-80">
+          <div class="phone-screen h-[580px] relative">
+            <!-- WhatsApp Header -->
+            <div class="bg-[#075E54] text-white px-4 py-3 flex items-center gap-3">
+              <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>
+              <div class="flex-1">
+                <div class="text-sm font-medium">Baustellen-Team</div>
+                <div class="text-xs opacity-70" id="current-time">06:30</div>
+              </div>
+              <svg class="w-5 h-5 opacity-70" fill="currentColor" viewBox="0 0 24 24"><path d="M12 7a2 2 0 100-4 2 2 0 000 4zM7 12a2 2 0 11-4 0 2 2 0 014 0zM14 18a2 2 0 100-4 2 2 0 000 4zM19 12a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
             </div>
             
-            <div class="mt-16 flex flex-wrap justify-center gap-4">
-                <span class="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-gray-400">SOC 2 ZERTIFIZIERT</span>
-                <span class="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-gray-400">DEUTSCHE SERVER</span>
-                <span class="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-gray-400">EDGE-READY</span>
-                <span class="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-gray-400">API-FÄHIG</span>
+            <!-- Chat Content -->
+            <div class="bg-[#ECE5DD] h-full p-3 overflow-y-auto" id="chat-content">
+              <!-- Messages will be injected here -->
             </div>
-        </div>
-    </section>
-
-    <!-- CTA Section -->
-    <section id="kontakt" class="py-24 bg-charcoal relative">
-        <div class="absolute inset-0 hero-gradient"></div>
-        <div class="max-w-3xl mx-auto px-6 text-center relative">
-            <h2 class="font-display text-4xl md:text-6xl font-bold mb-6">
-                Bereit für den<br>
-                <span class="text-construct-orange">digitalen Bauhelfer?</span>
-            </h2>
-            <p class="text-xl text-gray-300 mb-8">
-                Testen Sie NexWorker 7 Tage kostenlos. In 15 Minuten einsatzbereit.
-            </p>
-            <div class="flex flex-wrap justify-center gap-4">
-                <button class="btn-primary px-10 py-5 rounded-sm font-bold text-lg flex items-center gap-3">
-                    <span>KOSTENLOSEN PROTOTYP TESTEN</span>
-                    <span>→</span>
+            
+            <!-- Daily Summary Overlay -->
+            <div id="day-summary" class="absolute inset-0 bg-slate-900/95 flex items-center justify-center p-6 hidden">
+              <div class="text-center">
+                <div class="w-16 h-16 bg-brand-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                </div>
+                <h3 class="text-xl font-bold text-white mb-2">Tag abgeschlossen</h3>
+                <p class="text-slate-400 text-sm mb-6">Automatisch dokumentiert</p>
+                <div class="grid grid-cols-2 gap-4 text-center">
+                  <div class="bg-slate-800 rounded-xl p-4">
+                    <div class="text-2xl font-bold text-brand-400">4</div>
+                    <div class="text-xs text-slate-500">Eintraege</div>
+                  </div>
+                  <div class="bg-slate-800 rounded-xl p-4">
+                    <div class="text-2xl font-bold text-brand-400">3</div>
+                    <div class="text-xs text-slate-500">Fotos</div>
+                  </div>
+                  <div class="bg-slate-800 rounded-xl p-4">
+                    <div class="text-2xl font-bold text-brand-400">2</div>
+                    <div class="text-xs text-slate-500">Projekte</div>
+                  </div>
+                  <div class="bg-slate-800 rounded-xl p-4">
+                    <div class="text-2xl font-bold text-brand-400">1</div>
+                    <div class="text-xs text-slate-500">Bericht</div>
+                  </div>
+                </div>
+                <button onclick="restartDemo()" class="mt-6 text-brand-400 text-sm font-medium hover:text-brand-300 transition-colors">
+                  Nochmal ansehen
                 </button>
+              </div>
             </div>
-            <p class="text-sm text-gray-500 mt-6 font-mono">Keine Kreditkarte erforderlich • Jederzeit kündbar</p>
+          </div>
         </div>
-    </section>
+      </div>
+      
+      <!-- Play/Pause Controls -->
+      <div class="flex justify-center gap-4 mt-8">
+        <button id="play-btn" onclick="togglePlay()" class="bg-brand-600 hover:bg-brand-700 text-white px-6 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2">
+          <svg id="play-icon" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/></svg>
+          <span id="play-text">Demo starten</span>
+        </button>
+      </div>
+      
+    </div>
+  </section>
 
-    <!-- Footer -->
-    <footer class="py-12 bg-steel border-t border-white/10">
-        <div class="max-w-7xl mx-auto px-6">
-            <div class="flex flex-col md:flex-row justify-between items-center gap-6">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 construct-orange rounded-sm flex items-center justify-center font-bold text-charcoal">N</div>
-                    <span class="font-display font-bold">NexWorker</span>
-                </div>
-                <div class="text-sm text-gray-500 font-mono">
-                    © 2026 NexTech Fusion GmbH • Karlsruhe, Deutschland
-                </div>
-                <div class="flex gap-6 text-sm text-gray-400">
-                    <a href="#" class="hover:text-construct-orange transition-colors">Impressum</a>
-                    <a href="#" class="hover:text-construct-orange transition-colors">Datenschutz</a>
-                    <a href="#" class="hover:text-construct-orange transition-colors">Kontakt</a>
-                </div>
+  <!-- ROI SIMPLIFIED -->
+  <section id="roi" class="py-16 md:py-20 bg-gradient-to-br from-brand-900 via-brand-800 to-slate-900 text-white">
+    <div class="max-w-4xl mx-auto px-4 md:px-6">
+      <div class="text-center mb-10 md:mb-16">
+        <h2 class="text-2xl md:text-3xl lg:text-4xl font-bold mb-3 md:mb-4">Ihr Gewinn durch NexWorker</h2>
+        <p class="text-brand-200 text-base md:text-lg">Ein Slider. Alle Fakten.</p>
+      </div>
+      <div class="bg-white/5 backdrop-blur-sm rounded-2xl md:rounded-3xl p-6 md:p-10 lg:p-16 shadow-2xl border border-white/10">
+        <div class="grid md:grid-cols-2 gap-8 md:gap-16 items-center">
+          <div class="space-y-8 md:space-y-12">
+            <div>
+              <div class="flex justify-between mb-4 md:mb-6 items-baseline">
+                <label class="text-base md:text-lg lg:text-xl font-bold">Anzahl Techniker</label>
+                <span class="text-3xl md:text-4xl lg:text-5xl font-black text-brand-400" id="val-tech">15</span>
+              </div>
+              <input type="range" id="slider-tech" min="1" max="50" value="15" class="w-full">
             </div>
+            <div class="bg-white/5 p-4 md:p-6 rounded-xl md:rounded-2xl border border-white/10">
+              <p class="text-xs md:text-sm text-brand-300 font-bold uppercase tracking-widest mb-1">Konservativer Durchschnitt</p>
+              <p class="text-lg md:text-xl font-bold text-white">4 Std. Dokumentation / Woche</p>
+            </div>
+          </div>
+          <div class="text-center md:text-left space-y-6 md:space-y-8">
+            <div>
+              <p class="text-xs md:text-sm text-brand-300 font-black uppercase tracking-widest mb-2">Mehrumsatz pro Jahr</p>
+              <div class="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tighter text-white leading-none">
+                <span id="val-annual">0</span><span class="text-xl md:text-2xl text-brand-300 ml-1">EUR</span>
+              </div>
+            </div>
+            <div class="bg-brand-500/20 text-brand-300 px-4 py-3 md:px-6 md:py-4 rounded-xl border border-brand-500/30 inline-block font-bold text-base md:text-lg">
+              +<span id="val-days">0</span> Zusatztage gewonnen
+            </div>
+          </div>
         </div>
-    </footer>
+      </div>
+    </div>
+  </section>
 
-    <!-- GSAP Animations -->
-    <script>
-        gsap.registerPlugin(ScrollTrigger);
-        
-        // Hero content reveal
-        gsap.from(".hero-content > *", {
-            y: 60,
-            opacity: 0,
-            duration: 0.8,
-            stagger: 0.15,
-            ease: "power3.out",
-            delay: 0.3
-        });
-        
-        // Chat messages animation
-        gsap.to(".chat-message", {
-            y: 0,
-            opacity: 1,
-            duration: 0.6,
-            stagger: 0.3,
-            ease: "power2.out",
-            delay: 1
-        });
-        
-        // Floating badges
-        gsap.to(".floating-badge", {
-            opacity: 1,
-            y: 0,
-            duration: 0.5,
-            stagger: 0.2,
-            delay: 2
-        });
-        
-        // Problem cards
-        gsap.to(".problem-card", {
-            scrollTrigger: {
-                trigger: ".problem-cards",
-                start: "top 80%",
-                toggleActions: "play none none reverse"
-            },
-            y: 0,
-            opacity: 1,
-            duration: 0.6,
-            stagger: 0.15,
-            ease: "power2.out"
-        });
-        
-        // Kill shots
-        gsap.utils.toArray(".kill-shot").forEach((shot, i) => {
-            gsap.to(shot, {
-                scrollTrigger: {
-                    trigger: shot,
-                    start: "top 80%",
-                    toggleActions: "play none none reverse"
-                },
-                y: 0,
-                opacity: 1,
-                duration: 0.8,
-                delay: i * 0.1,
-                ease: "power2.out"
-            });
-        });
-        
-        // Counter animation
-        gsap.to(".counter", {
-            scrollTrigger: {
-                trigger: ".counter",
-                start: "top 80%",
-                toggleActions: "play none none reverse"
-            },
-            innerHTML: 80,
-            duration: 2,
-            snap: { innerHTML: 1 },
-            ease: "power2.out"
-        });
-        
-        // Demo items
-        gsap.utils.toArray(".demo-item").forEach((item, i) => {
-            gsap.to(item, {
-                scrollTrigger: {
-                    trigger: item,
-                    start: "top 85%",
-                    toggleActions: "play none none reverse"
-                },
-                y: 0,
-                opacity: 1,
-                duration: 0.6,
-                delay: i * 0.1,
-                ease: "power2.out"
-            });
-        });
-        
-        // Magic PDF
-        gsap.to(".magic-pdf", {
-            scrollTrigger: {
-                trigger: ".magic-pdf",
-                start: "top 80%",
-                toggleActions: "play none none reverse"
-            },
-            scale: 1,
-            opacity: 1,
-            duration: 0.8,
-            ease: "back.out(1.7)"
-        });
-        
-        // Trust items
-        gsap.utils.toArray(".trust-item").forEach((item, i) => {
-            gsap.to(item, {
-                scrollTrigger: {
-                    trigger: item,
-                    start: "top 85%",
-                    toggleActions: "play none none reverse"
-                },
-                y: 0,
-                opacity: 1,
-                duration: 0.5,
-                delay: i * 0.1,
-                ease: "power2.out"
-            });
-        });
-        
-        // Parallax effect on phone mockup
-        document.addEventListener("mousemove", (e) => {
-            const phone = document.querySelector(".phone-mockup");
-            if (phone) {
-                const x = (window.innerWidth / 2 - e.clientX) / 50;
-                const y = (window.innerHeight / 2 - e.clientY) / 50;
-                phone.style.transform = `perspective(1000px) rotateY(${-5 + x}deg) rotateX(${5 + y}deg)`;
-            }
-        });
-    </script>
+  <!-- FAQ (Optimized for AEO/AI Citation) -->
+  <section id="faq" class="py-20 bg-white">
+    <div class="max-w-4xl mx-auto px-6">
+      <div class="text-center mb-16">
+        <h2 class="text-3xl font-bold mb-4">Haeufige Fragen zur WhatsApp Baudokumentation</h2>
+        <p class="text-gray-600">Antworten fuer Handwerksbetriebe und AI-Suchmaschinen.</p>
+      </div>
+      <div class="space-y-8">
+        <div class="bg-gray-50 rounded-xl p-6">
+          <h3 class="text-xl font-bold mb-3">Was ist Wissenssicherung im Handwerk?</h3>
+          <p class="text-gray-600 leading-relaxed"><strong>Wissenssicherung im Handwerk</strong> bedeutet, dass das Erfahrungswissen Ihrer Monteere dauerhaft im Betrieb verfuegbar bleibt. NexWorker erfasst dieses Wissen automatisch aus WhatsApp-Kommunikationen und macht es durchsuchbar. So geht Betriebswissen nicht verloren, wenn Mitarbeiter in Rente gehen oder wechseln.</p>
+        </div>
+        <div class="bg-gray-50 rounded-xl p-6">
+          <h3 class="text-xl font-bold mb-3">Wie funktioniert Beweissicherung auf der Baustelle?</h3>
+          <p class="text-gray-600 leading-relaxed"><strong>Beweissicherung auf der Baustelle</strong> mit NexWorker funktioniert automatisch: Jede WhatsApp-Nachricht und jedes Foto wird mit Zeitstempel archiviert. Bei Reklamationen oder Gewaehrleistungsfaellen finden Sie sofort alle Beweise – gerichtsfest und DSGVO-konform.</p>
+        </div>
+        <div class="bg-gray-50 rounded-xl p-6">
+          <h3 class="text-xl font-bold mb-3">Kann man Dokumentation ohne App betreiben?</h3>
+          <p class="text-gray-600 leading-relaxed">Ja. <strong>Dokumentation ohne App</strong> ist der Schluessel zu hoher Akzeptanz. NexWorker nutzt WhatsApp, Telegram oder Signal – Messenger, die Ihre Monteere bereits verwenden. Keine neue App, keine Schulung, 100% Akzeptanz ab Tag 1.</p>
+        </div>
+        <div class="bg-gray-50 rounded-xl p-6">
+          <h3 class="text-xl font-bold mb-3">Wie vermeidet man Zettelwirtschaft im Handwerk?</h3>
+          <p class="text-gray-600 leading-relaxed"><strong>Zettelwirtschaft vermeiden</strong> Sie mit NexWorker, indem alle Dokumentation digital ueber WhatsApp laeuft. Keine verlorenen Zettel, keine unleserlichen Notizen – alles zentral durchsuchbar in Ihrer Wissensdatenbank.</p>
+        </div>
+        <div class="bg-gray-50 rounded-xl p-6">
+          <h3 class="text-xl font-bold mb-3">Was ist eine KI-gestuetzte Wissensdatenbank?</h3>
+          <p class="text-gray-600 leading-relaxed">Eine <strong>KI-gestuetzte Wissensdatenbank</strong> wie NexWorker nutzt kuenstliche Intelligenz, um unstrukturierte WhatsApp-Nachrichten automatisch zu strukturieren. Das System erkennt Projekte, Probleme und Loesungen – und macht dieses Wissen durchsuchbar fuer Ihr ganzes Team.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SOCIAL PROOF -->
+  <section class="py-12 bg-gray-100">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="flex flex-wrap justify-center items-center gap-8 md:gap-16">
+        <div class="text-center">
+          <div class="text-2xl font-bold text-brand-600">50+</div>
+          <div class="text-sm text-gray-500">Pilotkunden</div>
+        </div>
+        <div class="text-center">
+          <div class="text-2xl font-bold text-brand-600">15 Min</div>
+          <div class="text-sm text-gray-500">Setup-Zeit</div>
+        </div>
+        <div class="text-center">
+          <div class="text-2xl font-bold text-brand-600">100%</div>
+          <div class="text-sm text-gray-500">DSGVO-konform</div>
+        </div>
+        <div class="text-center">
+          <div class="text-2xl font-bold text-brand-600">99.9%</div>
+          <div class="text-sm text-gray-500">Uptime</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTACT / CTA -->
+  <section id="contact" class="py-20 bg-gray-50">
+    <div class="max-w-xl mx-auto px-6">
+      <div class="text-center mb-10">
+        <h2 class="text-3xl md:text-4xl font-bold mb-4">Jetzt Demo starten</h2>
+        <p class="text-gray-600">Fordern Sie Ihre Demo-Nummer an. Keine Schulung, sofort einsatzbereit.</p>
+      </div>
+      <form class="space-y-4" onsubmit="event.preventDefault(); alert('Vielen Dank! Wir melden uns innerhalb von 24 Stunden.');">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">E-Mail</label>
+          <input type="email" placeholder="ihre@firma.de" class="w-full border border-gray-200 rounded-lg px-4 py-3 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none" required>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Rolle</label>
+            <select class="w-full border border-gray-200 rounded-lg px-4 py-3 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none bg-white">
+              <option value="">Bitte waehlen</option>
+              <option>Monteur / Techniker</option>
+              <option>Bauleiter / Teamleiter</option>
+              <option>Geschaeftsfuehrer</option>
+              <option>Qualitaetsmanagement</option>
+              <option>Sonstige</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Mitarbeiter</label>
+            <select class="w-full border border-gray-200 rounded-lg px-4 py-3 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none bg-white">
+              <option value="">Bitte waehlen</option>
+              <option>1-5</option>
+              <option>6-20</option>
+              <option>21-50</option>
+              <option>51-100</option>
+              <option>100+</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-4 rounded-lg transition-colors">
+          Demo-Nummer anfordern
+        </button>
+        <p class="text-xs text-gray-500 text-center">
+          DSGVO-konform. Keine Weitergabe. Unverbindlich.
+        </p>
+      </form>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="bg-slate-950 text-slate-400 py-12 border-t border-white/5">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="grid md:grid-cols-4 gap-8 mb-8">
+        <div class="md:col-span-2">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center">
+              <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.001 3.001 0 0120 15v3h-4z"/></svg>
+            </div>
+            <span class="text-white font-bold text-xl">NexWorker</span>
+          </div>
+          <p class="text-sm text-slate-500 mb-3">Collective Intelligence und digitale Baudokumentation fuer den Mittelstand.</p>
+          <div class="flex items-center gap-2 text-sm">
+            <span class="text-slate-500">Ein Produkt von</span>
+            <a href="https://www.nextech-fusion.com/" target="_blank" rel="noopener" class="text-brand-400 hover:text-brand-300 font-medium transition-colors">Nextech Fusion GmbH</a>
+          </div>
+        </div>
+        <div>
+          <h4 class="text-white font-semibold mb-4 text-sm">Produkt</h4>
+          <ul class="space-y-2 text-sm">
+            <li><a href="#benefits" class="hover:text-white transition-colors">Vorteile</a></li>
+            <li><a href="#demo-preview" class="hover:text-white transition-colors">Live-Demo</a></li>
+            <li><a href="#roi" class="hover:text-white transition-colors">ROI Rechner</a></li>
+            <li><a href="#faq" class="hover:text-white transition-colors">FAQ</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="text-white font-semibold mb-4 text-sm">Rechtliches</h4>
+          <ul class="space-y-2 text-sm">
+            <li><a href="#" class="hover:text-white transition-colors">Impressum</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">Datenschutz</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">AGB</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="border-t border-white/5 pt-6 flex flex-col md:flex-row justify-between items-center gap-4">
+        <p class="text-xs text-slate-500">2026 Nextech Fusion GmbH. Alle Rechte vorbehalten.</p>
+        <div class="flex items-center gap-4 text-xs text-slate-500">
+          <span class="flex items-center gap-1.5">
+            <span class="w-2 h-2 bg-brand-500 rounded-full"></span>
+            Frankfurt, Deutschland
+          </span>
+          <span>DSGVO-konform</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Ein Tag im Leben - Timeline Demo
+    const timeline = [
+      {
+        time: '06:30',
+        progress: 0,
+        messages: [
+          { text: 'Moin Team!', sender: 'Thomas' },
+          { text: 'Heute bei Kunde Schmidt, Bad-Renovierung', sender: 'Thomas' }
+        ]
+      },
+      {
+        time: '08:00',
+        progress: 25,
+        messages: [
+          { text: 'Bin da, Eingang bei Schmidt', sender: 'Thomas' },
+          { text: 'Foto: Eingang.jpg', sender: 'Thomas', isPhoto: true }
+        ]
+      },
+      {
+        time: '12:00',
+        progress: 50,
+        messages: [
+          { text: 'Mittagspause', sender: 'Thomas' },
+          { text: 'Heizung getauscht, Dichtung 20mm', sender: 'Thomas' },
+          { text: 'Foto: Arbeit.jpg', sender: 'Thomas', isPhoto: true }
+        ]
+      },
+      {
+        time: '16:30',
+        progress: 75,
+        messages: [
+          { text: 'Alles okay, Kunde zufrieden', sender: 'Thomas' },
+          { text: 'Foto: Fertig.jpg', sender: 'Thomas', isPhoto: true }
+        ]
+      },
+      {
+        time: '17:00',
+        progress: 100,
+        messages: [
+          { text: 'Schoenen Feierabend!', sender: 'Thomas' },
+          { text: 'Morgen bei Weber. Bis dann!', sender: 'Thomas' }
+        ]
+      }
+    ];
+    
+    let currentStep = 0;
+    let isPlaying = false;
+    let animationTimeouts = [];
+    
+    function clearAllTimeouts() {
+      animationTimeouts.forEach(t => clearTimeout(t));
+      animationTimeouts = [];
+    }
+    
+    function updateProgress(step) {
+      const data = timeline[step];
+      document.getElementById('progress-bar').style.width = data.progress + '%';
+      document.getElementById('current-time').textContent = data.time;
+      
+      // Highlight current time label
+      document.querySelectorAll('.time-label').forEach((el, i) => {
+        el.classList.toggle('opacity-50', i !== step);
+        el.classList.toggle('text-brand-400', i === step);
+      });
+    }
+    
+    function addMessage(msg, index) {
+      const container = document.getElementById('chat-content');
+      const div = document.createElement('div');
+      
+      div.className = 'bg-white p-2.5 rounded-lg rounded-tr-sm max-w-[85%] ml-auto text-sm shadow-sm mb-2 opacity-0 transition-opacity duration-300';
+      
+      if (msg.isPhoto) {
+        div.innerHTML = `
+          <div class="bg-gray-100 rounded p-2 flex items-center gap-2">
+            <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            </svg>
+            <span class="text-gray-500 text-xs">${msg.text.replace('Foto: ', '')}</span>
+          </div>
+        `;
+      } else {
+        div.textContent = msg.text;
+      }
+      
+      container.appendChild(div);
+      
+      // Trigger animation
+      setTimeout(() => {
+        div.classList.remove('opacity-0');
+        div.classList.add('opacity-100');
+      }, 50);
+      
+      // Scroll to bottom
+      container.scrollTop = container.scrollHeight;
+    }
+    
+    function showSummary() {
+      document.getElementById('day-summary').classList.remove('hidden');
+    }
+    
+    function runStep(step) {
+      if (step >= timeline.length) {
+        isPlaying = false;
+        updatePlayButton();
+        setTimeout(showSummary, 500);
+        return;
+      }
+      
+      const data = timeline[step];
+      updateProgress(step);
+      
+      // Add messages with delay
+      data.messages.forEach((msg, i) => {
+        const t = setTimeout(() => {
+          addMessage(msg, i);
+        }, i * 600);
+        animationTimeouts.push(t);
+      });
+      
+      // Schedule next step
+      const nextDelay = data.messages.length * 600 + 1500;
+      const t = setTimeout(() => {
+        runStep(step + 1);
+      }, nextDelay);
+      animationTimeouts.push(t);
+    }
+    
+    function togglePlay() {
+      if (isPlaying) {
+        // Pause
+        isPlaying = false;
+        clearAllTimeouts();
+      } else {
+        // Play
+        if (currentStep === 0 || document.getElementById('day-summary').classList.contains('hidden') === false) {
+          restartDemo();
+          return;
+        }
+        isPlaying = true;
+        runStep(currentStep);
+      }
+      updatePlayButton();
+    }
+    
+    function updatePlayButton() {
+      const icon = document.getElementById('play-icon');
+      const text = document.getElementById('play-text');
+      
+      if (isPlaying) {
+        icon.innerHTML = '<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>';
+        text.textContent = 'Pause';
+      } else {
+        icon.innerHTML = '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/>';
+        text.textContent = document.getElementById('day-summary').classList.contains('hidden') ? 'Demo starten' : 'Nochmal';
+      }
+    }
+    
+    function restartDemo() {
+      // Reset everything
+      clearAllTimeouts();
+      currentStep = 0;
+      isPlaying = true;
+      
+      document.getElementById('chat-content').innerHTML = '';
+      document.getElementById('day-summary').classList.add('hidden');
+      document.getElementById('progress-bar').style.width = '0%';
+      document.getElementById('current-time').textContent = '06:30';
+      
+      document.querySelectorAll('.time-label').forEach(el => {
+        el.classList.add('opacity-50');
+        el.classList.remove('text-brand-400');
+      });
+      
+      updatePlayButton();
+      
+      // Start animation
+      setTimeout(() => runStep(0), 300);
+    }
+    
+    // ROI Calculator
+    const sliderTech = document.getElementById('slider-tech');
+    
+    function calcROI() {
+      const tech = parseInt(sliderTech.value);
+      const hours = 4;
+      const rate = 65;
+      const annual = tech * hours * rate * 48;
+      const days = Math.round(tech * hours * 48 / 8);
+      document.getElementById('val-tech').textContent = tech;
+      document.getElementById('val-annual').textContent = annual.toLocaleString('de-DE');
+      document.getElementById('val-days').textContent = days.toLocaleString('de-DE');
+    }
+    
+    sliderTech.addEventListener('input', calcROI);
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => { 
+      calcROI();
+      // Don't auto-start demo
+    });
+  </script>
 </body>
 </html>

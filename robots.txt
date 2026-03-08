@@ -1,0 +1,45 @@
+# robots.txt for nexworker.de
+# https://nexworker.de/robots.txt
+
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://nexworker.de/sitemap.xml
+
+# AI Crawlers (allow all)
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+# llms.txt for AI crawlers
+# Located at: https://nexworker.de/llms.txt
+
+# Crawl delay (optional, be polite)
+Crawl-delay: 1

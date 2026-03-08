@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="de" class="scroll-smooth">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>Impressum - NexWorker</title>
+ <link rel="preconnect" href="https://fonts.googleapis.com">
+ <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+ <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+ <script src="https://cdn.tailwindcss.com"></script>
+ <script>
+ tailwind.config = {
+ theme: { extend: { colors: { brand: '#FF5A00', anthracite: '#222831' }, fontFamily: { sans: ['Roboto', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] } } }
+ </script>
+ <style>body{background:#FAFAFA;color:#222831}</style>
+</head>
+<body class="font-sans">
+ <nav class="bg-white border-b border-gray-200 py-4 px-6 flex justify-between items-center">
+  <a href="index.html" class="font-bold text-xl text-anthracite">NexWorker</a>
+  <a href="index.html" class="text-brand hover:underline">Zurück</a>
+ </nav>
+ <main class="max-w-3xl mx-auto px-6 py-12">
+  <h1 class="text-3xl font-bold text-anthracite mb-6">Impressum</h1>
+  <div class="space-y-4 text-gray-700">
+   <p><strong>NexWorker GmbH</strong><br>
+   Musterstraße 1<br>
+   76131 Karlsruhe<br>
+   Deutschland</p>
+   <p>Handelsregister: Amtsgericht Mannheim, HRB 123456<br>
+   Geschäftsführer: Max Mustermann</p>
+   <p>Telefon: +49 721 1234567<br>
+   E-Mail: <a href="mailto:info@nextech-fusion.com" class="text-brand">info@nextech-fusion.com</a></p>
+   <p>USt-IdNr.: DE123456789</p>
+   <p class="mt-6">Inhaltlich verantwortlich gemäß § 55 RStV:<br>
+   Max Mustermann, Musterstraße 1, 76131 Karlsruhe</p>
+  </div>
+ </main>
+ <footer class="text-center text-gray-500 text-sm py-8 border-t border-gray-200">
+  © 2026 NexWorker GmbH
+ </footer>
+</body>
+</html>
