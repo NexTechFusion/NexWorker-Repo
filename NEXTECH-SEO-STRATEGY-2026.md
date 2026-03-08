@@ -1,8 +1,8 @@
 # NexTech Fusion GmbH - Internet Strategy 2026
 ## SEO & AI Search Dominance for NexWorker and Future Products
 
-**Document Version:** 1.0  
-**Created:** March 8, 2026  
+**Document Version:** 2.0  
+**Updated:** March 8, 2026  
 **Status:** Active Strategy  
 
 ---
@@ -11,7 +11,46 @@
 
 This strategy positions NexTech Fusion GmbH as the dominant player in AI-powered knowledge management for the German Mittelstand (SME) trades and construction sector. By combining traditional SEO with cutting-edge AI Search Optimization (GEO/AEO), we will achieve top-3 rankings for 50+ high-value keywords within 12 months.
 
-**Core Insight:** The market gap is clear - competitors focus on "Baudokumentation" and "Projektmanagement" but NO ONE owns "Wissenssicherung" (knowledge preservation) or "WhatsApp-basierte Intelligenz."
+**Core Insight:** The market gap is clear - competitors focus on "Baudokumentation" and "Projektmanagement" but NO ONE owns "Dokumentation ohne App" or "WhatsApp-basierte Dokumentation."
+
+**Key Update (March 2026):** Prioritized keywords into 3 tiers based on validated market research and competitor gap analysis. Focus on low-competition, high-intent keywords first.
+
+---
+
+## Keyword Strategy (Prioritized)
+
+### TIER 1: Immediate Focus (Low Competition, High Intent)
+
+| Keyword | Search Intent | Competition | Target Page | Priority |
+|---------|---------------|-------------|-------------|----------|
+| Dokumentation ohne App | Transactional | Low | Landingpage (H1) | HIGH |
+| WhatsApp Dokumentation | Research | Low | Landingpage | HIGH |
+| Zettelwirtschaft vermeiden Handwerk | Pain-Point | Very Low | Landingpage (H1) | HIGH |
+| Zeiterfassung ohne App | Transactional | Low | Subseite | MEDIUM |
+| Beweissicherung Baustelle App-frei | Transactional | Low | Subseite | MEDIUM |
+
+**Why these:** No competitor dominates these terms. PlanRadar/Craftnote require apps and don't rank for "ohne App" keywords.
+
+### TIER 2: Medium-Term (Medium Competition, High Relevance)
+
+| Keyword | Search Intent | Competition | Target Page | Priority |
+|---------|---------------|-------------|-------------|----------|
+| Wissenssicherung Handwerk | Information | Low | Pillar Page | HIGH |
+| Baudokumentation DSGVO-konform | Compliance | Low | FAQ + Landing | MEDIUM |
+| Messenger Dokumentation | Research | Low | Landingpage | MEDIUM |
+| Monteure dokumentieren lassen | Solution | Low | Landingpage | MEDIUM |
+| Bautagebuch WhatsApp | Research | Low | Subseite | MEDIUM |
+
+### TIER 3: Long-Term (High Competition - Later)
+
+| Keyword | Competition | Who Dominates | Strategy |
+|---------|-------------|---------------|----------|
+| Baudokumentation Software | High (KD: 45) | PlanRadar | Don't target yet |
+| Handwerkersoftware | High (KD: 42) | Craftnote | Don't target yet |
+| Mängelmanagement | Medium (KD: 32) | PlanRadar | Year 2 |
+| Digitale Baustelle | Medium (KD: 38) | Capmo | Year 2 |
+
+**Strategy:** Rank for TIER 1 & 2 first, then attack TIER 3.
 
 ---
 
