@@ -11,17 +11,22 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
-  
+
   <script>
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            brand: { 
-              50: '#EEF2FF', 100: '#E0E7FF', 200: '#C7D2FE', 
-              300: '#A5B4FC', 400: '#818CF8', 500: '#6366F1', 
-              600: '#4F46E5', 700: '#4338CA', 800: '#3730A3', 
-              900: '#312E81' 
+            brand: {
+              DEFAULT: '#FF5A00',
+              dark: '#E04E00',
+              light: '#FF7B33',
+              50: '#FFF0E6'
+            },
+            anthracite: {
+              DEFAULT: '#222831',
+              light: '#393E46',
+              dark: '#1A1E24'
             },
             slate: { 850: '#1a2332', 950: '#0f172a' }
           },
@@ -30,7 +35,7 @@
       }
     }
   </script>
-  
+
   <!-- Structured Data for SEO & AI Search -->
   <script type="application/ld+json">
   {
@@ -48,9 +53,9 @@
         "@type": "FAQPage",
         "mainEntity": [
           { "@type": "Question", "name": "Was ist Wissenssicherung im Handwerk?", "acceptedAnswer": { "@type": "Answer", "text": "Wissenssicherung im Handwerk bedeutet, dass das Erfahrungswissen Ihrer Monteere dauerhaft im Betrieb verfuegbar bleibt. NexWorker erfasst dieses Wissen automatisch aus WhatsApp-Kommunikationen und macht es durchsuchbar." }},
-          { "@type": "Question", "name": "Wie funktioniert Beweissicherung auf der Baustelle?", "acceptedAnswer": { "@type": "Answer", "text": "Beweissicherung auf der Baustelle mit NexWorker funktioniert automatisch: Jede WhatsApp-Nachricht und jedes Foto wird mit Zeitstempel archiviert. Bei Reklamationen finden Sie sofort alle Beweise – gerichtsfest und DSGVO-konform." }},
-          { "@type": "Question", "name": "Kann man Dokumentation ohne App betreiben?", "acceptedAnswer": { "@type": "Answer", "text": "Ja. Dokumentation ohne App ist der Schluessel zu hoher Akzeptanz. NexWorker nutzt WhatsApp, Telegram oder Signal – Messenger, die Ihre Monteere bereits verwenden. Keine neue App, keine Schulung, 100% Akzeptanz ab Tag 1." }},
-          { "@type": "Question", "name": "Wie vermeidet man Zettelwirtschaft im Handwerk?", "acceptedAnswer": { "@type": "Answer", "text": "Zettelwirtschaft vermeiden Sie mit NexWorker, indem alle Dokumentation digital ueber WhatsApp laeuft. Keine verlorenen Zettel – alles zentral durchsuchbar in Ihrer Wissensdatenbank." }},
+          { "@type": "Question", "name": "Wie funktioniert Beweissicherung auf der Baustelle?", "acceptedAnswer": { "@type": "Answer", "text": "Beweissicherung auf der Baustelle mit NexWorker funktioniert automatisch: Jede WhatsApp-Nachricht und jedes Foto wird mit Zeitstempel archiviert. Bei Reklamationen finden Sie sofort alle Beweise - gerichtsfest und DSGVO-konform." }},
+          { "@type": "Question", "name": "Kann man Dokumentation ohne App betreiben?", "acceptedAnswer": { "@type": "Answer", "text": "Ja. Dokumentation ohne App ist der Schluessel zu hoher Akzeptanz. NexWorker nutzt WhatsApp, Telegram oder Signal - Messenger, die Ihre Monteere bereits verwenden. Keine neue App, keine Schulung, 100% Akzeptanz ab Tag 1." }},
+          { "@type": "Question", "name": "Wie vermeidet man Zettelwirtschaft im Handwerk?", "acceptedAnswer": { "@type": "Answer", "text": "Zettelwirtschaft vermeiden Sie mit NexWorker, indem alle Dokumentation digital ueber WhatsApp laeuft. Keine verlorenen Zettel - alles zentral durchsuchbar in Ihrer Wissensdatenbank." }},
           { "@type": "Question", "name": "Was ist eine KI-gestuetzte Wissensdatenbank?", "acceptedAnswer": { "@type": "Answer", "text": "Eine KI-gestuetzte Wissensdatenbank wie NexWorker nutzt kuenstliche Intelligenz, um unstrukturierte WhatsApp-Nachrichten automatisch zu strukturieren und durchsuchbar zu machen." }}
         ]
       },
@@ -70,12 +75,16 @@
     html { scroll-behavior: smooth; }
     body { font-family: 'Roboto', sans-serif; background-color: #FAFAFA; }
     
+    .shadow-inner-light {
+      box-shadow: inset 0 2px 4px 0 rgba(255, 255, 255, 0.3);
+    }
+
     input[type="range"] { -webkit-appearance: none; width: 100%; height: 6px; border-radius: 3px; background: #E5E7EB; outline: none; }
-    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #4F46E5; cursor: pointer; border: 2px solid white; }
-    
+    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #FF5A00; cursor: pointer; border: 2px solid white; }
+
     .case-btn { transition: all 0.2s ease; }
     .case-btn.active { background: #1a2332; color: white; }
-    
+
     /* Phone Mockup */
     .phone-mockup {
       background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
@@ -97,7 +106,7 @@
       z-index: 10;
     }
     .phone-screen { border-radius: 32px; overflow: hidden; background: #fff; }
-    
+
     /* Chat Bubble Tails */
     .chat-bubble-user { position: relative; border-radius: 0.75rem; border-top-right-radius: 0; }
     .chat-bubble-user::before {
@@ -108,20 +117,31 @@
       border-left: 10px solid #DCF8C6;
       border-bottom: 10px solid transparent;
     }
-    
+
     /* Grid Pattern */
     .bg-grid {
       background-size: 40px 40px;
       background-image: linear-gradient(to right, rgba(0,0,0,0.03) 1px, transparent 1px),
                         linear-gradient(to bottom, rgba(0,0,0,0.03) 1px, transparent 1px);
     }
-    
+
     /* Gradient Text */
     .gradient-text {
       background-clip: text;
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      background-image: linear-gradient(135deg, #4F46E5, #6366F1);
+      background-image: linear-gradient(135deg, #FF5A00, #FF7B33);
+    }
+
+    /* Chat Background Pattern */
+    .chat-bg {
+      background-color: #f0f2f5;
+      background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 20.5V18H0v-2h20v-2H0v-2h20v-2H0V8h20V6H0V4h20V2H0V0h22v20h2V0h2v20h2V0h2v20h2V0h2v20h2V0h2v20h2v2H20v-1.5zM0 20h2v20H0V20zm4 0h2v20H4V20zm8 0h2v20h-2V20zm4 0h2v20h-2V20zm4 0h2v20h-2V20zm4 4v-2h20v2H20v2h20v2H20v2h20v2H20v2h20v2H20v2h20v-2z' fill='%23e2e8f0' fill-opacity='0.4' fill-rule='evenodd'/%3E%3C/svg%3E");
+    }
+
+    /* Clip Diagonal */
+    .clip-diagonal {
+      clip-path: polygon(0 0, 100% 0, 100% 90%, 0 100%);
     }
   </style>
 </head>
@@ -132,7 +152,7 @@
   <nav class="fixed top-0 inset-x-0 bg-white/95 backdrop-blur-sm border-b border-gray-100 z-50">
     <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <div class="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center">
+        <div class="w-8 h-8 bg-brand rounded-lg flex items-center justify-center">
           <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.001 3.001 0 0120 15v3h-4z"/></svg>
         </div>
         <span class="font-semibold text-lg">NexWorker</span>
@@ -142,40 +162,47 @@
         <a href="#demo-preview" class="text-sm text-gray-600 hover:text-gray-900">Demo</a>
         <a href="#roi" class="text-sm text-gray-600 hover:text-gray-900">ROI</a>
         <a href="#faq" class="text-sm text-gray-600 hover:text-gray-900">FAQ</a>
-        <a href="#contact" class="bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">Demo anfordern</a>
+        <a href="#contact" class="bg-brand hover:bg-brand-dark text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">Demo anfordern</a>
       </div>
     </div>
   </nav>
 
   <!-- HERO -->
-  <section class="pt-32 pb-20 md:pt-40 md:pb-28 bg-white bg-grid">
-    <div class="max-w-6xl mx-auto px-6">
+  <section class="pt-32 pb-20 md:pt-40 md:pb-28 bg-white bg-grid relative overflow-hidden clip-diagonal">
+    <div class="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 rounded-full bg-brand-50 opacity-50 blur-3xl mix-blend-multiply pointer-events-none"></div>
+    <div class="max-w-6xl mx-auto px-6 relative z-10">
       <div class="text-center max-w-4xl mx-auto mb-12">
-        <div class="inline-flex items-center gap-2 bg-brand-50 text-brand-700 text-xs font-medium px-3 py-1.5 rounded-full mb-6">
-          <span class="w-1.5 h-1.5 bg-brand-500 rounded-full"></span>
-          Ein Produkt von Nextech Fusion
+        <div class="inline-flex items-center gap-2 bg-brand-50 text-brand-dark text-xs font-medium px-3 py-1.5 rounded-full mb-6 border border-brand/20">
+          <span class="w-1.5 h-1.5 bg-brand rounded-full animate-pulse"></span>
+          Bereit fuer den deutschen Mittelstand
         </div>
-        <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight mb-6">
-          WhatsApp Baudokumentation<br>
-          <span class="text-brand-600">fuer Handwerksbetriebe</span>
+        <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight mb-6 text-anthracite">
+          Automatische <span class="text-brand">Dokumentation</span> aus WhatsApp.
         </h1>
-        <p class="text-lg md:text-xl text-gray-600 leading-relaxed font-medium">
-          Ihre Monteere nutzen WhatsApp – <span class="text-gray-900">NexWorker sichert das Wissen automatisch.</span> Beweissicherung, Wissensdatenbank und Baudokumentation ohne neue App.
+        <p class="text-lg md:text-xl text-gray-600 leading-relaxed font-medium max-w-2xl mx-auto">
+          <strong class="text-anthracite">NexWorker</strong> erfasst Tagesberichte, Montageprozesse, Materialverbrauch und Firmenwissen - direkt aus dem Chat. Fuer Handwerk, Reinigung, Montage & Wartung. In 15 Minuten eingerichtet.
         </p>
       </div>
-      
+
       <div class="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-        <a href="#contact" class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-8 py-4 rounded-xl transition-all shadow-lg shadow-brand-500/20 text-center">Jetzt 15 Min. Demo anfordern</a>
-        <a href="#demo-preview" class="bg-white border border-gray-200 hover:border-gray-300 text-gray-700 font-semibold px-8 py-4 rounded-xl transition-all text-center">Live-Demo ansehen</a>
+        <a href="#contact" class="bg-brand hover:bg-brand-dark text-white font-bold px-8 py-4 rounded-xl transition-all shadow-lg hover:shadow-xl hover:-translate-y-1 text-center flex items-center justify-center gap-2">
+          In 15 Min. einrichten
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+        </a>
+        <a href="#tagesablauf" class="bg-white border-2 border-gray-200 hover:border-brand hover:text-brand text-anthracite px-8 py-4 rounded-xl font-bold transition-colors text-center shadow-sm">
+          Live Demo ansehen
+        </a>
       </div>
 
-      <!-- Integration Logic Symbols -->
-      <div class="flex flex-center justify-center gap-8 md:gap-12 mt-12 opacity-40 grayscale hover:grayscale-0 transition-all">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp" class="h-8">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg" alt="Telegram" class="h-8">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/8/8d/Signal-Logo.svg" alt="Signal" class="h-8">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/c/c9/Microsoft_Office_Teams_%282018%E2%80%93present%29.svg" alt="Teams" class="h-8">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/d/d5/Slack_icon_2019.svg" alt="Slack" class="h-8">
+      <div class="flex items-center justify-center gap-6 text-sm font-medium text-gray-500">
+        <div class="flex items-center gap-2">
+          <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+          Keine App noetig
+        </div>
+        <div class="flex items-center gap-2">
+          <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+          100% DSGVO
+        </div>
       </div>
     </div>
   </section>
@@ -183,128 +210,387 @@
   <!-- BENEFITS (Validated Cluster) -->
   <section id="benefits" class="py-20 bg-gray-50">
     <div class="max-w-6xl mx-auto px-6">
-      <div class="grid md:grid-cols-3 gap-8">
-        <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-          <div class="text-amber-600 font-bold text-xs uppercase tracking-widest mb-4">Beweissicherung Baustelle</div>
-          <h2 class="text-2xl font-bold mb-4">Rechtssichere Dokumentation</h2>
-          <p class="text-gray-600 text-sm leading-relaxed mb-6">Schluss mit der <strong>Zettelwirtschaft</strong>. NexWorker speichert jeden Chat und jedes Foto audit-sicher mit Zeitstempel – fuer <strong>Gerichtsfeste Beweissicherung</strong> bei Reklamationen.</p>
-          <ul class="space-y-2 text-xs text-gray-500">
-            <li class="flex items-center gap-2 font-medium text-gray-700">Mängelansprueche erfolgreich abwehren</li>
-            <li class="flex items-center gap-2 font-medium text-gray-700">Nachweispflichten automatisch erfuellt</li>
-          </ul>
+      <div class="text-center max-w-3xl mx-auto mb-16">
+        <span class="text-brand font-bold uppercase tracking-widest text-sm mb-2 block">Die Innovation</span>
+        <h2 class="text-3xl md:text-5xl font-bold text-anthracite mb-6">Was ist NexWorker?</h2>
+        <p class="text-xl text-gray-600">
+          NexWorker ist kein neues System, das man lernen muss. Es ist ein <strong class="text-anthracite">smarter Kontakt in Ihrem WhatsApp, Telegram oder MS Teams</strong>.
+        </p>
+      </div>
+      
+      <div class="grid md:grid-cols-2 gap-12 items-center">
+        <!-- Checklist -->
+        <div class="space-y-6">
+          <div class="flex gap-4 p-4 rounded-xl hover:bg-white transition-colors border border-transparent hover:border-gray-100 hover:shadow-sm">
+            <div class="flex-shrink-0 mt-1">
+              <div class="w-10 h-10 rounded-full bg-brand/10 flex items-center justify-center text-brand">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+              </div>
+            </div>
+            <div>
+              <h3 class="text-xl font-bold text-anthracite mb-1">Versteht Sprache</h3>
+              <p class="text-gray-600 text-sm">Sprachnachrichten werden perfekt transkribiert und inhaltlich verknuepft – auch bei Laerm vor Ort.</p>
+            </div>
+          </div>
+          
+          <div class="flex gap-4 p-4 rounded-xl hover:bg-white transition-colors border border-transparent hover:border-gray-100 hover:shadow-sm">
+            <div class="flex-shrink-0 mt-1">
+              <div class="w-10 h-10 rounded-full bg-brand/10 flex items-center justify-center text-brand">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+              </div>
+            </div>
+            <div>
+              <h3 class="text-xl font-bold text-anthracite mb-1">Analysiert Fotos</h3>
+              <p class="text-gray-600 text-sm">Erkennt verbrauchtes Material, dokumentiert Baufortschritt und archiviert Schaeden automatisch zum Projekt.</p>
+            </div>
+          </div>
+
+          <div class="flex gap-4 p-4 rounded-xl hover:bg-white transition-colors border border-transparent hover:border-gray-100 hover:shadow-sm">
+            <div class="flex-shrink-0 mt-1">
+              <div class="w-10 h-10 rounded-full bg-brand/10 flex items-center justify-center text-brand">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+              </div>
+            </div>
+            <div>
+              <h3 class="text-xl font-bold text-anthracite mb-1">Automatisiert Berichte</h3>
+              <p class="text-gray-600 text-sm">Erfasst Zeiten, Maengel und Material in Echtzeit und schickt jeden Abend fertige Berichte ins Buero.</p>
+            </div>
+          </div>
         </div>
-        <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-          <div class="text-brand-600 font-bold text-xs uppercase tracking-widest mb-4">Wissenssicherung Handwerk</div>
-          <h2 class="text-2xl font-bold mb-4">Betriebswissen digital sichern</h2>
-          <p class="text-gray-600 text-sm leading-relaxed mb-6">Sichern Sie die <strong>Erfahrungsschaetze</strong> Ihrer Monteere, bevor diese in Rente gehen. Automatische <strong>KI-Wissensdatenbank</strong> aus dem Feld – fuer schnelleres Onboarding.</p>
-          <ul class="space-y-2 text-xs text-gray-500">
-            <li class="flex items-center gap-2 font-medium text-gray-700">Wissen im Betrieb halten</li>
-            <li class="flex items-center gap-2 font-medium text-gray-700">Onboarding von Monaten auf Tage</li>
-          </ul>
-        </div>
-        <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-          <div class="text-cyan-600 font-bold text-xs uppercase tracking-widest mb-4">Dokumentation ohne App</div>
-          <h2 class="text-2xl font-bold mb-4">100% Akzeptanz ab Tag 1</h2>
-          <p class="text-gray-600 text-sm leading-relaxed mb-6">Hoechste Akzeptanz: Ihre Teams nutzen einfach <strong>WhatsApp oder Telegram</strong>. Keine neue App, keine Schulung, keine Reibungsverluste – sofort einsatzbereit.</p>
-          <ul class="space-y-2 text-xs text-gray-500">
-            <li class="flex items-center gap-2 font-medium text-gray-700">Messenger-Integration (WhatsApp, Telegram, Signal)</li>
-            <li class="flex items-center gap-2 font-medium text-gray-700">15 Minuten Setup</li>
-          </ul>
+
+        <!-- Callout Box -->
+        <div class="bg-anthracite rounded-2xl p-8 relative overflow-hidden shadow-2xl">
+          <div class="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-20 -mt-20"></div>
+          <h3 class="text-2xl font-bold text-white mb-4">Das ist NexWorker:</h3>
+          <p class="text-gray-300 text-lg mb-8 leading-relaxed">
+            Ein digitaler Mitarbeiter, den Sie <span class="text-brand font-bold">in 15 Minuten einstellen</span> – ohne Einarbeitung, ohne teure Schulung, ohne Zettelchaos vor Ort.
+          </p>
+          <div class="border-t border-gray-700 pt-6">
+            <div class="flex items-center gap-4 text-white">
+              <div class="w-12 h-12 bg-brand rounded-full flex items-center justify-center font-bold text-xl shadow-lg">15</div>
+              <span class="font-medium text-lg">Minuten bis zum ersten Tagesbericht.</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- LIVE DEMO - Ein Tag im Leben -->
-  <section id="demo-preview" class="py-20 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
+  <!-- DIE 3 KILL-SHOTS -->
+  <section id="kill-shots" class="py-20 bg-white border-y border-gray-200">
     <div class="max-w-6xl mx-auto px-6">
-      <div class="text-center mb-12">
-        <h2 class="text-3xl md:text-4xl font-bold mb-4 text-white">Ein Tag im Leben</h2>
-        <p class="text-slate-400">Ganz normaler Arbeitstag. Automatisch dokumentiert.</p>
+      <div class="text-center max-w-3xl mx-auto mb-16">
+        <span class="text-brand font-bold uppercase tracking-widest text-sm mb-2 block">Warum NexWorker gewinnt</span>
+        <h2 class="text-3xl md:text-5xl font-bold text-anthracite mb-6">Die 3 Kill-Shots</h2>
       </div>
       
-      <!-- Timeline Progress Bar -->
-      <div class="max-w-3xl mx-auto mb-8">
-        <div class="flex justify-between text-xs text-slate-500 mb-2">
-          <span id="time-1" class="time-label opacity-50">06:30</span>
-          <span id="time-2" class="time-label opacity-50">08:00</span>
-          <span id="time-3" class="time-label opacity-50">12:00</span>
-          <span id="time-4" class="time-label opacity-50">16:30</span>
-          <span id="time-5" class="time-label opacity-50">17:00</span>
+      <div class="grid md:grid-cols-3 gap-8">
+        <!-- Card 1 -->
+        <div class="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden group">
+          <div class="absolute top-0 left-0 w-full h-1.5 bg-brand transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
+          <div class="w-16 h-16 bg-brand-50 rounded-2xl flex items-center justify-center mb-6 border border-brand/20">
+            <svg class="w-8 h-8 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+          </div>
+          <h3 class="text-xl font-bold text-anthracite mb-2">Der "WhatsApp-Putzmann"</h3>
+          <p class="text-sm text-brand font-semibold mb-4">Keine Schulung. Keine neue App.</p>
+          <p class="text-gray-600 text-sm leading-relaxed mb-4">
+            Ihre Monteere schicken einfach Sprachnachrichten, Fotos oder Text per WhatsApp/Telegram – so wie sie es privat sowieso tun. NexWorker sortiert das Chaos im Hintergrund.
+          </p>
+          <div class="bg-gray-50 p-3 rounded-lg border-l-4 border-brand">
+            <p class="text-xs font-medium text-anthracite"><span class="font-bold">Der Kill-Shot:</span> Keinerlei Einarbeitung noetig. Wer chatten kann, kann NexWorker nutzen.</p>
+          </div>
         </div>
-        <div class="h-2 bg-slate-700 rounded-full overflow-hidden">
-          <div id="progress-bar" class="h-full bg-brand-500 rounded-full transition-all duration-1000" style="width: 0%"></div>
+
+        <!-- Card 2 -->
+        <div class="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden group">
+          <div class="absolute top-0 left-0 w-full h-1.5 bg-brand transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
+          <div class="w-16 h-16 bg-brand-50 rounded-2xl flex items-center justify-center mb-6 border border-brand/20">
+            <svg class="w-8 h-8 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.618 5.984A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016zM12 9v2m0 4h.01"></path></svg>
+          </div>
+          <h3 class="text-xl font-bold text-anthracite mb-2">Die "Sicherheits-Box"</h3>
+          <p class="text-sm text-brand font-semibold mb-4">Maximale Datensouveränität.</p>
+          <p class="text-gray-600 text-sm leading-relaxed mb-4">
+            Die KI-Instanz laeuft wahlweise in einer isolierten, SOC-konformen deutschen Cloud oder lokal als Edge-Computing Box direkt in Ihrem Buero. Ihre Geheimnisse bleiben bei Ihnen. 100% DSGVO.
+          </p>
+          <div class="bg-gray-50 p-3 rounded-lg border-l-4 border-brand">
+            <p class="text-xs font-medium text-anthracite"><span class="font-bold">Der Kill-Shot:</span> "Sicherer als alles andere" – ein unschlagbares Argument im Mittelstand.</p>
+          </div>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden group">
+          <div class="absolute top-0 left-0 w-full h-1.5 bg-brand transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
+          <div class="w-16 h-16 bg-brand-50 rounded-2xl flex items-center justify-center mb-6 border border-brand/20">
+            <svg class="w-8 h-8 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+          </div>
+          <h3 class="text-xl font-bold text-anthracite mb-2">Der "ERP-Geist"</h3>
+          <p class="text-sm text-brand font-semibold mb-4">80% Zeitersparnis im Buero.</p>
+          <p class="text-gray-600 text-sm leading-relaxed mb-3">
+            Arbeitszeiten, Material und Maengel fliessen direkt in Ihr bestehendes System. Die "Ein-Klick-Rechnung" am Freitag ist kein Traum mehr.
+          </p>
+          <ul class="space-y-1 mb-4 text-xs font-medium text-gray-500 grid grid-cols-2">
+            <li class="flex items-center gap-1"><svg class="w-3 h-3 text-brand" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg> Lexware</li>
+            <li class="flex items-center gap-1"><svg class="w-3 h-3 text-brand" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg> pds</li>
+            <li class="flex items-center gap-1"><svg class="w-3 h-3 text-brand" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg> DATEV</li>
+            <li class="flex items-center gap-1"><svg class="w-3 h-3 text-brand" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg> Excel</li>
+          </ul>
+          <div class="bg-gray-50 p-3 rounded-lg border-l-4 border-brand">
+            <p class="text-xs font-medium text-anthracite"><span class="font-bold">Der Kill-Shot:</span> Kein Umstieg noetig. NexWorker integriert sich unsichtbar.</p>
+          </div>
         </div>
       </div>
-      
-      <!-- Single Phone Mockup -->
-      <div class="flex justify-center">
-        <div class="phone-mockup w-80">
-          <div class="phone-screen h-[580px] relative">
-            <!-- WhatsApp Header -->
-            <div class="bg-[#075E54] text-white px-4 py-3 flex items-center gap-3">
-              <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>
-              <div class="flex-1">
-                <div class="text-sm font-medium">Baustellen-Team</div>
-                <div class="text-xs opacity-70" id="current-time">06:30</div>
+    </div>
+  </section>
+
+  <!-- LIVE DEMO - Ein Tag im Leben (Timeline Style) -->
+  <section id="tagesablauf" class="py-24 bg-white relative">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-16">
+        <h2 class="text-3xl md:text-5xl font-bold text-anthracite mb-4">Ein Tag im Leben</h2>
+        <p class="text-xl text-gray-600">So nahtlos dokumentiert Ihr Team den Service-Alltag.</p>
+      </div>
+
+      <div class="relative">
+        <!-- Vertical Line -->
+        <div class="absolute left-4 md:left-1/2 top-0 bottom-0 w-1 bg-gray-200 transform md:-translate-x-1/2"></div>
+
+        <div class="space-y-16">
+          <!-- 07:00 Uhr - Arbeitsbeginn -->
+          <div class="relative flex flex-col md:flex-row items-center md:items-start group">
+            <div class="hidden md:flex absolute left-1/2 w-8 h-8 bg-white border-4 border-brand rounded-full transform -translate-x-1/2 z-10 shadow-md"></div>
+
+            <div class="w-full md:w-1/2 md:pr-12 md:text-right hidden md:block mt-1">
+              <h3 class="text-2xl font-bold text-anthracite">07:00 Uhr</h3>
+              <p class="text-gray-500 font-medium">Arbeitsbeginn</p>
+            </div>
+
+            <div class="w-full md:w-1/2 md:pl-12 pl-10 pr-4">
+              <div class="bg-gray-50 rounded-2xl p-4 shadow-sm border border-gray-100">
+                <p class="text-xs text-gray-500 mb-2 font-medium md:hidden">07:00 Uhr - Arbeitsbeginn</p>
+                <div class="self-end bg-[#DCF8C6] p-3 rounded-xl rounded-tr-none inline-block mb-3 shadow-sm border border-green-200 max-w-[85%]">
+                  <p class="text-sm text-gray-800">Moin, bin da. Mit Axel bei Kunde Müller.</p>
+                </div>
+                <div class="flex items-start gap-2 mt-2">
+                  <div class="w-6 h-6 rounded-full bg-brand text-white flex items-center justify-center font-bold text-xs flex-shrink-0 mt-2 shadow-sm">NW</div>
+                  <div class="bg-white p-3 rounded-xl rounded-tl-none shadow-sm border border-gray-200 font-mono text-xs w-full">
+                    <span class="text-green-600 font-bold">Erfasst:</span> 07:00<br>
+                    Lars + Axel<br>
+                    Neubau Allee<br>
+                    <span class="text-gray-400">Arbeitsbeginn dokumentiert</span>
+                  </div>
+                </div>
               </div>
-              <svg class="w-5 h-5 opacity-70" fill="currentColor" viewBox="0 0 24 24"><path d="M12 7a2 2 0 100-4 2 2 0 000 4zM7 12a2 2 0 11-4 0 2 2 0 014 0zM14 18a2 2 0 100-4 2 2 0 000 4zM19 12a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
             </div>
-            
-            <!-- Chat Content -->
-            <div class="bg-[#ECE5DD] h-full p-3 overflow-y-auto" id="chat-content">
-              <!-- Messages will be injected here -->
+          </div>
+
+          <!-- 10:30 Uhr - Material -->
+          <div class="relative flex flex-col md:flex-row-reverse items-center md:items-start group">
+            <div class="hidden md:flex absolute left-1/2 w-8 h-8 bg-white border-4 border-anthracite rounded-full transform -translate-x-1/2 z-10 shadow-md"></div>
+
+            <div class="w-full md:w-1/2 md:pl-12 hidden md:block mt-1">
+              <h3 class="text-2xl font-bold text-anthracite">10:30 Uhr</h3>
+              <p class="text-gray-500 font-medium">Materialbedarf</p>
             </div>
-            
-            <!-- Daily Summary Overlay -->
-            <div id="day-summary" class="absolute inset-0 bg-slate-900/95 flex items-center justify-center p-6 hidden">
-              <div class="text-center">
-                <div class="w-16 h-16 bg-brand-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                  </svg>
-                </div>
-                <h3 class="text-xl font-bold text-white mb-2">Tag abgeschlossen</h3>
-                <p class="text-slate-400 text-sm mb-6">Automatisch dokumentiert</p>
-                <div class="grid grid-cols-2 gap-4 text-center">
-                  <div class="bg-slate-800 rounded-xl p-4">
-                    <div class="text-2xl font-bold text-brand-400">4</div>
-                    <div class="text-xs text-slate-500">Eintraege</div>
+
+            <div class="w-full md:w-1/2 md:pr-12 pl-10 pr-4">
+              <div class="bg-gray-50 rounded-2xl p-4 shadow-sm border border-gray-100">
+                <p class="text-xs text-gray-500 mb-2 font-medium md:hidden">10:30 Uhr - Material</p>
+                <div class="flex flex-col items-end gap-2 mb-3">
+                  <div class="bg-gray-200 w-32 h-24 rounded-lg flex items-center justify-center border-2 border-white shadow-sm overflow-hidden">
+                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                   </div>
-                  <div class="bg-slate-800 rounded-xl p-4">
-                    <div class="text-2xl font-bold text-brand-400">3</div>
-                    <div class="text-xs text-slate-500">Fotos</div>
-                  </div>
-                  <div class="bg-slate-800 rounded-xl p-4">
-                    <div class="text-2xl font-bold text-brand-400">2</div>
-                    <div class="text-xs text-slate-500">Projekte</div>
-                  </div>
-                  <div class="bg-slate-800 rounded-xl p-4">
-                    <div class="text-2xl font-bold text-brand-400">1</div>
-                    <div class="text-xs text-slate-500">Bericht</div>
+                  <div class="bg-[#DCF8C6] p-2 px-3 rounded-full rounded-tr-none inline-flex items-center gap-2 shadow-sm border border-green-200">
+                    <svg class="w-4 h-4 text-green-700" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd"/></svg>
+                    <div class="w-16 h-1 bg-green-700/20 rounded-full"><div class="w-full h-full bg-green-700 rounded-full"></div></div>
                   </div>
                 </div>
-                <button onclick="restartDemo()" class="mt-6 text-brand-400 text-sm font-medium hover:text-brand-300 transition-colors">
-                  Nochmal ansehen
+                <div class="flex items-start gap-2 mt-2">
+                  <div class="w-6 h-6 rounded-full bg-brand text-white flex items-center justify-center font-bold text-xs flex-shrink-0 mt-2 shadow-sm">NW</div>
+                  <div class="bg-white p-3 rounded-xl rounded-tl-none shadow-sm border border-gray-200 font-mono text-xs w-full">
+                    <span class="text-green-600 font-bold">Material erfasst:</span> 3x Verbrauchsmaterial<br>
+                    <span class="text-gray-500">Automatisch zur Bestellliste</span><br>
+                    <span class="text-brand font-bold">147,50EUR | Kunde Müller</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 14:15 Uhr - Mängel -->
+          <div class="relative flex flex-col md:flex-row items-center md:items-start group">
+            <div class="hidden md:flex absolute left-1/2 w-8 h-8 bg-white border-4 border-red-500 rounded-full transform -translate-x-1/2 z-10 shadow-md"></div>
+
+            <div class="w-full md:w-1/2 md:pr-12 md:text-right hidden md:block mt-1">
+              <h3 class="text-2xl font-bold text-red-500">14:15 Uhr</h3>
+              <p class="text-gray-500 font-medium">Mängel-Management</p>
+            </div>
+
+            <div class="w-full md:w-1/2 md:pl-12 pl-10 pr-4">
+              <div class="bg-gray-50 rounded-2xl p-4 shadow-sm border border-gray-100">
+                <p class="text-xs text-red-500 mb-2 font-medium md:hidden">14:15 Uhr - Mängel</p>
+                <div class="self-end bg-[#DCF8C6] p-3 rounded-xl rounded-tr-none inline-block mb-3 shadow-sm border border-green-200 max-w-[85%]">
+                  <p class="text-sm text-gray-800">Kann nicht weiter. Material fehlt. Foto angehängt.</p>
+                </div>
+                <div class="flex items-start gap-2 mt-2">
+                  <div class="w-6 h-6 rounded-full bg-brand text-white flex items-center justify-center font-bold text-xs flex-shrink-0 mt-2 shadow-sm">NW</div>
+                  <div class="bg-white p-3 rounded-xl rounded-tl-none shadow-sm border border-red-200 bg-red-50/30 font-mono text-xs w-full">
+                    <span class="text-red-600 font-bold">BLOCKER dokumentiert</span> | 14:15<br>
+                    <span class="text-gray-500">Kunde Müller | Objekt 2</span><br>
+                    <span class="text-gray-600">Projektleiter automatisch informiert</span><br>
+                    <span class="text-gray-600">Beweisfoto archiviert</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 16:30 Uhr - Feierabend -->
+          <div class="relative flex flex-col md:flex-row-reverse items-center md:items-start group">
+            <div class="hidden md:flex absolute left-1/2 w-8 h-8 bg-brand border-4 border-white rounded-full transform -translate-x-1/2 z-10 shadow-lg"></div>
+
+            <div class="w-full md:w-1/2 md:pl-12 hidden md:block mt-1">
+              <h3 class="text-2xl font-bold text-brand">16:30 Uhr</h3>
+              <p class="text-gray-500 font-medium">Tagesabschluss</p>
+            </div>
+
+            <div class="w-full md:w-1/2 md:pr-12 pl-10 pr-4">
+              <div class="bg-gray-50 rounded-2xl p-4 shadow-sm border border-gray-100">
+                <p class="text-xs text-brand mb-2 font-medium md:hidden">16:30 Uhr - Feierabend</p>
+                <div class="self-end bg-[#DCF8C6] p-3 rounded-xl rounded-tr-none inline-block mb-3 shadow-sm border border-green-200 max-w-[85%]">
+                  <p class="text-sm text-gray-800">Fertig für heute. 20 Aufträge abgeschlossen. 8h gearbeitet.</p>
+                </div>
+                <div class="flex items-start gap-2 mt-2">
+                  <div class="w-6 h-6 rounded-full bg-brand text-white flex items-center justify-center font-bold text-xs flex-shrink-0 mt-2 shadow-sm">NW</div>
+                  <div class="bg-white p-3 rounded-xl rounded-tl-none shadow-sm border border-brand/20 font-mono text-xs w-full">
+                    <span class="text-green-600 font-bold">Tagesabschluss erfasst</span><br>
+                    <span class="text-gray-500">Axel: 8h | Lars: 8h</span><br>
+                    <span class="text-gray-500">22 Einsaetze</span><br>
+                    <span class="text-brand font-bold">Lohnabrechnung vorbereitet</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MAGIC MOMENT - Der Freitag-Report -->
+  <section id="magicmoment" class="py-24 bg-anthracite relative overflow-hidden">
+    <div class="absolute inset-0 opacity-10 bg-grid"></div>
+    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-brand/20 rounded-full blur-[100px] pointer-events-none"></div>
+    
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+      <div class="grid lg:grid-cols-2 gap-16 items-center">
+        
+        <!-- Text -->
+        <div class="text-center lg:text-left">
+          <span class="inline-block py-1 px-3 rounded-full bg-brand/20 text-brand font-bold text-sm mb-4 border border-brand/30">Das Resultat</span>
+          <h2 class="text-4xl md:text-5xl font-bold text-white mb-6 leading-tight">Der <span class="text-brand">"Magic Moment"</span> am Freitag.</h2>
+          <p class="text-lg text-gray-300 mb-8 leading-relaxed">
+            Statt umstaendlicher Zettelwirtschaft und Foto-Chaos auf fuenf verschiedenen Bauarbeiter-Handys, bekommt der Chef jeden Freitag <strong class="text-white">eine sauber aufbereitete Zusammenfassung</strong> als PDF oder direkten ERP-Import.
+          </p>
+          <ul class="space-y-4 mb-10 text-left w-max mx-auto lg:mx-0">
+            <li class="flex items-center gap-3 text-gray-200">
+              <div class="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center text-green-400">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+              </div>
+              Kein Nachtragen am Wochenende
+            </li>
+            <li class="flex items-center gap-3 text-gray-200">
+              <div class="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center text-green-400">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+              </div>
+              Vollstaendige Baudokumentation
+            </li>
+            <li class="flex items-center gap-3 text-gray-200">
+              <div class="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center text-green-400">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+              </div>
+              Sofort fakturierbar
+            </li>
+          </ul>
+        </div>
+
+        <!-- PDF Mockup Card -->
+        <div class="relative">
+          <div class="bg-white rounded-lg shadow-2xl p-6 md:p-8 transform hover:scale-[1.02] transition-transform duration-300 border-t-8 border-brand">
+            <!-- Fold decoration -->
+            <div class="absolute top-0 right-0 w-12 h-12 bg-gray-100 border-l border-b border-gray-200 rounded-bl-lg"></div>
+            
+            <!-- PDF Report Content -->
+            <div class="flex justify-between items-center mb-4 border-b border-gray-200 pb-3">
+              <div>
+                <h3 class="font-bold text-anthracite text-xl">Wochenbericht</h3>
+                <p class="text-sm text-gray-500">Kunde Mueller (KW 10)</p>
+              </div>
+              <div class="text-right">
+                <div class="w-8 h-8 bg-anthracite rounded flex items-center justify-center ml-auto mb-1">
+                  <svg class="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                </div>
+                <p class="text-[10px] text-gray-400">NexWorker Auto-Gen</p>
+              </div>
+            </div>
+            
+            <!-- Monospace Report Data -->
+            <div class="bg-gray-50 rounded p-4 font-mono text-xs text-gray-800 border border-gray-100">
+              <div class="text-gray-300 mb-2">━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>
+              
+              <div class="grid grid-cols-[24px_1fr] gap-1 mb-2">
+                <span class="text-center">-</span>
+                <div><span class="text-gray-400 w-20 inline-block">Personal:</span> Lars (40h), Axel (40h)</div>
+              </div>
+              
+              <div class="grid grid-cols-[24px_1fr] gap-1 mb-2">
+                <span class="text-center">-</span>
+                <div><span class="text-gray-400 w-20 inline-block">Leistung:</span> 120 Auftraege, 500km</div>
+              </div>
+              
+              <div class="grid grid-cols-[24px_1fr] gap-1 mb-2">
+                <span class="text-center">-</span>
+                <div><span class="text-gray-400 w-20 inline-block">Material:</span> 2.847 EUR <span class="text-green-600 bg-green-100 px-1 rounded">(98% vs. Kalkulation)</span></div>
+              </div>
+              
+              <div class="grid grid-cols-[24px_1fr] gap-1 mb-2">
+                <span class="text-center">!</span>
+                <div><span class="text-gray-400 w-20 inline-block">Maengel:</span> 1 Blocker -> <span class="text-yellow-600">behoben</span></div>
+              </div>
+              
+              <div class="grid grid-cols-[24px_1fr] gap-1 mb-2">
+                <span class="text-center">-</span>
+                <div><span class="text-gray-400 w-20 inline-block">Doku:</span> 47 Fotos, alle zeitstempelt</div>
+              </div>
+
+              <div class="text-gray-300 mt-3 mb-3">━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>
+              
+              <div class="bg-green-100 border border-green-200 text-green-800 p-2 rounded text-center font-bold text-xs tracking-wide">
+                BEREIT FUER ABSCHLAGSZAHLUNG
+              </div>
+            </div>
+            
+            <!-- Footer -->
+            <div class="flex justify-between items-center pt-3 mt-3 border-t border-gray-200">
+              <div class="flex items-center gap-2">
+                <div class="w-5 h-5 bg-green-500/20 rounded-full flex items-center justify-center">
+                  <svg class="w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                </div>
+                <span class="text-xs text-gray-600">DSGVO-konform archiviert</span>
+              </div>
+              <div class="flex gap-2">
+                <button class="bg-anthracite text-white p-1.5 rounded text-xs hover:bg-black transition-colors" title="Als PDF">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                </button>
+                <button class="bg-brand text-white p-1.5 rounded text-xs hover:bg-brand-dark transition-colors" title="In Lexware">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
                 </button>
               </div>
             </div>
           </div>
         </div>
       </div>
-      
-      <!-- Play/Pause Controls -->
-      <div class="flex justify-center gap-4 mt-8">
-        <button id="play-btn" onclick="togglePlay()" class="bg-brand-600 hover:bg-brand-700 text-white px-6 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2">
-          <svg id="play-icon" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/></svg>
-          <span id="play-text">Demo starten</span>
-        </button>
-      </div>
-      
     </div>
   </section>
-
-  <!-- ROI SIMPLIFIED -->
   <section id="roi" class="py-16 md:py-20 bg-gradient-to-br from-brand-900 via-brand-800 to-slate-900 text-white">
     <div class="max-w-4xl mx-auto px-4 md:px-6">
       <div class="text-center mb-10 md:mb-16">
@@ -317,23 +603,23 @@
             <div>
               <div class="flex justify-between mb-4 md:mb-6 items-baseline">
                 <label class="text-base md:text-lg lg:text-xl font-bold">Anzahl Techniker</label>
-                <span class="text-3xl md:text-4xl lg:text-5xl font-black text-brand-400" id="val-tech">15</span>
+                <span class="text-3xl md:text-4xl lg:text-5xl font-black text-brand-light" id="val-tech">15</span>
               </div>
               <input type="range" id="slider-tech" min="1" max="50" value="15" class="w-full">
             </div>
             <div class="bg-white/5 p-4 md:p-6 rounded-xl md:rounded-2xl border border-white/10">
-              <p class="text-xs md:text-sm text-brand-300 font-bold uppercase tracking-widest mb-1">Konservativer Durchschnitt</p>
+              <p class="text-xs md:text-sm text-brand-light font-bold uppercase tracking-widest mb-1">Konservativer Durchschnitt</p>
               <p class="text-lg md:text-xl font-bold text-white">4 Std. Dokumentation / Woche</p>
             </div>
           </div>
           <div class="text-center md:text-left space-y-6 md:space-y-8">
             <div>
-              <p class="text-xs md:text-sm text-brand-300 font-black uppercase tracking-widest mb-2">Mehrumsatz pro Jahr</p>
+              <p class="text-xs md:text-sm text-brand-light font-black uppercase tracking-widest mb-2">Mehrumsatz pro Jahr</p>
               <div class="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tighter text-white leading-none">
-                <span id="val-annual">0</span><span class="text-xl md:text-2xl text-brand-300 ml-1">EUR</span>
+                <span id="val-annual">0</span><span class="text-xl md:text-2xl text-brand-light ml-1">EUR</span>
               </div>
             </div>
-            <div class="bg-brand-500/20 text-brand-300 px-4 py-3 md:px-6 md:py-4 rounded-xl border border-brand-500/30 inline-block font-bold text-base md:text-lg">
+            <div class="bg-brand/20 text-brand-light px-4 py-3 md:px-6 md:py-4 rounded-xl border border-brand/30 inline-block font-bold text-base md:text-lg">
               +<span id="val-days">0</span> Zusatztage gewonnen
             </div>
           </div>
@@ -356,19 +642,19 @@
         </div>
         <div class="bg-gray-50 rounded-xl p-6">
           <h3 class="text-xl font-bold mb-3">Wie funktioniert Beweissicherung auf der Baustelle?</h3>
-          <p class="text-gray-600 leading-relaxed"><strong>Beweissicherung auf der Baustelle</strong> mit NexWorker funktioniert automatisch: Jede WhatsApp-Nachricht und jedes Foto wird mit Zeitstempel archiviert. Bei Reklamationen oder Gewaehrleistungsfaellen finden Sie sofort alle Beweise – gerichtsfest und DSGVO-konform.</p>
+          <p class="text-gray-600 leading-relaxed"><strong>Beweissicherung auf der Baustelle</strong> mit NexWorker funktioniert automatisch: Jede WhatsApp-Nachricht und jedes Foto wird mit Zeitstempel archiviert. Bei Reklamationen oder Gewaehrleistungsfaellen finden Sie sofort alle Beweise - gerichtsfest und DSGVO-konform.</p>
         </div>
         <div class="bg-gray-50 rounded-xl p-6">
           <h3 class="text-xl font-bold mb-3">Kann man Dokumentation ohne App betreiben?</h3>
-          <p class="text-gray-600 leading-relaxed">Ja. <strong>Dokumentation ohne App</strong> ist der Schluessel zu hoher Akzeptanz. NexWorker nutzt WhatsApp, Telegram oder Signal – Messenger, die Ihre Monteere bereits verwenden. Keine neue App, keine Schulung, 100% Akzeptanz ab Tag 1.</p>
+          <p class="text-gray-600 leading-relaxed">Ja. <strong>Dokumentation ohne App</strong> ist der Schluessel zu hoher Akzeptanz. NexWorker nutzt WhatsApp, Telegram oder Signal - Messenger, die Ihre Monteere bereits verwenden. Keine neue App, keine Schulung, 100% Akzeptanz ab Tag 1.</p>
         </div>
         <div class="bg-gray-50 rounded-xl p-6">
           <h3 class="text-xl font-bold mb-3">Wie vermeidet man Zettelwirtschaft im Handwerk?</h3>
-          <p class="text-gray-600 leading-relaxed"><strong>Zettelwirtschaft vermeiden</strong> Sie mit NexWorker, indem alle Dokumentation digital ueber WhatsApp laeuft. Keine verlorenen Zettel, keine unleserlichen Notizen – alles zentral durchsuchbar in Ihrer Wissensdatenbank.</p>
+          <p class="text-gray-600 leading-relaxed"><strong>Zettelwirtschaft vermeiden</strong> Sie mit NexWorker, indem alle Dokumentation digital ueber WhatsApp laeuft. Keine verlorenen Zettel, keine unleserlichen Notizen - alles zentral durchsuchbar in Ihrer Wissensdatenbank.</p>
         </div>
         <div class="bg-gray-50 rounded-xl p-6">
           <h3 class="text-xl font-bold mb-3">Was ist eine KI-gestuetzte Wissensdatenbank?</h3>
-          <p class="text-gray-600 leading-relaxed">Eine <strong>KI-gestuetzte Wissensdatenbank</strong> wie NexWorker nutzt kuenstliche Intelligenz, um unstrukturierte WhatsApp-Nachrichten automatisch zu strukturieren. Das System erkennt Projekte, Probleme und Loesungen – und macht dieses Wissen durchsuchbar fuer Ihr ganzes Team.</p>
+          <p class="text-gray-600 leading-relaxed">Eine <strong>KI-gestuetzte Wissensdatenbank</strong> wie NexWorker nutzt kuenstliche Intelligenz, um unstrukturierte WhatsApp-Nachrichten automatisch zu strukturieren. Das System erkennt Projekte, Probleme und Loesungen - und macht dieses Wissen durchsuchbar fuer Ihr ganzes Team.</p>
         </div>
       </div>
     </div>
@@ -379,70 +665,125 @@
     <div class="max-w-6xl mx-auto px-6">
       <div class="flex flex-wrap justify-center items-center gap-8 md:gap-16">
         <div class="text-center">
-          <div class="text-2xl font-bold text-brand-600">50+</div>
+          <div class="text-2xl font-bold text-brand">50+</div>
           <div class="text-sm text-gray-500">Pilotkunden</div>
         </div>
         <div class="text-center">
-          <div class="text-2xl font-bold text-brand-600">15 Min</div>
+          <div class="text-2xl font-bold text-brand">15 Min</div>
           <div class="text-sm text-gray-500">Setup-Zeit</div>
         </div>
         <div class="text-center">
-          <div class="text-2xl font-bold text-brand-600">100%</div>
+          <div class="text-2xl font-bold text-brand">100%</div>
           <div class="text-sm text-gray-500">DSGVO-konform</div>
         </div>
         <div class="text-center">
-          <div class="text-2xl font-bold text-brand-600">99.9%</div>
+          <div class="text-2xl font-bold text-brand">99.9%</div>
           <div class="text-sm text-gray-500">Uptime</div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- CONTACT / CTA -->
-  <section id="contact" class="py-20 bg-gray-50">
-    <div class="max-w-xl mx-auto px-6">
-      <div class="text-center mb-10">
-        <h2 class="text-3xl md:text-4xl font-bold mb-4">Jetzt Demo starten</h2>
-        <p class="text-gray-600">Fordern Sie Ihre Demo-Nummer an. Keine Schulung, sofort einsatzbereit.</p>
-      </div>
-      <form class="space-y-4" onsubmit="event.preventDefault(); alert('Vielen Dank! Wir melden uns innerhalb von 24 Stunden.');">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">E-Mail</label>
-          <input type="email" placeholder="ihre@firma.de" class="w-full border border-gray-200 rounded-lg px-4 py-3 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none" required>
-        </div>
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Rolle</label>
-            <select class="w-full border border-gray-200 rounded-lg px-4 py-3 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none bg-white">
-              <option value="">Bitte waehlen</option>
-              <option>Monteur / Techniker</option>
-              <option>Bauleiter / Teamleiter</option>
-              <option>Geschaeftsfuehrer</option>
-              <option>Qualitaetsmanagement</option>
-              <option>Sonstige</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Mitarbeiter</label>
-            <select class="w-full border border-gray-200 rounded-lg px-4 py-3 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none bg-white">
-              <option value="">Bitte waehlen</option>
-              <option>1-5</option>
-              <option>6-20</option>
-              <option>21-50</option>
-              <option>51-100</option>
-              <option>100+</option>
-            </select>
-          </div>
-        </div>
-        <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-4 rounded-lg transition-colors">
+  <!-- CTA / CONTACT -->
+  <section id="contact" class="py-20 bg-white border-t border-gray-200">
+    <div class="max-w-4xl mx-auto px-6 text-center">
+      <h2 class="text-3xl md:text-5xl font-bold text-anthracite mb-6">Bereit fuer den Service der Zukunft?</h2>
+      <p class="text-xl text-gray-600 mb-10 max-w-2xl mx-auto">
+        Testen Sie NexWorker unverbindlich. Wir legen Ihnen einen Nummer an, und Ihr Team kann sofort losschreiben.
+      </p>
+      
+      <div class="flex flex-col sm:flex-row justify-center gap-4 mb-16">
+        <a href="mailto:kontakt@nextech-fusion.com?subject=Demo%20anfordern%20-%20NexWorker" class="bg-brand hover:bg-brand-dark text-white px-8 py-4 rounded-xl font-bold text-lg transition-all shadow-lg hover:shadow-xl hover:-translate-y-1 inline-flex items-center justify-center gap-2">
           Demo-Nummer anfordern
-        </button>
-        <p class="text-xs text-gray-500 text-center">
-          DSGVO-konform. Keine Weitergabe. Unverbindlich.
-        </p>
-      </form>
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+        </a>
+        <a href="#benefits" class="bg-transparent border-2 border-anthracite text-anthracite hover:bg-anthracite hover:text-white px-8 py-4 rounded-xl font-bold text-lg transition-all inline-flex items-center justify-center">
+          Pilot-Case Studies ansehen
+        </a>
+      </div>
+      
+      <!-- Roadmap -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-left border-t border-gray-100 pt-10 max-w-3xl mx-auto">
+        <div>
+          <div class="text-brand font-bold mb-1">01</div>
+          <div class="text-sm font-bold text-anthracite">One-Pager</div>
+          <div class="text-xs text-gray-500">Abgeschlossen</div>
+        </div>
+        <div>
+          <div class="text-brand font-bold mb-1">02</div>
+          <div class="text-sm font-bold text-anthracite">Messenger-Demo</div>
+          <div class="text-xs text-gray-500">In Vorbereitung</div>
+        </div>
+        <div>
+          <div class="text-brand font-bold mb-1">03</div>
+          <div class="text-sm font-bold text-anthracite">Case Studies</div>
+          <div class="text-xs text-gray-500">Erste 10 Pilots</div>
+        </div>
+        <div>
+          <div class="text-brand font-bold mb-1">04</div>
+          <div class="text-sm font-bold text-anthracite">Launch</div>
+          <div class="text-xs text-gray-500">Fachzeitschriften</div>
+        </div>
+      </div>
     </div>
   </section>
+
+  <!-- Footer -->
+  <footer class="bg-anthracite-dark py-8 text-center border-t border-gray-800">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="flex items-center justify-center gap-2 mb-4">
+        <div class="w-8 h-8 bg-anthracite rounded-lg flex items-center justify-center shadow-inner-light">
+          <svg class="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+          </svg>
+        </div>
+        <span class="text-white font-bold text-xl">NexWorker</span>
+      </div>
+      <p class="text-gray-400 text-sm">© 2026 NexWorker - Ein Produkt der Nextech Fusion GmbH</p>
+      <div class="flex justify-center gap-6 mt-4 text-xs text-gray-500">
+        <a href="https://nexworker.de/impressum.html" class="hover:text-gray-300 transition-colors">Impressum</a>
+        <a href="https://nexworker.de/datenschutz.html" class="hover:text-gray-300 transition-colors">Datenschutz</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- GSAP Scroll Animations -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+  <script>
+    gsap.registerPlugin(ScrollTrigger);
+
+    // Fade in elements on scroll
+    gsap.utils.toArray('section').forEach(section => {
+      const elements = section.querySelectorAll('h2, h3, p, .grid > div');
+      gsap.from(elements, {
+        scrollTrigger: {
+          trigger: section,
+          start: "top 80%",
+        },
+        y: 30,
+        opacity: 0,
+        duration: 0.8,
+        stagger: 0.1,
+        ease: "power2.out"
+      });
+    });
+
+    // Timeline items stagger
+    document.querySelectorAll('.timeline-item, .relative.flex').forEach((item, i) => {
+      gsap.from(item, {
+        scrollTrigger: {
+          trigger: item,
+          start: "top 85%",
+        },
+        y: 40,
+        opacity: 0,
+        duration: 0.8,
+        delay: i * 0.1,
+        ease: "power2.out"
+      });
+    });
+  </script>
 
   <!-- FOOTER -->
   <footer class="bg-slate-950 text-slate-400 py-12 border-t border-white/5">
@@ -450,7 +791,7 @@
       <div class="grid md:grid-cols-4 gap-8 mb-8">
         <div class="md:col-span-2">
           <div class="flex items-center gap-3 mb-4">
-            <div class="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center">
+            <div class="w-8 h-8 bg-brand rounded-lg flex items-center justify-center">
               <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.001 3.001 0 0120 15v3h-4z"/></svg>
             </div>
             <span class="text-white font-bold text-xl">NexWorker</span>
@@ -458,7 +799,7 @@
           <p class="text-sm text-slate-500 mb-3">Collective Intelligence und digitale Baudokumentation fuer den Mittelstand.</p>
           <div class="flex items-center gap-2 text-sm">
             <span class="text-slate-500">Ein Produkt von</span>
-            <a href="https://www.nextech-fusion.com/" target="_blank" rel="noopener" class="text-brand-400 hover:text-brand-300 font-medium transition-colors">Nextech Fusion GmbH</a>
+            <a href="https://www.nextech-fusion.com/" target="_blank" rel="noopener" class="text-brand-light hover:text-brand-light font-medium transition-colors">Nextech Fusion GmbH</a>
           </div>
         </div>
         <div>
@@ -483,7 +824,7 @@
         <p class="text-xs text-slate-500">2026 Nextech Fusion GmbH. Alle Rechte vorbehalten.</p>
         <div class="flex items-center gap-4 text-xs text-slate-500">
           <span class="flex items-center gap-1.5">
-            <span class="w-2 h-2 bg-brand-500 rounded-full"></span>
+            <span class="w-2 h-2 bg-brand rounded-full"></span>
             Frankfurt, Deutschland
           </span>
           <span>DSGVO-konform</span>
@@ -537,34 +878,34 @@
         ]
       }
     ];
-    
+
     let currentStep = 0;
     let isPlaying = false;
     let animationTimeouts = [];
-    
+
     function clearAllTimeouts() {
       animationTimeouts.forEach(t => clearTimeout(t));
       animationTimeouts = [];
     }
-    
+
     function updateProgress(step) {
       const data = timeline[step];
       document.getElementById('progress-bar').style.width = data.progress + '%';
       document.getElementById('current-time').textContent = data.time;
-      
+
       // Highlight current time label
       document.querySelectorAll('.time-label').forEach((el, i) => {
         el.classList.toggle('opacity-50', i !== step);
-        el.classList.toggle('text-brand-400', i === step);
+        el.classList.toggle('text-brand-light', i === step);
       });
     }
-    
+
     function addMessage(msg, index) {
       const container = document.getElementById('chat-content');
       const div = document.createElement('div');
-      
+
       div.className = 'bg-white p-2.5 rounded-lg rounded-tr-sm max-w-[85%] ml-auto text-sm shadow-sm mb-2 opacity-0 transition-opacity duration-300';
-      
+
       if (msg.isPhoto) {
         div.innerHTML = `
           <div class="bg-gray-100 rounded p-2 flex items-center gap-2">
@@ -577,23 +918,23 @@
       } else {
         div.textContent = msg.text;
       }
-      
+
       container.appendChild(div);
-      
+
       // Trigger animation
       setTimeout(() => {
         div.classList.remove('opacity-0');
         div.classList.add('opacity-100');
       }, 50);
-      
+
       // Scroll to bottom
       container.scrollTop = container.scrollHeight;
     }
-    
+
     function showSummary() {
       document.getElementById('day-summary').classList.remove('hidden');
     }
-    
+
     function runStep(step) {
       if (step >= timeline.length) {
         isPlaying = false;
@@ -601,10 +942,10 @@
         setTimeout(showSummary, 500);
         return;
       }
-      
+
       const data = timeline[step];
       updateProgress(step);
-      
+
       // Add messages with delay
       data.messages.forEach((msg, i) => {
         const t = setTimeout(() => {
@@ -612,7 +953,7 @@
         }, i * 600);
         animationTimeouts.push(t);
       });
-      
+
       // Schedule next step
       const nextDelay = data.messages.length * 600 + 1500;
       const t = setTimeout(() => {
@@ -620,7 +961,7 @@
       }, nextDelay);
       animationTimeouts.push(t);
     }
-    
+
     function togglePlay() {
       if (isPlaying) {
         // Pause
@@ -637,11 +978,11 @@
       }
       updatePlayButton();
     }
-    
+
     function updatePlayButton() {
       const icon = document.getElementById('play-icon');
       const text = document.getElementById('play-text');
-      
+
       if (isPlaying) {
         icon.innerHTML = '<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>';
         text.textContent = 'Pause';
@@ -650,32 +991,32 @@
         text.textContent = document.getElementById('day-summary').classList.contains('hidden') ? 'Demo starten' : 'Nochmal';
       }
     }
-    
+
     function restartDemo() {
       // Reset everything
       clearAllTimeouts();
       currentStep = 0;
       isPlaying = true;
-      
+
       document.getElementById('chat-content').innerHTML = '';
       document.getElementById('day-summary').classList.add('hidden');
       document.getElementById('progress-bar').style.width = '0%';
       document.getElementById('current-time').textContent = '06:30';
-      
+
       document.querySelectorAll('.time-label').forEach(el => {
         el.classList.add('opacity-50');
-        el.classList.remove('text-brand-400');
+        el.classList.remove('text-brand-light');
       });
-      
+
       updatePlayButton();
-      
+
       // Start animation
       setTimeout(() => runStep(0), 300);
     }
-    
+
     // ROI Calculator
     const sliderTech = document.getElementById('slider-tech');
-    
+
     function calcROI() {
       const tech = parseInt(sliderTech.value);
       const hours = 4;
@@ -686,11 +1027,11 @@
       document.getElementById('val-annual').textContent = annual.toLocaleString('de-DE');
       document.getElementById('val-days').textContent = days.toLocaleString('de-DE');
     }
-    
+
     sliderTech.addEventListener('input', calcROI);
-    
+
     // Initialize
-    document.addEventListener('DOMContentLoaded', () => { 
+    document.addEventListener('DOMContentLoaded', () => {
       calcROI();
       // Don't auto-start demo
     });
