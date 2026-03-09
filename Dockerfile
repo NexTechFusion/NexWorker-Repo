@@ -1,6 +1,7 @@
 # NexHelper Docker Image
+# Based on Node.js with OpenClaw installed
 
-FROM openclaw/openclaw:latest
+FROM node:22-bookworm-slim
 
 LABEL maintainer="NexTech Fusion"
 LABEL description="NexHelper - Messenger-native document management for KMU"
@@ -8,6 +9,9 @@ LABEL version="2.0"
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
+    # Build essentials
+    build-essential \
+    python3 \
     # OCR dependencies
     tesseract-ocr \
     tesseract-ocr-deu \
@@ -19,23 +23,29 @@ RUN apt-get update && apt-get install -y \
     jq \
     # HTTP client
     curl \
+    wget \
     # Email utilities
     sendmail \
+    # Git (for updates)
+    git \
     # Cleanup
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Install OpenClaw globally
+RUN npm install -g openclaw@latest
+
+# Create app directory
+WORKDIR /app
+
 # Create directories
-RUN mkdir -p /app/skills /app/exports /app/storage/{memory,consent,audit}
+RUN mkdir -p /app/config /app/skills /app/exports /app/storage/{memory,consent,audit} /app/logs
 
 # Copy skills
 COPY skills/ /app/skills/
 
 # Make scripts executable
 RUN find /app/skills -name "*.sh" -exec chmod +x {} \;
-
-# Copy config template
-COPY config/config.yaml.template /app/config/config.yaml.template
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
@@ -45,8 +55,8 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 ENV NODE_ENV=production \
     TESSDATA_PREFIX=/usr/share/tesseract-ocr/5/tessdata
 
-# Working directory
-WORKDIR /app
+# Expose default port
+EXPOSE ${PORT:-3000}
 
 # Entrypoint
 ENTRYPOINT ["openclaw", "gateway", "start", "--config", "/app/config/config.yaml"]
