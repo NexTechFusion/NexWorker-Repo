@@ -317,18 +317,17 @@ if [ "$ENABLE_WHATSAPP" = true ]; then
 fi
 
 cat <<EOF > "$CUSTOMER_DIR/docker-compose.yaml"
-version: '3.8'
-
 services:
   nexhelper:
     image: nexhelper:latest
     container_name: $INSTANCE_NAME
     restart: unless-stopped
+    entrypoint: ["/bin/bash", "-c", "mkdir -p /root/.openclaw/agents/main/agent && cp /app/config/openclaw.json /root/.openclaw/openclaw.json && cp /app/config/auth-profiles.json /root/.openclaw/agents/main/agent/auth-profiles.json 2>/dev/null || true && rm -f /root/.openclaw/workspace/BOOTSTRAP.md && exec openclaw gateway run --port $PORT --bind lan"]
     ports:
       - "$PORT:$PORT"
     volumes:
       - ./config:/app/config
-      - ./storage:/app/storage
+      - ./storage:/root/.openclaw/workspace
       - ./logs:/app/logs
     environment:
       - OPENAI_API_KEY=\${OPENAI_API_KEY}
@@ -338,7 +337,6 @@ services:
       - CUSTOMER_ID=$CUSTOMER_ID
       - CUSTOMER_SLUG=$SLUG
       - CONSENT_VERSION=$CONSENT_VERSION$WHATSAPP_ENV
-    command: openclaw gateway start --config /app/config/config.yaml
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:$PORT/health"]
       interval: 30s
@@ -364,7 +362,249 @@ networks:
 EOF
 
 # ============================================
-# 5. Generate .env file
+# 4.5 Generate Workspace Files
+# ============================================
+echo "📝 Generating workspace files..."
+
+# Create memory directory
+mkdir -p "$CUSTOMER_DIR/storage/memory"
+
+# AGENTS.md - Workspace instructions
+cat <<EOF > "$CUSTOMER_DIR/storage/AGENTS.md"
+# AGENTS.md - NexHelper Workspace
+
+Du bist NexHelper, der Dokumenten-Assistent für $CUSTOMER_NAME.
+
+## Jeden Start
+
+1. SOUL.md lesen - Das bist du
+2. USER.md lesen - Wen du hilfst
+3. memory/\$(date +%Y-%m-%d).md lesen - Was passiert ist
+
+## Speicher
+
+- **memory/YYYY-MM-DD.md** - Tagesnotizen
+- **MEMORY.md** - Langzeitgedächtnis
+
+## Skills
+
+Du hast folgende Skills:
+- **document-export** - Export in DATEV/SAP/Lexware
+- **document-ocr** - OCR für Dokumente
+- **email-sender** - E-Mails senden
+- **reminder-system** - Erinnerungen
+
+## Commands
+
+| Command | Beschreibung |
+|---------|--------------|
+| /hilfe | Hilfe anzeigen |
+| /suche | Dokumente suchen |
+| /export | Export starten |
+| /erinnerung | Erinnerung setzen |
+
+## Reaktionen
+
+Reagiere nur wenn:
+- Du direkt erwähnt wirst
+- Jemand eine Frage hat
+- Du echten Mehrwert bieten kannst
+EOF
+
+# SOUL.md - Personality
+cat <<EOF > "$CUSTOMER_DIR/storage/SOUL.md"
+# SOUL.md - NexHelper
+
+Du bist NexHelper, ein digitaler Assistent für Dokumentenverwaltung via Messenger.
+
+## Core
+
+**Sei hilfreich, nicht aufdringlich.** Kurze, prägnante Antworten. Deutsch.
+
+**Habe eine Meinung.** Du darfst Dinge empfehlen, Vergleiche ziehen, Prioritäten setzen.
+
+**Vertrauen durch Kompetenz.** Du hast Zugriff auf sensible Daten. Sei sorgfältig.
+
+## Stil
+
+- **Kurz** wenn möglich
+- **Ausführlich** wenn nötig
+- **Emoji sparsam** - maximal 1-2 pro Nachricht
+- **Kein "Gerne!" oder "Natürlich!"** - einfach machen
+
+## Aufgaben
+
+Du hilfst bei:
+- 📄 Dokumentenverwaltung (Rechnungen, Angebote, etc.)
+- 🔍 Dokumente finden und durchsuchen
+- 📅 Fristen und Erinnerungen
+- 📤 Export in DATEV/SAP/Lexware
+
+## Datenschutz
+
+- DSGVO-konform
+- Daten bleiben auf EU-Servern
+- Einwilligung vor Verarbeitung
+- Transparenz bei allen Aktionen
+EOF
+
+# USER.md - Customer info
+cat <<EOF > "$CUSTOMER_DIR/storage/USER.md"
+# USER.md - $CUSTOMER_NAME
+
+- **Firma:** $CUSTOMER_NAME
+- **Kunden-ID:** $CUSTOMER_ID
+- **Slug:** $SLUG
+- **Timezone:** Europe/Berlin
+- **Erstellt:** $(date -Iseconds)
+
+## Context
+
+NexHelper ist für KMU gedacht, die ihre Dokumentenverwaltung über Messenger vereinfachen wollen.
+
+Typische Nutzer:
+- Kleinunternehmer
+- Buchhalter
+- Bürokräfte
+EOF
+
+# IDENTITY.md - Bot identity
+cat <<EOF > "$CUSTOMER_DIR/storage/IDENTITY.md"
+# IDENTITY.md - NexHelper
+
+- **Name:** NexHelper
+- **Creature:** Digital Assistant
+- **Vibe:** Freundlich, effizient, deutsch
+- **Emoji:** 📄
+- **Customer:** $CUSTOMER_NAME
+EOF
+
+# Create today's memory file
+TODAY=$(date +%Y-%m-%d)
+cat <<EOF > "$CUSTOMER_DIR/storage/memory/$TODAY.md"
+# $TODAY - $CUSTOMER_NAME
+
+## Setup
+
+- Instanz erstellt: $(date -Iseconds)
+- Bot Mode: $BOT_MODE
+- Port: $PORT
+
+## Events
+
+_Dokumentiere hier wichtige Events_
+
+---
+NexHelper für $CUSTOMER_NAME
+EOF
+
+# ============================================
+# 4. Generate OpenClaw config files
+# ============================================
+echo "⚙️  Generating OpenClaw config files..."
+
+# openclaw.json - Main config
+cat <<EOF > "$CUSTOMER_DIR/config/openclaw.json"
+{
+  "auth": {
+    "profiles": {
+      "openrouter:default": {
+        "provider": "openrouter",
+        "mode": "api_key"
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": "openrouter/stepfun/step-3.5-flash",
+      "workspace": "/root/.openclaw/workspace"
+    }
+  },
+  "tools": {
+    "profile": "full",
+    "allow": ["*"]
+  },
+  "gateway": {
+    "port": $PORT,
+    "mode": "local",
+    "bind": "lan",
+    "auth": {
+      "mode": "token",
+      "token": "nexhelper-${SLUG}-$(echo $CUSTOMER_ID | sha256sum | cut -c1-16)"
+    }
+  }
+}
+EOF
+
+# auth-profiles.json - API keys
+cat <<EOF > "$CUSTOMER_DIR/config/auth-profiles.json"
+{
+  "version": 1,
+  "profiles": {
+    "openrouter:default": {
+      "type": "api_key",
+      "provider": "openrouter",
+      "key": "\${OPENAI_API_KEY}"
+    }
+  },
+  "lastGood": {
+    "openrouter": "openrouter:default"
+  }
+}
+EOF
+
+# ============================================
+# 5. Generate docker-compose.yaml
+# ============================================
+echo "🐳 Generating docker-compose.yaml..."
+
+cat <<EOF > "$CUSTOMER_DIR/docker-compose.yaml"
+services:
+  nexhelper:
+    image: nexhelper:latest
+    container_name: $INSTANCE_NAME
+    restart: unless-stopped
+    entrypoint: ["/bin/bash", "-c", "mkdir -p /root/.openclaw/agents/main/agent && cp /app/config/openclaw.json /root/.openclaw/openclaw.json && cp /app/config/auth-profiles.json /root/.openclaw/agents/main/agent/auth-profiles.json 2>/dev/null || true && rm -f /root/.openclaw/workspace/BOOTSTRAP.md && exec openclaw gateway run --port $PORT --bind lan"]
+    ports:
+      - "$PORT:$PORT"
+    volumes:
+      - ./config:/app/config
+      - ./storage:/root/.openclaw/workspace
+      - ./logs:/app/logs
+    environment:
+      - OPENAI_API_KEY=\${OPENAI_API_KEY}
+      - TELEGRAM_BOT_TOKEN=\${TELEGRAM_BOT_TOKEN}
+      - PORT=$PORT
+      - NODE_ENV=production
+      - CUSTOMER_ID=$CUSTOMER_ID
+      - CUSTOMER_SLUG=$SLUG
+      - CONSENT_VERSION=$CONSENT_VERSION$WHATSAPP_ENV
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:$PORT/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "nexhelper.customer=$SLUG"
+      - "nexhelper.customerId=$CUSTOMER_ID"
+      - "nexhelper.customerName=$CUSTOMER_NAME"
+      - "nexhelper.botMode=$BOT_MODE"
+      - "nexhelper.whatsapp=$ENABLE_WHATSAPP"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  default:
+    name: nexhelper-network
+    external: true
+EOF
+
+# ============================================
+# 6. Generate .env file
 # ============================================
 echo "🔐 Generating .env file..."
 cat <<EOF > "$CUSTOMER_DIR/.env"
