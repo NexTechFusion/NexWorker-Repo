@@ -321,7 +321,7 @@ version: '3.8'
 
 services:
   nexhelper:
-    image: openclaw/openclaw:latest
+    image: nexhelper:latest
     container_name: $INSTANCE_NAME
     restart: unless-stopped
     ports:
@@ -498,6 +498,25 @@ chmod +x "$CUSTOMER_DIR/consent.sh"
 # ============================================
 echo "🌐 Ensuring Docker network exists..."
 docker network create nexhelper-network 2>/dev/null || true
+
+# ============================================
+# 7.5 Check for nexhelper image
+# ============================================
+if ! docker image inspect nexhelper:latest &> /dev/null; then
+    echo ""
+    echo "⚠️  nexhelper:latest image not found!"
+    echo "   Building image first..."
+    echo ""
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [ -f "$SCRIPT_DIR/build-image.sh" ]; then
+        "$SCRIPT_DIR/build-image.sh" latest
+    else
+        echo "❌ build-image.sh not found"
+        echo "   Run: ./build-image.sh"
+        echo "   Or use: image: openclaw/openclaw:latest"
+        exit 1
+    fi
+fi
 
 # ============================================
 # 8. Start the container (if auto-start)
