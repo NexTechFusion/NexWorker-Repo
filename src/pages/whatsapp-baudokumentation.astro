@@ -1,0 +1,140 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="WhatsApp Dokumentation ohne App" isMainPage={false}>
+
+    <!-- Hero -->
+    <section class="relative overflow-hidden bg-white" id="hero">
+        <div class="absolute inset-0 bg-grid opacity-30 pointer-events-none z-0"></div>
+        <div class="max-w-4xl mx-auto px-6 relative z-10 pt-28 pb-16 md:pt-36 md:pb-24">
+            <div class="text-center mb-12 gs-reveal-hero">
+                <span class="text-brand font-bold text-sm uppercase tracking-wider bg-brand-50 px-3 py-1 rounded-full px-5 py-2">Messenger-basierte Dokumentation</span>
+                <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 mt-6 mb-8 leading-tight">WhatsApp Dokumentation – ohne App</h1>
+                <p class="text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed">Monteure chatten wie gewohnt. NexWorker sichert Zeiten, Fotos und Wissen automatisch. Keine App, 15 Min. Setup.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Why No App Section -->
+    <section class="py-20 bg-slate-50 border-y border-slate-100">
+        <div class="max-w-4xl mx-auto px-6">
+            <h2 class="text-3xl font-bold text-slate-900 mb-12 text-center gs-fade-up">Warum ohne App?</h2>
+            <div class="grid md:grid-cols-2 gap-8 gs-fade-up">
+                <div class="bg-white p-8 rounded-2xl border border-slate-200 shadow-soft">
+                    <h3 class="font-bold text-xl mb-4 text-slate-800 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        Das Problem mit Apps
+                    </h3>
+                    <ul class="space-y-3 text-slate-600">
+                        <li class="flex items-start gap-3"><span class="text-red-500 font-bold shrink-0">✗</span> Monteure vergessen sie zu nutzen</li>
+                        <li class="flex items-start gap-3"><span class="text-red-500 font-bold shrink-0">✗</span> Schulungsaufwand für jeden Neuen</li>
+                        <li class="flex items-start gap-3"><span class="text-red-500 font-bold shrink-0">✗</span> Vergessene Passwörter</li>
+                        <li class="flex items-start gap-3"><span class="text-red-500 font-bold shrink-0">✗</span> App-Müdigkeit ("Noch eine App?")</li>
+                        <li class="flex items-start gap-3"><span class="text-red-500 font-bold shrink-0">✗</span> Geringe Akzeptanz ab Tag 1</li>
+                    </ul>
+                </div>
+                <div class="bg-brand-50 p-8 rounded-2xl border border-brand-100 shadow-soft">
+                    <h3 class="font-bold text-xl mb-4 text-brand flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        Die NexWorker-Lösung
+                    </h3>
+                    <ul class="space-y-3 text-slate-700">
+                        <li class="flex items-start gap-3 font-medium"><span class="text-brand font-bold shrink-0">✓</span> WhatsApp, Telegram, Teams – was sie schon kennen</li>
+                        <li class="flex items-start gap-3 font-medium"><span class="text-brand font-bold shrink-0">✓</span> Keine Schulung nötig</li>
+                        <li class="flex items-start gap-3 font-medium"><span class="text-brand font-bold shrink-0">✓</span> Keine Passwörter</li>
+                        <li class="flex items-start gap-3 font-medium"><span class="text-brand font-bold shrink-0">✓</span> 100% Akzeptanz – sie chatten sowieso</li>
+                        <li class="flex items-start gap-3 font-medium"><span class="text-brand font-bold shrink-0">✓</span> Sofort produktiv</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Comparison Table -->
+    <section class="py-20 bg-white">
+        <div class="max-w-4xl mx-auto px-6">
+            <h2 class="text-3xl font-bold text-slate-900 mb-12 text-center gs-fade-up">Vergleich: App vs. Messenger</h2>
+            <div class="overflow-x-auto rounded-3xl border border-slate-200 shadow-soft gs-fade-up">
+                <table class="w-full text-sm text-left">
+                    <thead class="bg-slate-50 border-b border-slate-200">
+                        <tr>
+                            <th class="py-5 px-6 font-bold text-slate-800">Feature</th>
+                            <th class="py-5 px-6 text-center text-slate-400 font-bold">PlanRadar</th>
+                            <th class="py-5 px-6 text-center text-slate-400 font-bold">Craftnote</th>
+                            <th class="py-5 px-6 text-center bg-brand-50 font-bold text-brand text-lg">NexWorker</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        <tr class="group hover:bg-slate-50 transition-colors">
+                            <td class="py-5 px-6 font-bold text-slate-700">App Installation</td>
+                            <td class="py-5 px-6 text-center text-red-500 font-medium whitespace-nowrap">Ja (Pflicht)</td>
+                            <td class="py-5 px-6 text-center text-red-500 font-medium whitespace-nowrap">Ja (Pflicht)</td>
+                            <td class="py-5 px-6 text-center bg-brand/5 font-bold text-brand leading-none">Nein</td>
+                        </tr>
+                        <tr class="group hover:bg-slate-50 transition-colors">
+                            <td class="py-5 px-6 font-bold text-slate-700">Schulungsaufwand</td>
+                            <td class="py-5 px-6 text-center text-red-500 font-medium">Hoach</td>
+                            <td class="py-5 px-6 text-center text-amber-500 font-medium">Mittel</td>
+                            <td class="py-5 px-6 text-center bg-brand/5 font-bold text-brand leading-none">Keine</td>
+                        </tr>
+                        <tr class="group hover:bg-slate-50 transition-colors">
+                            <td class="py-5 px-6 font-bold text-slate-700">Setup-Zeit</td>
+                            <td class="py-5 px-6 text-center text-slate-500">2+ Stunden</td>
+                            <td class="py-5 px-6 text-center text-slate-500">1+ Stunde</td>
+                            <td class="py-5 px-6 text-center bg-brand/5 font-bold text-brand leading-none text-base">15 Min.</td>
+                        </tr>
+                        <tr class="group hover:bg-slate-50 transition-colors">
+                            <td class="py-5 px-6 font-bold text-slate-700">DSGVO-konform</td>
+                            <td class="py-5 px-6 text-center text-emerald-600 font-semibold">Ja</td>
+                            <td class="py-5 px-6 text-center text-emerald-600 font-semibold">Ja</td>
+                            <td class="py-5 px-6 text-center bg-brand/5 font-bold text-emerald-600 leading-none">Ja</td>
+                        </tr>
+                        <tr class="group hover:bg-slate-50 transition-colors">
+                            <td class="py-5 px-6 font-bold text-slate-700">Wissenssicherung</td>
+                            <td class="py-5 px-6 text-center text-red-500 font-medium">Nein</td>
+                            <td class="py-5 px-6 text-center text-red-500 font-medium">Nein</td>
+                            <td class="py-5 px-6 text-center bg-brand/5 font-bold text-brand leading-none">Ja (KI)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Integration Section -->
+    <section class="py-20 bg-slate-50 border-t border-slate-200" id="integration">
+        <div class="max-w-4xl mx-auto px-6 text-center gs-fade-up">
+            <h2 class="text-3xl font-bold text-slate-900 mb-8">Sofort einsatzbereit &amp; integriert</h2>
+            <p class="text-lg text-slate-500 mb-12">NexWorker liefert strukturierte Daten für Ihr Büro – so geht die Abrechnung am Freitag von selbst.</p>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                {[
+                    {name: "Arbeitszeiten", icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"},
+                    {name: "Fotodoku", icon: "M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"},
+                    {name: "Mängel-Meldungen", icon: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"},
+                    {name: "Sprachnotiz-Transkript", icon: "M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"}
+                ].map((item) => (
+                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-soft hover:shadow-md transition-shadow">
+                        <div class="w-10 h-10 bg-brand-50 rounded-lg flex items-center justify-center text-brand mx-auto mb-4">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={item.icon}></path></svg>
+                        </div>
+                        <h4 class="font-bold text-slate-800 text-sm whitespace-nowrap">{item.name}</h4>
+                    </div>
+                ))}
+            </div>
+        </div>
+    </section>
+
+    <section class="py-20 bg-surface relative overflow-hidden" id="cta">
+        <div class="absolute inset-0 bg-grid-dark opacity-30 pointer-events-none"></div>
+        <div class="max-w-4xl mx-auto px-6 text-center relative z-10 gs-fade-up">
+            <h2 class="text-3xl md:text-5xl font-bold text-white mb-6">Bereit für Dokumentation ohne App?</h2>
+            <p class="text-xl text-slate-400 mb-10 leading-relaxed max-w-2xl mx-auto">15 Minuten Setup. Keine Schulung. DSGVO-konform. Starten Sie heute mit NexWorker.</p>
+            <a href="/#cta" class="inline-flex items-center gap-2 bg-brand hover:bg-brand-dark text-white px-10 py-5 rounded-2xl font-bold text-lg transition-all shadow-glow hover:scale-105">
+                Kostenlose Demo anfordern
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+            </a>
+        </div>
+    </section>
+</Layout>

@@ -1,0 +1,42 @@
+---
+const { 
+  overline, 
+  title, 
+  description, 
+  ctaText = "Demo-Nummer anfordern", 
+  ctaLink = "#contact" 
+} = Astro.props;
+---
+
+<section class="relative py-16 md:py-24 bg-white overflow-hidden">
+    <!-- Abstract Box Grid Pattern -->
+    <div class="absolute inset-0 bg-grid opacity-30 pointer-events-none"></div>
+
+    <div class="max-w-4xl mx-auto px-6 relative z-10">
+        <div class="text-center mb-12">
+            {overline && <span class="text-brand font-bold text-sm uppercase tracking-widest bg-brand-50 px-3 py-1 rounded-full mb-6 inline-block">{overline}</span>}
+            <h1 class="text-4xl md:text-5xl font-bold text-slate-900 mt-4 leading-tight">
+                {title}
+            </h1>
+            <p class="text-xl text-slate-600 max-w-2xl mx-auto mt-6 leading-relaxed">
+                {description}
+            </p>
+            <div class="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
+                <a href={ctaLink} class="bg-brand hover:bg-brand-dark text-white px-8 py-4 rounded-xl font-bold text-lg transition-all shadow-glow flex items-center justify-center gap-2 group">
+                    {ctaText}
+                    <svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    .bg-grid {
+        background-size: 40px 40px;
+        background-image: linear-gradient(to right, rgba(15, 23, 42, 0.03) 1px, transparent 1px),
+                          linear-gradient(to bottom, rgba(15, 23, 42, 0.03) 1px, transparent 1px);
+        mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%);
+        -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%);
+    }
+</style>

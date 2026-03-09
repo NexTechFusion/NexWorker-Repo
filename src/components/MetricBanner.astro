@@ -1,0 +1,34 @@
+---
+const { metrics = [
+    { label: "Minuten bis zum ersten Bericht", value: "15", icon: "time" },
+    { label: "weniger Nacherfassung pro Woche", value: "5h", icon: "save" },
+    { label: "neue Apps fuer Ihr Team", value: "0", icon: "app" },
+    { label: "DSGVO-konform, Hosting DE", value: "100%", icon: "lock" }
+] } = Astro.props;
+---
+
+<section class="py-12 bg-surface-dark border-t border-slate-800 relative overflow-hidden group">
+    <div class="absolute inset-0 bg-grid-dark opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity"></div>
+    <div class="max-w-6xl mx-auto px-6 relative z-10">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-8">
+            {metrics.map((metric) => (
+                <div class="text-center group-hover:scale-105 transition-transform">
+                    <div class="text-3xl md:text-5xl font-mono font-bold text-white mb-2 leading-none">
+                        {metric.value}
+                    </div>
+                    <div class="text-xs uppercase tracking-widest text-slate-400 font-medium">
+                        {metric.label}
+                    </div>
+                </div>
+            ))}
+        </div>
+    </div>
+</section>
+
+<style>
+    .bg-grid-dark {
+        background-size: 40px 40px;
+        background-image: linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+                          linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    }
+</style>

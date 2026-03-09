@@ -1,0 +1,93 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Beweissicherung Baustelle App-frei" isMainPage={false}>
+    <!-- Navigation Replacement: Navbar is already in Layout.astro -->
+
+    <!-- Hero -->
+    <section class="relative overflow-hidden bg-white" id="hero">
+        <div class="absolute inset-0 bg-grid opacity-30 pointer-events-none z-0"></div>
+        <div class="max-w-4xl mx-auto px-6 relative z-10 pt-28 pb-16 md:pt-36 md:pb-24">
+            <div class="text-center mb-12 gs-reveal-hero">
+                <span class="text-brand font-bold text-sm uppercase tracking-wider bg-brand-50 px-3 py-1 rounded-full px-5 py-2">Rechtssichere Dokumentation</span>
+                <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 mt-6 mb-8 leading-tight">Beweissicherung Baustelle – ohne App</h1>
+                <p class="text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed">Fotos, Zeitstempel und Mängel-Doku automatisch per Messenger. DSGVO-konform, GoBD-konform, 15 Minuten Setup.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Problem Section -->
+    <section class="py-20 bg-slate-50 border-y border-slate-100">
+        <div class="max-w-4xl mx-auto px-6">
+            <h2 class="text-3xl font-bold text-slate-900 mb-12 text-center gs-fade-up">Das Problem: Beweislast im Handwerk</h2>
+            <div class="grid md:grid-cols-2 gap-8 gs-fade-up">
+                <div class="bg-white p-8 rounded-2xl border border-slate-200 shadow-soft">
+                    <h3 class="font-bold text-xl mb-4 text-red-600 flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        Ohne Beweissicherung
+                    </h3>
+                    <ul class="space-y-3 text-slate-600">
+                        <li class="flex items-start gap-3"><span class="text-red-500 font-bold shrink-0">✗</span> Mängelansprüche nicht abwehrbar</li>
+                        <li class="flex items-start gap-3"><span class="text-red-500 font-bold shrink-0">✗</span> Fotos auf 5 verschiedenen Handys</li>
+                        <li class="flex items-start gap-3"><span class="text-red-500 font-bold shrink-0">✗</span> Keine Zeitstempel, keine Projektzuordnung</li>
+                        <li class="flex items-start gap-3"><span class="text-red-500 font-bold shrink-0">✗</span> Zettel gehen verloren</li>
+                        <li class="flex items-start gap-3"><span class="text-red-500 font-bold shrink-0">✗</span> Gerichtsunverwertbare Dokumentation</li>
+                    </ul>
+                </div>
+                <div class="bg-brand-50 p-8 rounded-2xl border border-brand-100 shadow-soft">
+                    <h3 class="font-bold text-xl mb-4 text-brand flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        Mit NexWorker
+                    </h3>
+                    <ul class="space-y-3 text-slate-700">
+                        <li class="flex items-start gap-3 font-medium"><span class="text-brand font-bold shrink-0">✓</span> Alle Fotos automatisch archiviert</li>
+                        <li class="flex items-start gap-3 font-medium"><span class="text-brand font-bold shrink-0">✓</span> Zeitstempel & GPS automatisch</li>
+                        <li class="flex items-start gap-3 font-medium"><span class="text-brand font-bold shrink-0">✓</span> Projektzuordnung per Chat</li>
+                        <li class="flex items-start gap-3 font-medium"><span class="text-brand font-bold shrink-0">✓</span> GoBD-konform in Deutschland gehostet</li>
+                        <li class="flex items-start gap-3 font-medium"><span class="text-brand font-bold shrink-0">✓</span> Gerichtsfeste Dokumentation</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Legal Requirements -->
+    <section class="py-20 bg-white">
+        <div class="max-w-4xl mx-auto px-6">
+            <h2 class="text-3xl font-bold text-slate-900 mb-12 text-center gs-fade-up">Rechtliche Anforderungen 2026</h2>
+            
+            <div class="space-y-6 gs-fade-up">
+                <div class="bg-slate-50 border-l-4 border-brand p-8 rounded-r-2xl hover:bg-white hover:shadow-soft transition-all">
+                    <h3 class="font-bold text-xl text-slate-900 mb-3">EU-Bauproduktenverordnung (BauPVO 2024/3110)</h3>
+                    <p class="text-slate-600 mb-2"><strong>Seit 8. Januar 2026:</strong> Material muss lückenlos zu Projekten zugeordnet werden.</p>
+                    <p class="text-slate-600 font-medium">NexWorker erfasst automatisch Fotos, Zeitstempel und Projektzuordnung – der digitale Produktpass entsteht ohne Mehraufwand.</p>
+                </div>
+                
+                <div class="bg-slate-50 border-l-4 border-brand p-8 rounded-r-2xl hover:bg-white hover:shadow-soft transition-all">
+                    <h3 class="font-bold text-xl text-slate-900 mb-3">NIS2-Umsetzungsgesetz</h3>
+                    <p class="text-slate-600 mb-2"><strong>Frist: 6. März 2026:</strong> Betroffene Betriebe (>50 MA, >10 Mio. €) müssen IT-Sicherheit und Dokumentation nachweisen.</p>
+                    <p class="text-slate-600 font-medium">NexWorker sichert Kommunikationsdaten automatisch und revisionssicher auf deutschen Servern.</p>
+                </div>
+                
+                <div class="bg-slate-50 border-l-4 border-brand p-8 rounded-r-2xl hover:bg-white hover:shadow-soft transition-all">
+                    <h3 class="font-bold text-xl text-slate-900 mb-3">GoBD & DSGVO</h3>
+                    <p class="text-slate-600 font-medium">Alle Dokumentation wird GoBD-konform archiviert. Hosting in Deutschland. Keine Daten in US-Clouds.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTAs Navbar is at footer in layout -->
+    <section class="py-20 bg-surface relative overflow-hidden" id="cta">
+        <div class="absolute inset-0 bg-grid-dark opacity-30 pointer-events-none"></div>
+        <div class="max-w-4xl mx-auto px-6 text-center relative z-10 gs-fade-up">
+            <h2 class="text-3xl md:text-5xl font-bold text-white mb-6">Bereit für rechtssichere Dokumentation?</h2>
+            <p class="text-xl text-slate-400 mb-10 leading-relaxed max-w-2xl mx-auto">Keine App, 15 Minuten Setup, DSGVO-konform. Starten Sie heute mit NexWorker.</p>
+            <a href="/#cta" class="inline-flex items-center gap-2 bg-brand hover:bg-brand-dark text-white px-10 py-5 rounded-2xl font-bold text-lg transition-all shadow-glow hover:scale-105">
+                Demo-Nummer anfordern
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+            </a>
+        </div>
+    </section>
+</Layout>
