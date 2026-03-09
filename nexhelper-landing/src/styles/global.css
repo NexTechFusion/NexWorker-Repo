@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+/* Custom Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* Base Styles */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* GSAP Animation Classes */
+.gs-fade-up {
+  opacity: 0;
+  transform: translateY(30px);
+}
+
+.gs-reveal {
+  opacity: 0;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Selection Color */
+::selection {
+  background-color: rgba(13, 148, 136, 0.2);
+  color: #0D9488;
+}
+
+/* Gradient Text */
+.gradient-text {
+  background: linear-gradient(135deg, #0D9488 0%, #14B8A6 50%, #06B6D4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Chat Bubble Styles */
+.chat-bubble-user {
+  border-radius: 1rem 1rem 0.25rem 1rem;
+}
+
+.chat-bubble-bot {
+  border-radius: 1rem 1rem 1rem 0.25rem;
+}
+
+/* FAQ Accordion */
+.faq-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out;
+}
+
+.faq-content.open {
+  max-height: 500px;
+}

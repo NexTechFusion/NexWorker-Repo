@@ -1,0 +1,638 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="NexHelper - Dokumenten-Intelligenz für KMU">
+    <!-- Navigation -->
+    <nav class="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16 md:h-20">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 md:w-10 md:h-10 bg-brand rounded-xl flex items-center justify-center">
+                        <svg class="w-5 h-5 md:w-6 md:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                    </div>
+                    <span class="text-lg md:text-xl font-bold text-slate-900">NexHelper</span>
+                </div>
+                
+                <div class="hidden md:flex items-center gap-8">
+                    <a href="#preise" class="text-sm text-slate-600 hover:text-brand transition-colors">Preise</a>
+                    <a href="#kontakt" class="bg-brand hover:bg-brand-dark text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition-colors">Kontakt</a>
+                </div>
+                
+                <button class="md:hidden p-2" id="mobile-menu-btn">
+                    <svg class="w-6 h-6 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="pt-24 md:pt-32 pb-16 md:pb-20 bg-gradient-to-b from-teal-50/50 to-white overflow-hidden">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+                <!-- Hero Content -->
+                <div class="order-2 lg:order-1 gs-fade-up">
+                    <div class="inline-flex items-center gap-2 bg-brand/10 text-brand px-4 py-2 rounded-full text-xs font-semibold mb-6">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                        Dokumenten-Intelligenz für KMU
+                    </div>
+                    
+                    <h1 class="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-extrabold text-slate-900 leading-tight tracking-tight mb-6">
+                        Dokumente chatten statt suchen.<br>
+                        <span class="gradient-text">KI macht den Rest.</span>
+                    </h1>
+                    
+                    <p class="text-base md:text-lg text-slate-600 mb-8 max-w-xl">
+                        Briefe, Rechnungen, Verträge – einfach per Messenger senden. Die KI erkennt Fristen, kategorisiert automatisch und macht alles durchsuchbar. Keine App, 5 Min. Setup.
+                    </p>
+                    
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <a href="#kontakt" class="group bg-brand hover:bg-brand-dark text-white px-8 py-4 rounded-xl font-semibold text-base transition-all shadow-glow hover:shadow-lg inline-flex items-center justify-center gap-2">
+                            Kostenlos testen
+                            <svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+                            </svg>
+                        </a>
+                        <a href="#wiesfunktioniert" class="group border-2 border-slate-200 hover:border-brand text-slate-700 hover:text-brand px-8 py-4 rounded-xl font-semibold text-base transition-all inline-flex items-center justify-center gap-2">
+                            Wie's funktioniert
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Phone Mockup -->
+                <div class="order-1 lg:order-2 relative gs-reveal-hero w-full max-w-[280px] sm:max-w-[300px] lg:max-w-[320px] mx-auto">
+                    <div class="relative bg-slate-800 rounded-[2.5rem] p-[6px] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] ring-1 ring-white/[0.08]">
+                        <div class="w-full aspect-[9/18.5] bg-white rounded-[2.2rem] overflow-hidden flex flex-col relative">
+                            <div class="absolute top-0 inset-x-0 h-6 flex justify-center z-30 pt-1.5">
+                                <div class="w-20 h-[18px] bg-slate-800 rounded-full"></div>
+                            </div>
+
+                            <div class="bg-white/95 backdrop-blur pt-9 pb-3 px-4 flex items-center gap-2.5 z-20 border-b border-slate-100">
+                                <div class="w-10 h-10 rounded-full bg-brand/10 flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="font-semibold text-slate-800 text-[13px] leading-tight">NexHelper</p>
+                                    <p class="text-[10px] text-teal-500 font-medium">Dokumenten-Assistent</p>
+                                </div>
+                            </div>
+
+                            <div class="flex-1 bg-slate-50 px-3 py-3 flex flex-col justify-end gap-2.5 overflow-hidden">
+                                <div class="self-end chat-bubble-user bg-teal-100 border border-teal-200 max-w-[75%] px-3 py-2 shadow-sm chat-anim-1 opacity-0">
+                                    <p class="text-[11px] leading-snug text-slate-700">Foto von Rechnung hochgeladen</p>
+                                    <span class="text-[9px] text-slate-400 block text-right mt-0.5">gerade</span>
+                                </div>
+
+                                <div class="self-start chat-bubble-bot bg-white border border-slate-200 max-w-[88%] px-3 py-2.5 shadow-sm relative chat-anim-2 opacity-0">
+                                    <div class="absolute left-0 top-2.5 bottom-2.5 w-[3px] bg-brand rounded-r"></div>
+                                    <div class="text-[11px] font-mono text-slate-600 space-y-1 pl-2">
+                                        <div class="flex items-center gap-1.5 text-brand font-semibold">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                            Rechnung erkannt
+                                        </div>
+                                        <div class="text-slate-500">Absender: Stadtwerke</div>
+                                        <div class="text-slate-500">Betrag: 127,50€</div>
+                                        <div class="text-slate-500">Fällig: 15.03.2026</div>
+                                        <div class="pt-1 mt-1 border-t border-slate-100 text-teal-600 font-semibold text-[10px]">⏰ Reminder erstellt</div>
+                                    </div>
+                                </div>
+
+                                <div class="self-end chat-bubble-user bg-teal-100 border border-teal-200 max-w-[85%] px-3 py-2 shadow-sm chat-anim-3 opacity-0">
+                                    <p class="text-[11px] leading-snug text-slate-700">Zeig mir alle offenen Rechnungen</p>
+                                </div>
+
+                                <div class="self-start chat-bubble-bot bg-white border border-slate-200 max-w-[88%] px-3 py-2.5 shadow-sm relative chat-anim-4 opacity-0">
+                                    <div class="absolute left-0 top-2.5 bottom-2.5 w-[3px] bg-teal-500 rounded-r"></div>
+                                    <div class="text-[11px] pl-2">
+                                        <div class="text-brand font-semibold mb-1">3 offene Rechnungen:</div>
+                                        <div class="text-slate-600 space-y-0.5">
+                                            <div>• Stadtwerke: 127,50€</div>
+                                            <div>• Telekom: 45,00€</div>
+                                            <div>• Miete: 850,00€</div>
+                                        </div>
+                                        <div class="text-brand font-semibold text-[10px] mt-1 pt-1 border-t border-slate-100">Total: 1.022,50€</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-white border-t border-slate-100 px-3 py-2 flex items-center gap-2 z-20">
+                                <div class="flex-1 bg-slate-50 border border-slate-200 h-8 rounded-full px-3 flex items-center text-[11px] text-slate-400 font-medium">Fragen Sie mich...</div>
+                                <div class="w-8 h-8 bg-brand rounded-full flex items-center justify-center text-white flex-shrink-0">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- EINE große "Wie's funktioniert" Section -->
+    <section id="wiesfunktioniert" class="py-16 md:py-24 bg-slate-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            
+            <!-- Das Problem -->
+            <div class="text-center mb-16 md:mb-20 gs-fade-up">
+                <h2 class="text-2xl md:text-3xl lg:text-4xl font-bold text-slate-900 mb-4">Das Problem ist real</h2>
+                <p class="text-slate-500 text-sm md:text-base max-w-2xl mx-auto mb-10">Der Dokumentenalltag in deutschen KMU kostet Zeit, Geld und Nerven.</p>
+                
+                <div class="grid grid-cols-3 gap-4 md:gap-8 max-w-3xl mx-auto">
+                    <div class="bg-white p-4 md:p-6 rounded-xl border border-slate-200 text-center">
+                        <div class="text-2xl md:text-3xl font-bold text-red-500 mb-1">30 Min</div>
+                        <p class="text-xs md:text-sm text-slate-500">täglich nach Dokumenten gesucht<span class="hidden md:inline">*</span></p>
+                    </div>
+                    <div class="bg-white p-4 md:p-6 rounded-xl border border-slate-200 text-center">
+                        <div class="text-2xl md:text-3xl font-bold text-red-500 mb-1">23%</div>
+                        <p class="text-xs md:text-sm text-slate-500">verpasste Fristen<span class="hidden md:inline">*</span></p>
+                    </div>
+                    <div class="bg-white p-4 md:p-6 rounded-xl border border-slate-200 text-center">
+                        <div class="text-2xl md:text-3xl font-bold text-red-500 mb-1">12%</div>
+                        <p class="text-xs md:text-sm text-slate-500">doppelt bezahlte Rechnungen<span class="hidden md:inline">*</span></p>
+                    </div>
+                </div>
+                <p class="text-center text-xs text-slate-400 mt-6">* Quelle: Bitkom KMU-Digitalisierungsstudie 2025</p>
+            </div>
+
+            <!-- Die Lösung -->
+            <div class="bg-white rounded-3xl border border-slate-200 shadow-xl p-6 md:p-12 mb-16 md:mb-20 gs-fade-up">
+                <div class="grid lg:grid-cols-2 gap-8 md:gap-12 items-center">
+                    
+                    <!-- Links: Konzept -->
+                    <div>
+                        <div class="inline-flex items-center gap-2 bg-brand/10 text-brand px-4 py-2 rounded-full text-xs font-semibold mb-4">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                            Die Lösung
+                        </div>
+                        <h3 class="text-2xl md:text-3xl font-bold text-slate-900 mb-4">Messenger Native</h3>
+                        <p class="text-slate-600 text-sm md:text-base mb-6 leading-relaxed">
+                            Keine neue App. Keine Schulung. Ihre Mitarbeiter nutzen einfach den gewohnten Messenger – und die KI macht den Rest.
+                        </p>
+                        
+                        <!-- Messenger Logos -->
+                        <div class="grid grid-cols-3 gap-2 mb-6">
+                            <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-2 rounded-lg justify-center">
+                                <svg class="w-4 h-4 text-green-500" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                                <span class="text-xs font-semibold text-slate-700">WhatsApp</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-2 rounded-lg justify-center">
+                                <svg class="w-4 h-4 text-blue-500" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+                                <span class="text-xs font-semibold text-slate-700">Telegram</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-2 rounded-lg justify-center">
+                                <svg class="w-4 h-4 text-blue-600" viewBox="0 0 24 24" fill="currentColor"><path d="M1.545 11.945l10.032-4.35c.94-.407 4.076-1.698 4.076-1.698s1.466-.576 1.34.746c-.042.576-.41 2.602-.778 4.79l-1.122 6.57s-.086 1.018-.923 1.04c-.837.022-2.243-.614-2.504-.82-.198-.157-3.415-2.204-4.56-3.178-.28-.238-.51-.713.017-1.138 1.243-1.001 2.721-2.247 3.628-3.138.398-.39.793-1.297-.87-.019-2.407 1.847-4.786 3.574-4.786 3.574s-.556.37-1.596.037c-1.04-.332-2.233-.772-2.233-.772s-1.096-.694.55-1.428l-.051-.007z"/></svg>
+                                <span class="text-xs font-semibold text-slate-700">Signal</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-2 rounded-lg justify-center">
+                                <svg class="w-4 h-4 text-purple-600" viewBox="0 0 24 24" fill="currentColor"><path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/></svg>
+                                <span class="text-xs font-semibold text-slate-700">Slack</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-2 rounded-lg justify-center">
+                                <svg class="w-4 h-4 text-blue-500" viewBox="0 0 24 24" fill="currentColor"><path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zm12.6 0H12.6V0H24v11.4z"/></svg>
+                                <span class="text-xs font-semibold text-slate-700">Teams</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-2 rounded-lg justify-center">
+                                <svg class="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                                <span class="text-xs font-semibold text-brand">Custom</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Key Benefits -->
+                        <div class="space-y-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 bg-brand/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                </div>
+                                <span class="text-sm md:text-base text-slate-700"><strong class="text-slate-900">5 Min Setup</strong> – Qr-Code scannen, fertig</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 bg-brand/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                </div>
+                                <span class="text-sm md:text-base text-slate-700"><strong class="text-slate-900">Keine Schulung</strong> – alle kennen Messenger</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 bg-brand/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                </div>
+                                <span class="text-sm md:text-base text-slate-700"><strong class="text-slate-900">Hohe Akzeptanz</strong> – ab Tag eins</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Rechts: Was Sie bekommen -->
+                    <div class="bg-gradient-to-br from-teal-50 to-white rounded-2xl p-6 md:p-8 border border-teal-100">
+                        <h4 class="text-lg md:text-xl font-bold text-slate-900 mb-6">Was die KI für Sie macht</h4>
+                        
+                        <div class="space-y-4">
+                            <div class="flex items-start gap-3">
+                                <div class="w-10 h-10 bg-brand/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                </div>
+                                <div>
+                                    <h5 class="font-semibold text-slate-900 text-sm md:text-base">Auto-Kategorisierung</h5>
+                                    <p class="text-xs md:text-sm text-slate-500">Rechnung, Angebot, Vertrag – die KI erkennt alles</p>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start gap-3">
+                                <div class="w-10 h-10 bg-brand/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                </div>
+                                <div>
+                                    <h5 class="font-semibold text-slate-900 text-sm md:text-base">Fristen & Reminder</h5>
+                                    <p class="text-xs md:text-sm text-slate-500">Nie wieder Zahlungsziele verpassen</p>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start gap-3">
+                                <div class="w-10 h-10 bg-brand/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                </div>
+                                <div>
+                                    <h5 class="font-semibold text-slate-900 text-sm md:text-base">Smarte Suche</h5>
+                                    <p class="text-xs md:text-sm text-slate-500">"Alle Rechnungen über 500€ von 2024"</p>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start gap-3">
+                                <div class="w-10 h-10 bg-brand/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                                </div>
+                                <div>
+                                    <h5 class="font-semibold text-slate-900 text-sm md:text-base">ERP-Export</h5>
+                                    <p class="text-xs md:text-sm text-slate-500">DATEV, SAP, Lexware – ein Klick</p>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start gap-3">
+                                <div class="w-10 h-10 bg-brand/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                                </div>
+                                <div>
+                                    <h5 class="font-semibold text-slate-900 text-sm md:text-base">DSGVO-konform</h5>
+                                    <p class="text-xs md:text-sm text-slate-500">EU-Server, Verschlüsselung, On-Premise optional</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- So einfach -->
+            <div class="text-center mb-12 md:mb-16 gs-fade-up">
+                <h3 class="text-xl md:text-2xl font-bold text-slate-900 mb-8">So einfach geht's</h3>
+                
+                <div class="grid md:grid-cols-3 gap-8 md:gap-12 max-w-4xl mx-auto mb-12">
+                    <div class="text-center">
+                        <div class="w-14 h-14 bg-brand text-white rounded-2xl flex items-center justify-center text-xl font-bold mx-auto mb-4 shadow-glow">1</div>
+                        <h4 class="font-bold text-slate-900 mb-2">Foto senden</h4>
+                        <p class="text-slate-500 text-sm">Einfach per Messenger ein Foto oder PDF schicken</p>
+                    </div>
+                    
+                    <div class="text-center">
+                        <div class="w-14 h-14 bg-brand text-white rounded-2xl flex items-center justify-center text-xl font-bold mx-auto mb-4 shadow-glow">2</div>
+                        <h4 class="font-bold text-slate-900 mb-2">KI analysiert</h4>
+                        <p class="text-slate-500 text-sm">Kategorie, Absender, Beträge und Fristen werden erkannt</p>
+                    </div>
+                    
+                    <div class="text-center">
+                        <div class="w-14 h-14 bg-brand text-white rounded-2xl flex items-center justify-center text-xl font-bold mx-auto mb-4 shadow-glow">3</div>
+                        <h4 class="font-bold text-slate-900 mb-2">Fertig</h4>
+                        <p class="text-slate-500 text-sm">Dokument gespeichert, vernetzt und per Chat auffindbar</p>
+                    </div>
+                </div>
+                
+                <!-- Live Demo -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-soft p-6 md:p-8 max-w-2xl mx-auto">
+                    <div class="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100">
+                        <div class="w-10 h-10 bg-brand/10 rounded-lg flex items-center justify-center">
+                            <svg class="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                        </div>
+                        <div class="text-left">
+                            <p class="font-bold text-slate-900 text-sm">Stadtwerke München</p>
+                            <p class="text-xs text-slate-500">Rechnung #RE-2026-0347</p>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-2 text-xs">
+                        <div class="flex justify-between">
+                            <span class="text-slate-500">Kategorie:</span>
+                            <span class="font-semibold text-brand">Rechnung</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-500">Betrag:</span>
+                            <span class="font-semibold text-slate-900">127,50 €</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-500">Fällig:</span>
+                            <span class="font-semibold text-teal-600">15.03.2026</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 pt-4 border-t border-slate-100 flex gap-2">
+                        <button class="flex-1 bg-brand text-white py-2 rounded-lg text-xs font-semibold hover:bg-brand-dark transition-colors">Zu ERP exportieren</button>
+                        <button class="px-3 border border-slate-200 rounded-lg text-xs text-slate-600 hover:border-brand hover:text-brand transition-colors">Details</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section id="preise" class="py-16 md:py-24 bg-white border-t border-slate-200">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12 md:mb-16 gs-fade-up">
+                <span class="text-brand font-bold uppercase tracking-widest text-xs mb-3 block">Preise</span>
+                <h2 class="text-2xl md:text-3xl lg:text-4xl font-bold text-slate-900 mb-4">Einfach & Transparent</h2>
+                <p class="text-slate-500 text-sm md:text-base">Alle Features, alle Integrationen. Skaliert mit Ihrem Dokumentenaufkommen.</p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-6 md:gap-8 gs-fade-up">
+                <!-- Solo -->
+                <div class="bg-white rounded-2xl p-6 md:p-8 border border-slate-200 shadow-soft hover:shadow-md transition-shadow">
+                    <h3 class="text-lg md:text-xl font-bold text-slate-900 mb-2">Solo</h3>
+                    <p class="text-slate-500 text-xs md:text-sm mb-6">Für Einzelunternehmer</p>
+                    <div class="mb-6">
+                        <span class="text-3xl md:text-4xl font-bold text-slate-900">29€</span>
+                        <span class="text-slate-500 text-sm">/Monat</span>
+                    </div>
+                    <ul class="space-y-3 mb-8 text-xs md:text-sm text-slate-600">
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-brand flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> 1 Nutzer</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-brand flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> 50 Dokumente/Monat</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-brand flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Chat + Suche</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-brand flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Auto-Kategorisierung</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-brand flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> E-Mail Reminder</li>
+                    </ul>
+                    <a href="#kontakt" class="block w-full text-center py-3 rounded-xl border border-slate-200 text-slate-700 font-semibold hover:border-brand hover:text-brand transition-colors text-sm">Kontakt</a>
+                </div>
+
+                <!-- Team -->
+                <div class="bg-gradient-to-br from-teal-600 to-teal-700 rounded-2xl p-6 md:p-8 border-2 border-teal-500 shadow-xl relative overflow-hidden transform md:-translate-y-2">
+                    <div class="absolute top-4 right-4 bg-white text-teal-600 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-sm">Beliebt</div>
+                    <h3 class="text-lg md:text-xl font-bold text-white mb-2">Team</h3>
+                    <p class="text-teal-100 text-xs md:text-sm mb-6">Für kleine Betriebe</p>
+                    <div class="mb-6">
+                        <span class="text-3xl md:text-4xl font-bold text-white">79€</span>
+                        <span class="text-teal-100 text-sm">/Monat</span>
+                    </div>
+                    <ul class="space-y-3 mb-8 text-xs md:text-sm text-white">
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-teal-200 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> 5 Nutzer</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-teal-200 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> 500 Dokumente/Monat</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-teal-200 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> ERP-Integration</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-teal-200 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Auto-Reminder (Push)</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-teal-200 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Priority Support</li>
+                    </ul>
+                    <a href="#kontakt" class="block w-full text-center py-3 rounded-xl bg-white hover:bg-teal-50 text-teal-700 font-semibold transition-colors text-sm shadow-sm">Kontakt</a>
+                </div>
+
+                <!-- Business -->
+                <div class="bg-white rounded-2xl p-6 md:p-8 border border-slate-200 shadow-soft hover:shadow-md transition-shadow">
+                    <h3 class="text-lg md:text-xl font-bold text-slate-900 mb-2">Business</h3>
+                    <p class="text-slate-500 text-xs md:text-sm mb-6">Für wachsende KMU</p>
+                    <div class="mb-6">
+                        <span class="text-3xl md:text-4xl font-bold text-slate-900">149€</span>
+                        <span class="text-slate-500 text-sm">/Monat</span>
+                    </div>
+                    <ul class="space-y-3 mb-8 text-xs md:text-sm text-slate-600">
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-brand flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Unbegrenzte Nutzer</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-brand flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Unbegrenzte Dokumente</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-brand flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> API-Zugang</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-brand flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Custom Integration</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-brand flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Dedicated Support</li>
+                    </ul>
+                    <a href="#kontakt" class="block w-full text-center py-3 rounded-xl border border-slate-200 text-slate-700 font-semibold hover:border-brand hover:text-brand transition-colors text-sm">Kontakt</a>
+                </div>
+            </div>
+            
+            <!-- Trial Info -->
+            <div class="mt-12 text-center gs-fade-up">
+                <p class="text-slate-500 text-sm">14 Tage kostenlos testen • Keine Kreditkarte nötig • Jederzeit kündbar</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="py-16 md:py-20 bg-white border-t border-slate-200">
+        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-10 gs-fade-up">
+                <h2 class="text-2xl md:text-3xl font-bold text-slate-900 mb-4">Häufige Fragen</h2>
+            </div>
+            
+            <div class="space-y-4 gs-fade-up">
+                <div class="bg-white rounded-xl border border-slate-200">
+                    <button class="faq-toggle w-full px-6 py-4 flex items-center justify-between text-left" data-faq="1">
+                        <span class="font-semibold text-slate-900 text-sm md:text-base">Wie genau funktioniert die Kategorisierung?</span>
+                        <svg class="faq-icon w-5 h-5 text-slate-400 transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="faq-content px-6 pb-4 hidden">
+                        <p class="text-slate-600 text-sm leading-relaxed">Die KI analysiert den Text des Dokuments und erkennt automatisch, ob es sich um eine Rechnung, ein Angebot, einen Vertrag, eine Mahnung oder einen Behördenbrief handelt. Dabei werden auch Absender, Beträge, Daten und Fristen extrahiert. Die Genauigkeit liegt bei über 95%.</p>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-xl border border-slate-200">
+                    <button class="faq-toggle w-full px-6 py-4 flex items-center justify-between text-left" data-faq="2">
+                        <span class="font-semibold text-slate-900 text-sm md:text-base">Wo werden meine Dokumente gespeichert?</span>
+                        <svg class="faq-icon w-5 h-5 text-slate-400 transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="faq-content px-6 pb-4 hidden">
+                        <p class="text-slate-600 text-sm leading-relaxed">Alle Daten werden auf EU-Servern (Frankfurt) gespeichert. Wir nutzen Supabase (PostgreSQL) mit Verschlüsselung at-rest und in-transit. DSGVO-konform, keine Daten verlassen die EU. On-Premise Installation möglich.</p>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-xl border border-slate-200">
+                    <button class="faq-toggle w-full px-6 py-4 flex items-center justify-between text-left" data-faq="3">
+                        <span class="font-semibold text-slate-900 text-sm md:text-base">Kann ich auch E-Mails weiterleiten?</span>
+                        <svg class="faq-icon w-5 h-5 text-slate-400 transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="faq-content px-6 pb-4 hidden">
+                        <p class="text-slate-600 text-sm leading-relaxed">Ja! Sie können E-Mails an Ihre persönliche NexHelper-Adresse weiterleiten. Anhänge werden automatisch extrahiert und analysiert. Das Feature ist in allen Plänen enthalten.</p>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-xl border border-slate-200">
+                    <button class="faq-toggle w-full px-6 py-4 flex items-center justify-between text-left" data-faq="4">
+                        <span class="font-semibold text-slate-900 text-sm md:text-base">Welche ERP-Systeme werden unterstützt?</span>
+                        <svg class="faq-icon w-5 h-5 text-slate-400 transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="faq-content px-6 pb-4 hidden">
+                        <p class="text-slate-600 text-sm leading-relaxed">Aktuell: DATEV, Lexware, SAP, pds Software. In Planung: Odoo, sevDesk, lexoffice. Über die API können Sie auch eigene Integrationen bauen (Business-Plan).</p>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-xl border border-slate-200">
+                    <button class="faq-toggle w-full px-6 py-4 flex items-center justify-between text-left" data-faq="5">
+                        <span class="font-semibold text-slate-900 text-sm md:text-base">Welche Messenger werden unterstützt?</span>
+                        <svg class="faq-icon w-5 h-5 text-slate-400 transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="faq-content px-6 pb-4 hidden">
+                        <p class="text-slate-600 text-sm leading-relaxed">WhatsApp, Telegram, Signal, Slack, Microsoft Teams. Zusätzlich bieten wir eine eigene API für Custom-Integrationen an.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Kontakt Section -->
+    <section id="kontakt" class="py-16 md:py-20 bg-slate-50 border-t border-slate-200">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center gs-fade-up">
+            <span class="text-brand font-bold uppercase tracking-widest text-xs mb-3 block">Direkter Kontakt</span>
+            <h2 class="text-2xl md:text-3xl lg:text-4xl font-bold text-slate-900 mb-4 md:mb-6 tracking-tight">Fragen? Schreiben Sie uns.</h2>
+            <p class="text-slate-500 text-sm md:text-base mb-8 md:mb-10 max-w-2xl mx-auto">
+                Kein Formular, kein Ticket-System. Einfach eine E-Mail an unser Team.
+            </p>
+            
+            <a href="mailto:info@nextech-fusion.com" class="inline-flex items-center gap-3 md:gap-4 bg-white hover:bg-teal-50 border-2 border-slate-200 hover:border-brand px-6 md:px-8 py-4 md:py-5 rounded-2xl transition-all group shadow-soft hover:shadow-md">
+                <div class="w-12 h-12 md:w-14 md:h-14 bg-brand/10 rounded-xl flex items-center justify-center text-brand group-hover:bg-brand group-hover:text-white transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                </div>
+                <div class="text-left">
+                    <p class="text-xs md:text-sm text-slate-500 font-medium">E-Mail an</p>
+                    <p class="text-lg md:text-xl font-bold text-slate-900 group-hover:text-brand transition-colors">info@nextech-fusion.com</p>
+                </div>
+            </a>
+
+            <div class="mt-8 md:mt-10 flex flex-wrap justify-center gap-4 md:gap-6 text-xs md:text-sm text-slate-400">
+                <span class="flex items-center gap-1.5">
+                    <svg class="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    Antwort in 24h
+                </span>
+                <span class="flex items-center gap-1.5">
+                    <svg class="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    DSGVO-konform
+                </span>
+                <span class="flex items-center gap-1.5">
+                    <svg class="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    Made in Germany
+                </span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-surface text-white py-12 border-t border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid md:grid-cols-4 gap-8">
+                <div class="md:col-span-2">
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="w-8 h-8 bg-brand rounded-xl flex items-center justify-center">
+                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                        </div>
+                        <span class="text-lg font-bold">NexHelper</span>
+                    </div>
+                    <p class="text-slate-400 text-sm max-w-md">
+                        Dokumenten-Intelligenz für KMU. Briefe, Rechnungen, Verträge – automatisch kategorisiert, vernetzt und auffindbar.
+                    </p>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold mb-4 text-sm">Produkt</h4>
+                    <ul class="space-y-2 text-sm text-slate-400">
+                        <li><a href="#wiesfunktioniert" class="hover:text-brand transition-colors">Wie's funktioniert</a></li>
+                        <li><a href="#preise" class="hover:text-brand transition-colors">Preise</a></li>
+                        <li><a href="#kontakt" class="hover:text-brand transition-colors">Kontakt</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold mb-4 text-sm">Rechtliches</h4>
+                    <ul class="space-y-2 text-sm text-slate-400">
+                        <li><a href="https://www.nextech-fusion.com/impressum" class="hover:text-brand transition-colors">Impressum</a></li>
+                        <li><a href="https://www.nextech-fusion.com/datenschutz" class="hover:text-brand transition-colors">Datenschutz</a></li>
+                        <li><a href="https://www.nextech-fusion.com/agb" class="hover:text-brand transition-colors">AGB</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="mt-12 pt-8 border-t border-slate-800 text-center text-sm text-slate-400">
+                <p>© 2026 NexHelper by NexTech Fusion. Made with ❤️ in Germany.</p>
+            </div>
+        </div>
+    </footer>
+</Layout>
+
+<script>
+// FAQ Toggle with event delegation
+document.querySelectorAll('.faq-toggle').forEach(button => {
+    button.addEventListener('click', () => {
+        const content = button.nextElementSibling;
+        const icon = button.querySelector('.faq-icon');
+        
+        if (content.classList.contains('hidden')) {
+            content.classList.remove('hidden');
+            icon.classList.add('rotate-180');
+        } else {
+            content.classList.add('hidden');
+            icon.classList.remove('rotate-180');
+        }
+    });
+});
+
+// Chat Animation - Wait for GSAP
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+        if (typeof gsap !== 'undefined') {
+            const anim1 = document.querySelector('.chat-anim-1');
+            const anim2 = document.querySelector('.chat-anim-2');
+            const anim3 = document.querySelector('.chat-anim-3');
+            const anim4 = document.querySelector('.chat-anim-4');
+            
+            if (anim1) {
+                gsap.to(anim1, {
+                    opacity: 1,
+                    y: 0,
+                    duration: 0.5,
+                    delay: 0.5,
+                    ease: 'power2.out'
+                });
+                anim1.style.transform = 'translateY(10px)';
+            }
+            
+            if (anim2) {
+                gsap.to(anim2, {
+                    opacity: 1,
+                    y: 0,
+                    duration: 0.5,
+                    delay: 1.2,
+                    ease: 'power2.out'
+                });
+                anim2.style.transform = 'translateY(10px)';
+            }
+            
+            if (anim3) {
+                gsap.to(anim3, {
+                    opacity: 1,
+                    y: 0,
+                    duration: 0.5,
+                    delay: 2,
+                    ease: 'power2.out'
+                });
+                anim3.style.transform = 'translateY(10px)';
+            }
+            
+            if (anim4) {
+                gsap.to(anim4, {
+                    opacity: 1,
+                    y: 0,
+                    duration: 0.5,
+                    delay: 2.7,
+                    ease: 'power2.out'
+                });
+                anim4.style.transform = 'translateY(10px)';
+            }
+        }
+    }, 200);
+});
+</script>
