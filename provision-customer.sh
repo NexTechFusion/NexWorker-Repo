@@ -521,8 +521,37 @@ cat <<EOF > "$CUSTOMER_DIR/config/openclaw.json"
     }
   },
   "tools": {
-    "profile": "full",
-    "allow": ["*"]
+    "profile": "minimal",
+    "allow": [
+      "read",
+      "write",
+      "edit",
+      "exec",
+      "memory_search",
+      "memory_get",
+      "image",
+      "pdf",
+      "cron",
+      "tts"
+    ],
+    "deny": [
+      "browser",
+      "canvas",
+      "nodes",
+      "gateway",
+      "sessions_spawn",
+      "sessions_send",
+      "sessions_list",
+      "subagents",
+      "agents_list",
+      "message"
+    ]
+  },
+  "commands": {
+    "native": false,
+    "nativeSkills": false,
+    "restart": false,
+    "ownerDisplay": "hash"
   },
   "gateway": {
     "port": $PORT,
