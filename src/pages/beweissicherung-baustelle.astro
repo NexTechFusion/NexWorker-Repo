@@ -1,0 +1,85 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Hero from '../components/Hero.astro';
+import ProblemSolution from '../components/ProblemSolution.astro';
+import MetricBanner from '../components/MetricBanner.astro';
+
+const title = "Beweissicherung Baustelle";
+const description = "Rechtssichere Beweissicherung auf der Baustelle ohne App. DSGVO-konform, GoBD-konform, automatisch per Messenger.";
+
+const problems = [
+  "Mängelansprüche nicht abwehrbar",
+  "Fotos auf 5 verschiedenen Handys",
+  "Keine Zeitstempel, keine Projektzuordnung",
+  "Zettel gehen verloren",
+  "Gerichtsunverwertbare Dokumentation"
+];
+
+const solutions = [
+  "Alle Fotos automatisch archiviert",
+  "Zeitstempel & GPS automatisch",
+  "Projektzuordnung per Chat",
+  "GoBD-konform in Deutschland gehostet",
+  "Gerichtsfeste Dokumentation"
+];
+---
+
+<Layout title={title} description={description}>
+	<Hero 
+		overline="Rechtssichere Dokumentation"
+		title="Beweissicherung Baustelle – ohne App"
+		description={description}
+	/>
+
+	<ProblemSolution 
+		title="Das Problem: Beweislast im Handwerk"
+		problems={problems}
+		solutions={solutions}
+	/>
+
+	<MetricBanner />
+
+	<section class="py-20 bg-white">
+		<div class="max-w-4xl mx-auto px-6">
+			<h2 class="text-3xl font-bold text-slate-900 mb-12 text-center">Rechtliche Anforderungen 2026</h2>
+			
+			<div class="grid gap-6">
+				{[
+					{
+						title: "EU-Bauproduktenverordnung (BauPVO 2024/3110)",
+						date: "Seit 8. Januar 2026",
+						text: "Material muss lückenlos zu Projekten zugeordnet werden. NexWorker erfasst automatisch Fotos, Zeitstempel und Projektzuordnung."
+					},
+					{
+						title: "NIS2-Umsetzungsgesetz",
+						date: "Frist: 6. März 2026",
+						text: "Betroffene Betriebe (>50 MA, >10 Mio. €) müssen IT-Sicherheit und Dokumentation nachweisen. NexWorker sichert Kommunikationsdaten automatisch."
+					},
+					{
+						title: "GoBD & DSGVO",
+						date: "Rechtssicher",
+						text: "Alle Dokumentation wird GoBD-konform archiviert. Hosting in Deutschland. Keine Daten in US-Clouds."
+					}
+				].map((legal) => (
+					<div class="bg-slate-50 border-l-4 border-brand p-8 rounded-r-2xl hover:bg-white hover:shadow-soft transition-all cursor-default group">
+						<div class="flex justify-between items-start mb-2">
+							<h3 class="font-bold text-xl text-slate-900 group-hover:text-brand transition-colors tracking-tight">{legal.title}</h3>
+							<span class="text-xs font-bold uppercase tracking-widest text-brand bg-brand-50 px-2 py-1 rounded inline-block whitespace-nowrap ml-4">{legal.date}</span>
+						</div>
+						<p class="text-slate-600 leading-relaxed font-medium">{legal.text}</p>
+					</div>
+				))}
+			</div>
+		</div>
+	</section>
+
+	<section class="py-20 bg-surface text-center">
+		<div class="max-w-3xl mx-auto px-6">
+			<h2 class="text-3xl md:text-4xl font-bold text-white mb-6">Bereit für rechtssichere Dokumentation?</h2>
+			<p class="text-xl text-slate-400 mb-10">Keine App, 15 Minuten Setup, DSGVO-konform.</p>
+			<a href="#contact" class="bg-brand hover:bg-brand-dark text-white px-10 py-5 rounded-2xl font-bold text-lg shadow-glow inline-block">
+				Jetzt Demo-Nummer anfordern
+			</a>
+		</div>
+	</section>
+</Layout>

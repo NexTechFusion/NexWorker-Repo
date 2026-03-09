@@ -1,0 +1,32 @@
+---
+const { faqs = [
+    { q: "Ist WhatsApp fuer Baudokumentation DSGVO-konform?", a: "WhatsApp privat ist nicht DSGVO-konform fuer gewerbliche Dokumentation. NexWorker loest das Problem: Die KI-Instanz laeuft auf deutschen Servern und archiviert alle Daten GoBD-konform. Ihre Monteure nutzen weiterhin WhatsApp, aber die Daten landen rechtsicher in Ihrer Wissensdatenbank." },
+    { q: "Wie erfuellen Handwerker die Materialnachweispflicht nach BauPVO 2026?", a: "Die EU-Bauproduktenverordnung 2024/3110 gilt seit dem 8. Januar 2026. Handwerker muessen Material lueckenlos zu Projekten zugeordnet werden. NexWorker erfasst automatisch Fotos, Zeitstempel und Projektzuordnung per WhatsApp – so entsteht der digitale Produktpass ohne Mehraufwand." },
+    { q: "Was aendert sich durch NIS2 fuer Handwerksbetriebe im Maerz 2026?", a: "Das NIS2-Umsetzungsgesetz trat am 6. Dezember 2025 in Kraft. Die 3-monatige Registrierungsfrist endete am 6. Maerz 2026. Betroffene Betriebe (>50 Mitarbeiter, >10 Mio. Euro Umsatz) muessen IT-Sicherheitskonzepte und Dokumentation nachweisen. NexWorker sichert Ihre Kommunikationsdaten automatisch und revisionssicher." },
+    { q: "Brauche ich eine neue App fuer NexWorker?", a: "Nein. NexWorker funktioniert ueber WhatsApp, Telegram oder MS Teams. Ihre Monteure nutzen genau das, was sie schon kennen. Setup-Zeit: 15 Minuten. Keine Schulung, keine vergessenen Passwoerter, keine App-Muedigkeit." },
+    { q: "Wie sichere ich das Wissen meiner Monteure vor der Rente?", a: "NexWorker analysiert alle Sprachnachrichten, Fotos und Texte automatisch. Das Erfahrungswissen Ihrer Monteure wird in einer durchsuchbaren Wissensdatenbank strukturiert." },
+    { q: "Kann NexWorker in mein bestehendes ERP integrieren?", a: "Ja. NexWorker unterstuetzt gängige ERP-Systeme wie Lexware, DATEV, pds und Excel-Export. Arbeitszeiten, Material und Maengel fliessen direkt in Ihr Buero-System." }
+] } = Astro.props;
+---
+
+<section id="faq" class="py-24 bg-slate-50 border-y border-slate-100 relative overflow-hidden">
+    <div class="max-w-4xl mx-auto px-6 relative z-10">
+        <h2 class="text-3xl font-bold text-slate-900 mb-16 text-center tracking-tight">Häufig gestellte Fragen</h2>
+        
+        <div class="space-y-4">
+            {faqs.map((faq) => (
+                <details class="group bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-soft transition-all">
+                    <summary class="flex justify-between items-center p-6 cursor-pointer list-none">
+                        <span class="font-bold text-slate-800 text-lg group-open:text-brand transition-colors tracking-tight">{faq.q}</span>
+                        <span class="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 group-open:rotate-180 transition-transform">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </span>
+                    </summary>
+                    <div class="px-6 pb-6 text-slate-600 leading-relaxed font-normal">
+                        {faq.a}
+                    </div>
+                </details>
+            ))}
+        </div>
+    </div>
+</section>

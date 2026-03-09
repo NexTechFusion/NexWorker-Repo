@@ -1,0 +1,59 @@
+---
+const { 
+  title = "Das Problem vs. Die Lösung", 
+  problemTitle = "Ohne NexWorker", 
+  solutionTitle = "Mit NexWorker", 
+  problems = [], 
+  solutions = [] 
+} = Astro.props;
+---
+
+<section class="py-20 bg-slate-50 border-y border-slate-100">
+    <div class="max-w-5xl mx-auto px-6">
+        <h2 class="text-3xl font-bold text-slate-800 text-center mb-16 tracking-tight">
+            {title}
+        </h2>
+
+        <div class="grid md:grid-cols-2 gap-8 items-stretch">
+            {/* Problem Box */}
+            <div class="bg-white p-10 rounded-3xl border border-slate-200 shadow-soft">
+                <div class="flex items-center gap-3 mb-8">
+                    <div class="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center text-red-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-800 tracking-tight">{problemTitle}</h3>
+                </div>
+                <ul class="space-y-4">
+                    {problems.map((item) => (
+                        <li class="flex items-start gap-3 text-slate-600 leading-relaxed">
+                            <span class="text-red-500 font-bold mt-1 shrink-0">✗</span>
+                            <span>{item}</span>
+                        </li>
+                    ))}
+                </ul>
+            </div>
+
+            {/* Solution Box */}
+            <div class="bg-brand-50 p-10 rounded-3xl border border-brand-100 shadow-soft relative overflow-hidden group">
+                <div class="absolute inset-0 bg-grid opacity-20 pointer-events-none"></div>
+                
+                <div class="relative z-10">
+                    <div class="flex items-center gap-3 mb-8">
+                        <div class="w-10 h-10 bg-brand rounded-lg flex items-center justify-center text-white shadow-glow">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-slate-800 tracking-tight">{solutionTitle}</h3>
+                    </div>
+                    <ul class="space-y-4">
+                        {solutions.map((item) => (
+                            <li class="flex items-start gap-3 text-slate-700 font-medium leading-relaxed">
+                                <span class="text-brand font-bold mt-1 shrink-0">✓</span>
+                                <span>{item}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

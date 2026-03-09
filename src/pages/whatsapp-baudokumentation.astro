@@ -1,0 +1,97 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Hero from '../components/Hero.astro';
+import ProblemSolution from '../components/ProblemSolution.astro';
+import MetricBanner from '../components/MetricBanner.astro';
+
+const title = "WhatsApp Dokumentation ohne App";
+const description = "Baudokumentation per WhatsApp ohne neue App. Monteure chatten wie gewohnt – NexWorker sichert Zeiten, Fotos und Wissen automatisch.";
+
+const problems = [
+  "Monteure vergessen sie zu nutzen",
+  "Schulungsaufwand für jeden Neuen",
+  "Vergessene Passwörter",
+  "App-Müdigkeit (\"Noch eine App?\")",
+  "Geringe Akzeptanz ab Tag 1"
+];
+
+const solutions = [
+  "WhatsApp, Telegram, Teams – was sie schon kennen",
+  "Keine Schulung nötig",
+  "Keine Passwörter",
+  "100% Akzeptanz – sie chatten sowieso",
+  "Sofort produktiv"
+];
+---
+
+<Layout title={title} description={description}>
+	<Hero 
+		overline="Messenger-basierte Dokumentation"
+		title="WhatsApp Dokumentation – ohne App"
+		description={description}
+	/>
+
+	<ProblemSolution 
+		title="Warum ohne App?"
+		problemTitle="Das Problem mit Apps"
+		solutionTitle="Die NexWorker-Lösung"
+		problems={problems}
+		solutions={solutions}
+	/>
+
+	<MetricBanner />
+
+	<section class="py-20 bg-white">
+		<div class="max-w-4xl mx-auto px-6">
+			<h2 class="text-3xl font-bold text-slate-900 mb-12 text-center">Vergleich: App vs. Messenger</h2>
+			<div class="overflow-x-auto rounded-3xl border border-slate-200 shadow-soft bg-white pb-6">
+				<table class="w-full text-sm text-left">
+					<thead class="bg-slate-50">
+						<tr class="border-b border-slate-200">
+							<th class="py-5 px-6 font-bold text-slate-800 uppercase tracking-widest text-xs">Feature</th>
+							<th class="py-5 px-6 text-center font-bold text-slate-400 uppercase tracking-widest text-xs">PlanRadar</th>
+							<th class="py-5 px-6 text-center font-bold text-slate-400 uppercase tracking-widest text-xs">Craftnote</th>
+							<th class="py-5 px-6 text-center font-bold text-brand uppercase tracking-widest text-xs bg-brand-50/50">NexWorker</th>
+						</tr>
+					</thead>
+					<tbody class="divide-y divide-slate-100">
+						{[
+							{ f: "App Installation", a1: "Ja", a2: "Ja", n: "Nein", good: false },
+							{ f: "Schulung nötig", a1: "Ja", a2: "Wenig", n: "Nein", good: false },
+							{ f: "Setup-Zeit", a1: "2+ h", a2: "1+ h", n: "15 Min.", good: true },
+							{ f: "DSGVO-konform", a1: "Ja", a2: "Ja", n: "Ja", good: true },
+							{ f: "Wissenssicherung", a1: "Nein", a2: "Nein", n: "Ja", good: true },
+              { f: "Preis/Monat", a1: "€26/User", a2: "€14.90", n: "Auf Anfrage", good: true }
+						].map((row) => (
+							<tr class="group hover:bg-slate-50 transition-colors">
+								<td class="py-4 px-6 font-bold text-slate-700">{row.f}</td>
+								<td class="py-4 px-6 text-center text-slate-500">{row.a1}</td>
+								<td class="py-4 px-6 text-center text-slate-500">{row.a2}</td>
+								<td class="py-4 px-6 text-center font-bold text-brand bg-brand-50/20 group-hover:bg-brand-50 transition-colors">{row.n}</td>
+							</tr>
+						))}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</section>
+
+	<section class="py-24 bg-surface-dark text-center relative overflow-hidden group">
+    <div class="absolute inset-0 bg-grid-dark opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity"></div>
+		<div class="max-w-3xl mx-auto px-6 relative z-10">
+			<h2 class="text-3xl md:text-5xl font-bold text-white mb-6 tracking-tight">Bereit für Dokumentation ohne App?</h2>
+			<p class="text-xl text-slate-400 mb-10 leading-relaxed">15 Minuten Setup. Keine Schulung. DSGVO-konform.</p>
+			<a href="#contact" class="bg-brand hover:bg-brand-dark text-white px-10 py-5 rounded-2xl font-bold text-lg shadow-glow inline-block transition-all hover:scale-105 active:scale-95">
+				Kostenlose Demo anfordern
+			</a>
+		</div>
+	</section>
+</Layout>
+
+<style>
+    .bg-grid-dark {
+        background-size: 40px 40px;
+        background-image: linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+                          linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    }
+</style>
