@@ -331,9 +331,9 @@ import Layout from '../layouts/Layout.astro';
                     </div>
                     
                     <h3 class="text-lg md:text-xl font-bold text-slate-900 mb-1.5 md:mb-2">Datensouveränität</h3>
-                    <p class="text-xs md:text-sm font-semibold text-slate-500 mb-3 md:mb-4 tracking-wide uppercase">Local oder Cloud</p>
+                    <p class="text-xs md:text-sm font-semibold text-slate-500 mb-3 md:mb-4 tracking-wide uppercase">EU-Cloud oder On-Premise</p>
                     <p class="text-slate-600 text-sm leading-relaxed mb-6 md:mb-8">
-                        DSGVO-konforme KI auf deutschen Servern oder als lokale Edge-Computing-Loesung in Ihrem Netzwerk.
+                        DSGVO-konforme KI auf EU-Servern (Vertex AI, Gemini) oder lokale Modelle in Ihrem eigenen Netzwerk.
                     </p>
                     
                     <div class="mt-auto px-3 md:px-4 py-2.5 md:py-3 bg-white border border-slate-100 rounded-lg">
@@ -471,19 +471,56 @@ import Layout from '../layouts/Layout.astro';
                         </div>
                     </div>
 
-                    <!-- Item 3: 14:15 - Links -->
+                    <!-- Item 3: 12:00 - Links (Wissensdatenbank) -->
                     <div class="relative flex flex-col md:flex-row items-start md:items-center group timeline-item">
-                        <div class="hidden sm:flex absolute left-6 md:left-1/2 w-4 h-4 bg-white border-[3px] border-rose-500 rounded-full transform -translate-x-1/2 z-10 shadow-sm ring-4 ring-slate-50 group-hover:scale-125 transition-transform"></div>
+                        <div class="hidden sm:flex absolute left-6 md:left-1/2 w-4 h-4 bg-white border-[3px] border-purple-500 rounded-full transform -translate-x-1/2 z-10 shadow-sm ring-4 ring-slate-50 group-hover:scale-125 transition-transform"></div>
                         
                         <div class="w-full md:w-1/2 md:pr-10 md:text-right hidden md:block">
-                            <div class="flex items-center justify-end gap-2 text-rose-600 mb-1">
-                                <h3 class="text-lg md:text-xl font-bold">14:15 Uhr</h3>
+                            <div class="flex items-center justify-end gap-2 text-purple-600 mb-1">
+                                <h3 class="text-lg md:text-xl font-bold">12:00 Uhr</h3>
+                                <svg class="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l1.293 1.293a1 1 0 001.414 0L17.5 6.586a1 1 0 00-1.414 0l-1.293 1.293a5 5 0 01-7.072 7.072z"></path></svg>
+                            </div>
+                            <p class="text-purple-500 text-xs md:text-sm font-semibold uppercase tracking-wider">Wissensabfrage</p>
+                        </div>
+
+                        <div class="w-full md:w-1/2 md:pl-10 pl-14 sm:pl-16 relative">
+                            <div class="md:hidden flex items-center gap-2 mb-3 text-purple-600">
+                                <span class="font-bold text-base">12:00 Uhr</span>
+                                <span class="text-purple-500 text-sm">Wissensabfrage</span>
+                            </div>
+
+                            <div class="bg-white rounded-2xl p-4 md:p-6 shadow-soft border border-purple-100">
+                                <div class="bg-chat-user p-3 md:p-4 rounded-xl rounded-tl-none inline-block mb-3 md:mb-4 border border-sky-100 text-xs md:text-sm text-slate-700 font-medium">
+                                    "Wie montieren wir den Trennschalter Typ X7? Hab das noch nie gemacht."
+                                </div>
+                                
+                                <div class="flex items-start gap-3 border-t border-slate-100 pt-3">
+                                    <div class="w-6 h-6 md:w-7 md:h-7 rounded-md md:rounded-lg bg-purple-500 text-white flex items-center justify-center flex-shrink-0">
+                                        <svg class="w-3 h-3 md:w-3.5 md:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l1.293 1.293a1 1 0 001.414 0L17.5 6.586a1 1 0 00-1.414 0l-1.293 1.293a5 5 0 01-7.072 7.072z"></path></svg>
+                                    </div>
+                                    <div class="font-mono text-[10px] md:text-[11px] text-slate-500 space-y-1 w-full">
+                                        <div class="flex gap-2 items-center text-purple-600 font-bold bg-purple-50 px-2 py-1 rounded inline-flex text-[9px] md:text-[10px]"><svg class="w-2.5 h-2.5 md:w-3 md:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> WISSENS-CHECK</div>
+                                        <div class="text-slate-700 font-medium text-[9px] md:text-[10px]">PDF: Anleitung_X7.pdf</div>
+                                        <div class="text-purple-600 text-[9px] md:text-[10px] font-semibold">→ An Frage angepinnt</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Item 4: 14:15 - Rechts -->
+                    <div class="relative flex flex-col md:flex-row-reverse items-start md:items-center group timeline-item">
+                        <div class="hidden sm:flex absolute left-6 md:left-1/2 w-4 h-4 bg-white border-[3px] border-rose-500 rounded-full transform -translate-x-1/2 z-10 shadow-sm ring-4 ring-slate-50 group-hover:scale-125 transition-transform"></div>
+                        
+                        <div class="w-full md:w-1/2 md:pl-10 hidden md:block text-left">
+                            <div class="flex items-center justify-start gap-2 text-rose-600 mb-1">
                                 <svg class="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                <h3 class="text-lg md:text-xl font-bold">14:15 Uhr</h3>
                             </div>
                             <p class="text-rose-500 text-xs md:text-sm font-semibold uppercase tracking-wider">Vorfall / Mangel</p>
                         </div>
 
-                        <div class="w-full md:w-1/2 md:pl-10 pl-14 sm:pl-16 relative">
+                        <div class="w-full md:w-1/2 md:pr-10 pl-14 sm:pl-16 relative md:pl-0">
                             <div class="md:hidden flex items-center gap-2 mb-3 text-rose-600">
                                 <span class="font-bold text-base">14:15 Uhr</span>
                                 <span class="text-rose-500 text-sm">Vorfall</span>
