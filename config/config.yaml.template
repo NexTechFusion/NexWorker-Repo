@@ -1,0 +1,167 @@
+# NexHelper Configuration Template
+# Copy to config/config.yaml and customize
+
+customer:
+  id: "${CUSTOMER_ID}"
+  name: "${CUSTOMER_NAME}"
+  slug: "${CUSTOMER_SLUG}"
+  createdAt: "${CREATED_AT}"
+
+gateway:
+  port: ${PORT:-3000}
+  auth:
+    token: "${AUTH_TOKEN}"
+
+agent:
+  model: openrouter/stepfun/step-3.5-flash
+  thinking: low
+  systemPrompt: |
+    Du bist NexHelper für ${CUSTOMER_NAME}.
+    
+    Du hilfst bei der Dokumentenverwaltung über Messenger.
+    
+    ## Deine Aufgaben:
+    - Dokumente empfangen und analysieren (Bilder, PDFs)
+    - Dokumente kategorisieren und archivieren
+    - Fragen zu Dokumenten beantworten
+    - An Fristen erinnern
+    - Export in DATEV/SAP/Lexware (auf Anfrage)
+    
+    ## Verfügbare Tools:
+    - image: Bilder analysieren
+    - pdf: PDFs analysieren
+    - memory_search: Dokumente durchsuchen
+    - memory_get: Dokumente lesen
+    - cron: Erinnerungen setzen
+    - exec: Skills ausführen (Export, OCR)
+    
+    ## Workflows:
+    
+    ### Dokument empfangen:
+    1. Consent prüfen (falls nicht vorhanden, fragen)
+    2. Dokument analysieren (image/pdf tool)
+    3. Typ erkennen (Rechnung, Angebot, etc.)
+    4. Wichtige Daten extrahieren:
+       - Datum
+       - Betrag
+       - Lieferant
+       - Rechnungsnummer
+       - Kategorie
+    5. In Memory speichern
+    6. Bestätigung senden
+    
+    ### Dokument suchen:
+    1. Query verstehen (Was sucht der Nutzer?)
+    2. memory_search mit relevanten Keywords
+    3. Ergebnisse formatieren
+    4. Senden
+    
+    ### Export:
+    1. Bestätigung einholen (Wirklich exportieren?)
+    2. Dokumente sammeln
+    3. Format konvertieren (DATEV CSV, etc.)
+    4. An Ziel senden
+    5. Bestätigung senden
+    6. Audit-Log eintragen
+    
+    ## Stil:
+    - Freundlich, professionell, effizient
+    - Kurz und prägnant
+    - Deutsch
+    - Emoji sparsam verwenden
+    
+    ## Datenschutz:
+    - Daten bleiben auf EU-Servern
+    - DSGVO-konform
+    - Keine sensiblen Daten an Dritte
+    - Consent vor Verarbeitung
+    
+    ## Consent (DSGVO):
+    - Bei /start: Einwilligungstext anzeigen
+    - Erst nach Zustimmung verarbeiten
+    - Widerruf möglich mit /widerruf
+
+channels:
+  telegram:
+    token: "${TELEGRAM_BOT_TOKEN}"
+    enabled: true
+    groupChat:
+      mentionPatterns: ["!doc", "!suche", "!hilfe", "!export", "!reminder"]
+  
+  # WhatsApp (optional)
+  # whatsapp:
+  #   token: "${WHATSAPP_TOKEN}"
+  #   phoneNumber: "${WHATSAPP_PHONE_NUMBER}"
+  #   enabled: false
+
+memory:
+  path: ./storage/memory
+  autoArchive: true
+
+consent:
+  configPath: ./config/consent.yaml
+  required: true
+  version: "${CONSENT_VERSION:-1.0}"
+
+audit:
+  enabled: true
+  path: ./storage/audit
+  events: ["message", "consent", "export", "access"]
+
+routing:
+  tenantId: "${CUSTOMER_SLUG}"
+  sharedBot: ${SHARED_BOT:-true}
+
+# Cron jobs for reminders
+cron:
+  - name: "check-reminders"
+    schedule: "every 1 minute"
+    payload:
+      kind: "systemEvent"
+      text: "Check due reminders and send notifications"
+  
+  - name: "daily-summary"
+    schedule: "cron: 0 18 * * *"
+    payload:
+      kind: "systemEvent"
+      text: "Generate daily summary of documents processed"
+
+# Skills configuration
+skills:
+  document-export:
+    enabled: true
+    datev:
+      enabled: true
+      beraterNr: "${DATEV_BERATER_NR:-}"
+      mandantenNr: "${DATEV_MANDANTEN_NR:-}"
+    email:
+      enabled: true
+      smtp:
+        host: "${SMTP_HOST:-}"
+        port: ${SMTP_PORT:-587}
+        user: "${SMTP_USER:-}"
+  
+  document-ocr:
+    enabled: true
+    languages: ["deu", "eng"]
+  
+  email-sender:
+    enabled: ${SMTP_ENABLED:-false}
+  
+  reminder-system:
+    enabled: true
+  
+  sap-integration:
+    enabled: ${SAP_ENABLED:-false}
+  
+  lexware-integration:
+    enabled: ${LEXWARE_ENABLED:-false}
+
+# Environment defaults
+env:
+  OPENAI_API_KEY: "${OPENAI_API_KEY}"
+  TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN}"
+  CUSTOMER_ID: "${CUSTOMER_ID}"
+  CUSTOMER_NAME: "${CUSTOMER_NAME}"
+  CUSTOMER_SLUG: "${CUSTOMER_SLUG}"
+  PORT: "${PORT:-3000}"
