@@ -589,7 +589,46 @@
                         </div>
                     </div>
 
-                    <!-- Item 3: Alert -->
+                    <!-- Item 3: Wissensabfrage (NEW) -->
+                    <div class="relative flex flex-col md:flex-row-reverse items-start md:items-center group timeline-item">
+                        <div class="hidden sm:flex absolute left-6 md:left-1/2 w-4 h-4 bg-white border-[3px] border-purple-500 rounded-full transform -translate-x-1/2 z-10 shadow-sm ring-4 ring-slate-50 group-hover:scale-125 transition-transform"></div>
+                        
+                        <div class="w-full md:w-1/2 md:pl-12 hidden md:block text-left">
+                            <div class="flex items-center justify-start gap-2 text-surface mb-1">
+                                <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                                <h3 class="text-xl font-bold">12:00 Uhr</h3>
+                            </div>
+                            <p class="text-purple-500 text-sm font-semibold uppercase tracking-wider">Wissensabfrage</p>
+                        </div>
+
+                        <div class="w-full md:w-1/2 md:pr-12 pl-14 sm:pl-16 relative md:pl-0">
+                            <!-- Mobile Header -->
+                            <div class="md:hidden flex items-center gap-2 mb-3 text-surface">
+                                <svg class="w-5 h-5 text-purple-500 absolute left-0 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                                <span class="font-bold">12:00 Uhr</span>
+                                <span class="text-purple-500 text-sm">Wissensabfrage</span>
+                            </div>
+
+                            <div class="bg-white rounded-2xl p-5 shadow-soft border border-purple-100">
+                                <div class="bg-chat-user p-3.5 rounded-xl rounded-tl-none inline-block mb-4 border border-sky-100 text-sm text-slate-700 font-medium">
+                                    "Wie montieren wir den Trennschalter Typ X7? Hab das noch nie gemacht."
+                                </div>
+                                
+                                <div class="flex items-start gap-3 border-t border-slate-100 pt-3">
+                                    <div class="w-6 h-6 rounded-md bg-purple-500 text-white flex items-center justify-center flex-shrink-0 mt-0.5">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                                    </div>
+                                    <div class="font-mono text-[11px] md:text-xs text-slate-500 space-y-1 w-full mt-1">
+                                        <div class="flex gap-2 items-center text-purple-600 font-bold bg-purple-50 px-2 py-1 rounded inline-flex"><svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg> WISSENS-CHECK</div>
+                                        <div class="pt-1 text-slate-600">PDF: Anleitung_X7.pdf</div>
+                                        <div class="text-purple-500">→ An Frage angepinnt</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Item 4: Alert -->
                     <div class="relative flex flex-col md:flex-row items-start md:items-center group timeline-item">
                         <div class="hidden sm:flex absolute left-6 md:left-1/2 w-4 h-4 bg-white border-[3px] border-rose-500 rounded-full transform -translate-x-1/2 z-10 shadow-sm ring-4 ring-slate-50 group-hover:scale-125 transition-transform"></div>
                         
@@ -788,52 +827,178 @@
         </div>
     </section>
 
+    <!-- FAQ Section -->
+    <section id="faq" class="py-24 bg-white border-b border-slate-200">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <span class="text-brand font-bold uppercase tracking-widest text-xs mb-3 block">Compliance 2026</span>
+                <h2 class="text-3xl md:text-4xl font-bold text-surface mb-4">Rechtssicherheit</h2>
+                <p class="text-lg text-slate-500">Die wichtigsten Fragen zur Messenger-Dokumentation im Handwerk.</p>
+            </div>
+
+            <div class="space-y-4">
+                <details class="group bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden hover:shadow-soft transition-all">
+                    <summary class="flex justify-between items-center p-6 cursor-pointer list-none">
+                        <span class="font-bold text-slate-800 text-lg">Ist WhatsApp für Baudokumentation DSGVO-konform?</span>
+                        <svg class="w-5 h-5 text-slate-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </summary>
+                    <div class="px-6 pb-6 text-slate-600 leading-relaxed">
+                        WhatsApp privat ist nicht DSGVO-konform für gewerbliche Dokumentation. NexWorker löst das Problem: Die KI-Instanz läuft auf deutschen Servern und archiviert alle Daten GoBD-konform.
+                    </div>
+                </details>
+
+                <details class="group bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden hover:shadow-soft transition-all">
+                    <summary class="flex justify-between items-center p-6 cursor-pointer list-none">
+                        <span class="font-bold text-slate-800 text-lg">Wie erfüllen Handwerker die BauPVO 2026?</span>
+                        <svg class="w-5 h-5 text-slate-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </summary>
+                    <div class="px-6 pb-6 text-slate-600 leading-relaxed">
+                        Die EU-Bauproduktenverordnung 2024/3110 gilt seit dem 8. Januar 2026. Handwerker müssen Material lückenlos zu Projekten zugeordnet werden. NexWorker erfasst automatisch Fotos, Zeitstempel und Projektzuordnung per WhatsApp.
+                    </div>
+                </details>
+
+                <details class="group bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden hover:shadow-soft transition-all">
+                    <summary class="flex justify-between items-center p-6 cursor-pointer list-none">
+                        <span class="font-bold text-slate-800 text-lg">Was ändert sich durch NIS2 im März 2026?</span>
+                        <svg class="w-5 h-5 text-slate-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </summary>
+                    <div class="px-6 pb-6 text-slate-600 leading-relaxed">
+                        Das NIS2-Umsetzungsgesetz trat am 6. Dezember 2025 in Kraft. Die 3-monatige Registrierungsfrist endete am 6. März 2026. Betroffene Betriebe müssen IT-Sicherheitskonzepte und Dokumentation nachweisen.
+                    </div>
+                </details>
+
+                <details class="group bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden hover:shadow-soft transition-all">
+                    <summary class="flex justify-between items-center p-6 cursor-pointer list-none">
+                        <span class="font-bold text-slate-800 text-lg">Kann NexWorker in mein ERP integrieren?</span>
+                        <svg class="w-5 h-5 text-slate-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </summary>
+                    <div class="px-6 pb-6 text-slate-600 leading-relaxed">
+                        Ja. NexWorker unterstützt DATEV, Lexware, pds und Excel-Export. Arbeitszeiten, Material und Mängel fließen direkt in Ihr Büro-System.
+                    </div>
+                </details>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section id="preise" class="py-24 bg-slate-50 border-b border-slate-200">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <span class="text-brand font-bold uppercase tracking-widest text-xs mb-3 block">Preise</span>
+                <h2 class="text-3xl md:text-5xl font-bold text-surface mb-4">Einfach & Transparent</h2>
+                <p class="text-lg text-slate-500">Alle Messenger, alle Features. Skaliert mit Ihrem Team.</p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- Starter -->
+                <div class="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm hover:shadow-xl transition-all">
+                    <h3 class="text-lg font-bold text-slate-500 mb-2">Starter</h3>
+                    <p class="text-sm text-slate-400 mb-6">Bis 10 Monteure</p>
+                    <div class="mb-6">
+                        <span class="text-4xl font-bold text-surface">59€</span>
+                        <span class="text-slate-400">/Monat</span>
+                    </div>
+                    <ul class="space-y-3 mb-8 text-sm text-slate-600">
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Alle Features</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Alle Messenger</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> PDF & Excel Export</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Bis 10 Nutzer</li>
+                    </ul>
+                    <a href="#kontakt" class="block text-center bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 py-3 rounded-xl font-medium transition-colors">Kontakt</a>
+                </div>
+
+                <!-- Business (Popular) -->
+                <div class="bg-white rounded-3xl p-8 border-2 border-brand shadow-xl relative">
+                    <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-brand text-white text-xs font-bold px-3 py-1 rounded-full">Beliebt</div>
+                    <h3 class="text-lg font-bold text-slate-500 mb-2">Business</h3>
+                    <p class="text-sm text-slate-400 mb-6">Bis 30 Monteure</p>
+                    <div class="mb-6">
+                        <span class="text-4xl font-bold text-surface">149€</span>
+                        <span class="text-slate-400">/Monat</span>
+                    </div>
+                    <ul class="space-y-3 mb-8 text-sm text-slate-600">
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Alle Features</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> ERP-Integration</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Wissensdatenbank</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Bis 30 Nutzer</li>
+                    </ul>
+                    <a href="#kontakt" class="block text-center bg-brand hover:bg-brand-dark text-white px-6 py-3 rounded-xl font-medium transition-colors">Kontakt</a>
+                </div>
+
+                <!-- Enterprise -->
+                <div class="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm hover:shadow-xl transition-all">
+                    <h3 class="text-lg font-bold text-slate-500 mb-2">Enterprise</h3>
+                    <p class="text-sm text-slate-400 mb-6">Unbegrenzte Monteure</p>
+                    <div class="mb-6">
+                        <span class="text-4xl font-bold text-surface">Individuell</span>
+                    </div>
+                    <ul class="space-y-3 mb-8 text-sm text-slate-600">
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Alles aus Business</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> On-Premise</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Custom Integration</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> SLA & Support</li>
+                    </ul>
+                    <a href="#kontakt" class="block text-center bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 py-3 rounded-xl font-medium transition-colors">Kontakt</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ROI Calculator -->
+    <section class="py-24 bg-surface text-white">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <span class="text-brand-light font-bold uppercase tracking-widest text-xs mb-3 block">ROI Kalkulator</span>
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">Wieviel Zeit gewinnen Sie?</h2>
+                <p class="text-slate-400">Kleine Änderung, grosse Wirkung. Rechnen Sie aus, was 15 Minuten weniger Büro-Stress pro Tag bedeuten.</p>
+            </div>
+
+            <div class="bg-slate-800/50 rounded-3xl p-8 border border-slate-700">
+                <div class="mb-8">
+                    <label class="text-sm text-slate-400 mb-2 block">Anzahl Monteure</label>
+                    <div class="flex items-center gap-4">
+                        <input type="range" min="1" max="50" value="10" class="flex-1 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                        <span class="text-3xl font-bold text-white">10</span>
+                    </div>
+                    <div class="flex justify-between text-xs text-slate-500 mt-1">
+                        <span>1 Mann</span>
+                        <span>50 Mann</span>
+                    </div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-8 mb-8">
+                    <div class="bg-slate-700/50 rounded-xl p-6">
+                        <p class="text-xs text-slate-400 uppercase tracking-wider mb-1">Büro-Ersparnis (Fixwert)</p>
+                        <p class="text-xl font-bold text-white">15 Min. pro Monteur / Tag</p>
+                    </div>
+                    <div class="bg-brand/20 border border-brand/30 rounded-xl p-6">
+                        <p class="text-xs text-brand-light uppercase tracking-wider mb-1">Brutto-Mehrwert / Jahr</p>
+                        <p class="text-3xl font-bold text-white">36.000€</p>
+                    </div>
+                </div>
+
+                <p class="text-center text-slate-400 text-sm mb-6">50 Stunden pro Monat gewonnen</p>
+                <p class="text-center text-xs text-slate-500 mb-6">* 20 Arbeitstage, 60€/h Verrechnungssatz. Zeit fliesst in wertschöpfende Arbeit.</p>
+
+                <div class="text-center">
+                    <a href="#kontakt" class="inline-block bg-brand hover:bg-brand-dark text-white px-8 py-3 rounded-xl font-medium transition-colors">Jetzt Profit optimieren</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Call To Action -->
     <section id="cta" class="py-24 bg-white border-b border-slate-200 relative overflow-hidden">
         <div class="absolute inset-0 bg-slate-50/50"></div>
-        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10 gs-fade-up">
-            <h2 class="text-3xl md:text-5xl font-bold text-surface mb-6 tracking-tight">Zeit für modernes Handwerk.</h2>
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
+            <h2 class="text-3xl md:text-5xl font-bold text-surface mb-6 tracking-tight">Schluss mit Zettelwirtschaft.</h2>
             <p class="text-lg md:text-xl text-slate-500 mb-10 max-w-2xl mx-auto">
-                Testen Sie NexWorker risikofrei in Ihrem Betrieb. Verbinden Sie den Bot mit Ihren Test-Systemen und überzeugen Sie sich selbst.
+                Testen Sie NexWorker risikofrei – bevor weiteres Wissen und weitere Zeiten unstrukturiert verschwinden.
             </p>
             
-            <div class="flex flex-col sm:flex-row justify-center gap-4 mb-20">
-                <button class="bg-brand hover:bg-brand-dark text-white px-8 py-4 rounded-xl font-medium text-base transition-all shadow-glow hover:shadow-lg transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
-                    Kostenlose Demo anfragen
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-                </button>
-                <button class="bg-white border hover:border-slate-300 text-slate-700 px-8 py-4 rounded-xl font-medium text-base transition-colors text-center shadow-sm hover:shadow">
-                    Technisches Whitepaper (PDF)
-                </button>
-            </div>
-
-            <!-- Mini Roadmap Status -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-6 text-left border-t border-slate-200 pt-12">
-                <div>
-                    <div class="text-brand text-xs font-bold tracking-widest mb-1.5">PHASE 01</div>
-                    <div class="text-sm font-semibold text-surface mb-1">Architektur</div>
-                    <div class="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
-                        <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Abgeschlossen
-                    </div>
-                </div>
-                <div>
-                    <div class="text-brand text-xs font-bold tracking-widest mb-1.5">PHASE 02</div>
-                    <div class="text-sm font-semibold text-surface mb-1">KI Modell Training</div>
-                    <div class="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
-                        <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Abgeschlossen
-                    </div>
-                </div>
-                <div>
-                    <div class="text-brand text-xs font-bold tracking-widest mb-1.5">PHASE 03</div>
-                    <div class="text-sm font-semibold text-surface mb-1">Pilot Kunden</div>
-                    <div class="flex items-center gap-1.5 text-xs text-brand font-bold bg-brand/10 inline-flex px-1.5 rounded">Current</div>
-                </div>
-                <div>
-                    <div class="text-slate-400 text-xs font-bold tracking-widest mb-1.5">PHASE 04</div>
-                    <div class="text-sm font-semibold text-slate-400 mb-1">Public Launch</div>
-                    <div class="text-xs text-slate-400 font-medium">Q3 2026</div>
-                </div>
-            </div>
+            <a href="#" class="inline-block bg-brand hover:bg-brand-dark text-white px-10 py-5 rounded-2xl font-bold text-lg shadow-glow transition-all hover:scale-105">
+                Kostenlose Demo anfragen
+            </a>
         </div>
     </section>
 
@@ -858,7 +1023,7 @@
                 <a href="#" class="text-sm text-slate-500 hover:text-slate-300 transition-colors">AGB</a>
             </div>
 
-            <p class="text-slate-600 text-xs font-mono">© 2026 NexWorker Tech GmbH. All rights reserved.</p>
+            <p class="text-slate-600 text-xs font-mono">© 2026 NexTech Fusion GmbH. All rights reserved.</p>
         </div>
     </footer>
 
