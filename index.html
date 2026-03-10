@@ -1,4 +1,24 @@
-<!DOCTYPE html><html lang="de" class="scroll-smooth"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>WhatsApp Dokumentation ohne App | NexWorker</title><meta name="description" content="Messenger-basierte Dokumentation fuer Handwerk. Keine App, 15 Min. Setup, DSGVO-konform."><meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"><!-- Google Fonts --><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"><!-- Tailwind & GSAP Scripts --><script src="https://cdn.tailwindcss.com"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script><script>
+<!DOCTYPE html>
+<html lang="de" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexWorker - Der digitale Service-Assistent</title>
+
+    <!-- Google Fonts: Inter for minimal SaaS look, JetBrains Mono for data -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- GSAP for Animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+
+    <!-- Tailwind Configuration -->
+    <script>
         tailwind.config = {
             theme: {
                 extend: {
@@ -7,6 +27,7 @@
                         mono: ['JetBrains Mono', 'monospace'],
                     },
                     colors: {
+                        // Minimal Professional SaaS Palette
                         brand: {
                             DEFAULT: '#4F46E5', // Indigo 600
                             dark: '#3730A3',    // Indigo 800
@@ -33,101 +54,883 @@
                 }
             }
         }
-    </script><link rel="stylesheet" href="/_astro/beweissicherung-baustelle.Ben4x8Et.css"></head> <body class="selection:bg-brand selection:text-white relative"> <!-- Navigation --> <nav class="fixed w-full z-50 transition-all duration-500" id="navbar"> <div class="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8"> <div class="flex justify-between items-center h-16 md:h-20"> <a href="/" class="flex items-center gap-2.5"> <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-inner-light overflow-hidden border border-slate-100"> <img src="/logo.png" alt="NexWorker Logo" class="w-full h-full object-cover"> </div> <span class="font-bold text-lg tracking-tight nav-logo-text text-white transition-colors duration-500">NexWorker</span> </a> <div class="hidden md:flex items-center gap-8"> <a href="#was-ist" class="nav-link text-slate-300 hover:text-white transition-colors font-medium text-sm">Plattform</a> <a href="#kill-shots" class="nav-link text-slate-300 hover:text-white transition-colors font-medium text-sm">Vorteile</a> <a href="#tagesablauf" class="nav-link text-slate-300 hover:text-white transition-colors font-medium text-sm">Workflow</a> <a href="#faq" class="nav-link text-slate-300 hover:text-white transition-colors font-medium text-sm">FAQ</a> <a href="#cta" class="bg-brand hover:bg-brand-dark text-white px-5 py-2.5 rounded-lg font-semibold text-sm transition-all shadow-md hover:shadow-lg">Demo starten</a> </div> </div> </div> </nav>   <section class="relative overflow-hidden bg-surface" id="hero"> <div class="absolute inset-0 bg-grid-dark pointer-events-none z-0 opacity-60"></div> <div class="absolute top-[-20%] left-[-10%] w-[60%] h-[70%] rounded-full bg-brand/[0.07] blur-[100px] pointer-events-none"></div> <div class="absolute bottom-[-10%] right-[-5%] w-[40%] h-[50%] rounded-full bg-brand/[0.05] blur-[80px] pointer-events-none"></div> <div class="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 relative z-10 pt-28 pb-16 md:pt-36 md:pb-24 lg:pt-40 lg:pb-28"> <div class="flex flex-col lg:grid lg:grid-cols-2 lg:gap-20 items-center"> <div class="text-center lg:text-left order-2 lg:order-1 mt-12 lg:mt-0 gs-reveal-hero"> <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.06] backdrop-blur border border-white/10 text-slate-300 text-xs font-medium mb-8"> <span class="relative flex h-2 w-2"> <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span> <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span> </span>
-Fuer Bauleiter, Monteure, Reinigungsfirmen und Field Service
-</div> <h1 class="text-[2.75rem] leading-[1.05] sm:text-5xl md:text-[3.75rem] lg:text-[4.25rem] font-bold tracking-tight text-white mb-5 transition-all">
-Schluss mit Zettelwirtschaft.<br> <span class="text-brand-light">Dokumentation ohne App.</span> </h1> <p class="text-base sm:text-lg md:text-xl text-slate-400 max-w-xl mx-auto lg:mx-0 leading-relaxed mb-10 font-light">
-Ihre Monteure chatten &ndash; NexWorker macht die Dokumentation. Zeiten, Fotos und Wissen automatisch erfasst. Keine App, 15 Min. Setup, DSGVO-konform.
-</p> <div class="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start"> <a href="#cta" class="group bg-brand hover:bg-brand-dark text-white px-7 py-3.5 rounded-xl font-semibold text-[15px] transition-all shadow-glow hover:shadow-lg inline-flex items-center justify-center gap-2">
-Demo-Nummer anfordern
-<svg class="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg> </a> <a href="#tagesablauf" class="bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 text-slate-200 px-7 py-3.5 rounded-xl font-semibold text-[15px] transition-all inline-flex items-center justify-center gap-2"> <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-Workflow ansehen
-</a> </div> <div class="mt-10 flex flex-wrap items-center justify-center lg:justify-start gap-x-6 gap-y-3 text-[13px] text-slate-500 font-medium"> <span class="flex items-center gap-1.5"><svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Dokumentation ohne App</span> <span class="flex items-center gap-1.5"><svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Beweissicherung</span> <span class="flex items-center gap-1.5"><svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> ERP-Integration</span> </div> </div> <div class="order-1 lg:order-2 relative gs-reveal-hero w-full max-w-[280px] sm:max-w-[300px] lg:max-w-[320px] mx-auto" id="hero-phone-container"> <div class="relative bg-slate-800 rounded-[2.5rem] p-[6px] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] ring-1 ring-white/[0.08]"> <div class="w-full aspect-[9/18.5] bg-white rounded-[2.2rem] overflow-hidden flex flex-col relative"> <div class="absolute top-0 inset-x-0 h-6 flex justify-center z-30 pt-1.5"> <div class="w-20 h-[18px] bg-slate-800 rounded-full"></div> </div> <div class="bg-white/95 backdrop-blur pt-9 pb-3 px-4 flex items-center gap-2.5 z-20 border-b border-slate-100"> <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm overflow-hidden border border-slate-100 p-1"> <img src="/logo.png" alt="NexWorker Assistant" class="w-full h-full object-contain"> </div> <div class="min-w-0"> <p class="font-semibold text-slate-800 text-[13px] leading-tight truncate">NexWorker</p> <p class="text-[10px] text-emerald-500 font-medium">Online</p> </div> </div> <div class="flex-1 bg-slate-50 px-3 py-3 flex flex-col justify-end gap-2.5 overflow-hidden"> <div class="self-end chat-bubble-user bg-chat-user border border-sky-100 max-w-[82%] px-3 py-2 shadow-sm"> <p class="text-[12px] leading-snug text-slate-700 font-medium italic">Moin, bin da. Mit Axel bei Kunde Mueller.</p> <span class="text-[9px] text-slate-400 block text-right mt-0.5">07:00</span> </div> <div class="self-start chat-bubble-bot bg-white border border-slate-200 max-w-[88%] px-3 py-2.5 shadow-sm relative"> <div class="absolute left-0 top-2.5 bottom-2.5 w-[3px] bg-brand rounded-r"></div> <div class="text-[11px] font-mono text-slate-600 space-y-1.5 pl-2"> <div class="flex items-center gap-1.5 text-emerald-600 font-semibold"> <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-Check-In 07:00
-</div> <div class="text-slate-500">Team: Lars, Axel</div> <div class="text-slate-500">Ort: Kunde Mueller</div> <div class="pt-1 mt-1 border-t border-slate-100 text-brand font-semibold text-[10px]">Projektbuchung aktiv</div> </div> </div> <div class="self-end chat-bubble-user bg-chat-user border border-sky-100 max-w-[60%] px-3 py-2 shadow-sm flex items-center gap-2"> <div class="w-7 h-7 rounded-full bg-brand flex items-center justify-center flex-shrink-0"> <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg> </div> <div class="flex-1"> <div class="w-full bg-sky-200/80 h-1 rounded-full relative"> <div class="absolute left-0 top-0 h-full bg-brand rounded-full w-[45%]"></div> </div> </div> <span class="text-[10px] text-slate-500 font-medium tabular-nums">0:14</span> </div> <div class="self-start chat-bubble-bot bg-white border border-slate-200 max-w-[88%] px-3 py-2.5 shadow-sm relative"> <div class="absolute left-0 top-2.5 bottom-2.5 w-[3px] bg-emerald-500 rounded-r"></div> <div class="text-[11px] font-mono pl-2"> <div class="flex items-center gap-1.5 text-emerald-600 font-semibold"> <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-Material erfasst
-</div> <div class="text-slate-500 mt-1">3x NYM-J Kabel &middot; <span class="text-brand font-semibold font-bold">147,50 EUR</span></div> </div> </div> </div> <div class="bg-white border-t border-slate-100 px-3 py-2 flex items-center gap-2 z-20"> <div class="flex-1 bg-slate-50 border border-slate-200 h-8 rounded-full px-3 flex items-center text-[11px] text-slate-400 font-medium">Nachricht...</div> <div class="w-8 h-8 bg-brand rounded-full flex items-center justify-center text-white flex-shrink-0"> <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg> </div> </div> </div> </div> <div class="absolute -left-4 sm:-left-10 top-[38%] bg-white p-3 rounded-xl shadow-floating border border-slate-100 hidden sm:flex items-center gap-3 z-20 gs-float shadow-glow"> <div class="w-9 h-9 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600"> <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> </div> <div> <p class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Zeiterfassung</p> <p class="text-sm font-bold text-slate-800 leading-tight">08:00h erfasst</p> </div> </div> <div class="absolute -right-2 sm:-right-8 bottom-[15%] bg-white p-3 rounded-xl shadow-floating border border-slate-100 hidden sm:flex items-center gap-3 z-20 gs-float shadow-glow" style="animation-delay: 0.5s"> <div class="w-9 h-9 bg-brand-50 rounded-lg flex items-center justify-center text-brand"> <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg> </div> <div> <p class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Tagesbericht</p> <p class="text-sm font-bold text-slate-800 leading-tight">Auto-generiert</p> </div> </div> </div> </div> </div> <div class="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent"></div> </section>  <section id="was-ist" class="py-24 bg-slate-50 relative border-t border-slate-200"> <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"> <div class="text-center max-w-3xl mx-auto mb-20 gs-fade-up"> <span class="text-brand font-bold uppercase tracking-widest text-xs mb-3 block">Plattform Architektur</span> <h2 class="text-3xl md:text-5xl font-bold text-slate-900 mb-6 tracking-tight flex items-center justify-center gap-3"> <svg class="w-8 h-8 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
-Was ist NexWorker?
-</h2> <p class="text-lg text-slate-500 font-normal leading-relaxed">
-Keine isolierte Softwareinsel. NexWorker ist eine KI-gestuetzte Wissensdatenbank und Dokumentationsplattform, die in bekannten Messengern arbeitet und Daten strukturiert an Ihr Buero uebergibt.
-</p> </div> <div class="grid md:grid-cols-2 gap-16 items-center"> <div class="space-y-4 gs-fade-up"> <div class="group flex gap-5 p-5 rounded-2xl bg-white border border-slate-100 shadow-sm hover:border-brand/30 hover:shadow-md transition-all duration-300 relative overflow-hidden"> <div class="absolute inset-y-0 left-0 w-1 bg-brand transform scale-y-0 group-hover:scale-y-100 transition-transform origin-top"></div> <div class="flex-shrink-0"> <div class="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-slate-600 group-hover:text-brand group-hover:bg-brand/5 transition-colors border border-slate-100 shadow-inner-light"> <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg> </div> </div> <div> <h3 class="text-lg font-bold text-slate-800 mb-2 tracking-tight">Semantische Sprachanalyse</h3> <p class="text-slate-500 text-sm leading-relaxed">Gesprochene Notizen werden transkribiert, kontextualisiert und fuer die digitale Wissenssicherung strukturiert - selbst bei Umgebungslaerm auf der Baustelle.</p> </div> </div> <div class="group flex gap-5 p-5 rounded-2xl bg-white border border-slate-100 shadow-sm hover:border-brand/30 hover:shadow-md transition-all duration-300 relative overflow-hidden"> <div class="absolute inset-y-0 left-0 w-1 bg-brand transform scale-y-0 group-hover:scale-y-100 transition-transform origin-top"></div> <div class="flex-shrink-0"> <div class="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-slate-600 group-hover:text-brand group-hover:bg-brand/5 transition-colors border border-slate-100 shadow-inner-light"> <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg> </div> </div> <div> <h3 class="text-lg font-bold text-slate-800 mb-2 tracking-tight">Visuelle Baudokumentation</h3> <p class="text-slate-500 text-sm leading-relaxed font-normal">Gesendete Fotos werden projektbezogen archiviert. So entsteht eine nachvollziehbare Baudokumentation fuer Maengel, Fortschritt und Beweissicherung.</p> </div> </div> <div class="group flex gap-5 p-5 rounded-2xl bg-white border border-slate-100 shadow-sm hover:border-brand/30 hover:shadow-md transition-all duration-300 relative overflow-hidden"> <div class="absolute inset-y-0 left-0 w-1 bg-brand transform scale-y-0 group-hover:scale-y-100 transition-transform origin-top"></div> <div class="flex-shrink-0"> <div class="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-slate-600 group-hover:text-brand group-hover:bg-brand/5 transition-colors border border-slate-100 shadow-inner-light"> <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg> </div> </div> <div> <h3 class="text-lg font-bold text-slate-800 mb-2 tracking-tight">Automatisierte Berichterstellung</h3> <p class="text-slate-500 text-sm leading-relaxed font-normal">Aggregiert Daten in Echtzeit zu sauberen Tagesberichten und reduziert die fehleranfaellige manuelle Nacherfassung im Buero.</p> </div> </div> </div> <div class="bg-surface rounded-3xl p-10 relative overflow-hidden shadow-2xl gs-fade-up border border-slate-700"> <div class="absolute top-0 right-0 w-64 h-64 bg-brand/20 rounded-full blur-[80px] -mr-20 -mt-20 pointer-events-none"></div> <div class="relative z-10"> <svg class="w-10 h-10 text-brand mb-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> <h3 class="text-3xl font-bold text-white mb-4 tracking-tight">Zero Onboarding.</h3> <p class="text-slate-300 text-base leading-relaxed mb-8 font-light italic">
-Ein digitaler Mitarbeiter, der sofort produktiv ist. Keine App-Rollouts, keine vergessenen Passwoerter, keine Schulungstage und kein Wissensverlust durch Zettelwirtschaft.
-</p> <div class="border-t border-slate-700/50 pt-6"> <div class="flex items-center gap-5 text-white"> <div class="w-14 h-14 bg-brand rounded-xl flex items-center justify-center font-bold text-2xl shadow-glow">15</div> <div> <p class="font-bold text-lg leading-tight uppercase tracking-tight">Minuten Setup-Zeit</p> <p class="text-slate-400 text-sm mt-0.5">bis zum ersten korrekten Tagesbericht.</p> </div> </div> </div> </div> </div> </div> </div> </section>  <section id="tagesablauf" class="py-24 bg-slate-50 border-t border-slate-200 relative"> <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8"> <div class="text-center md:text-left mb-16 gs-fade-up"> <h2 class="text-3xl md:text-4xl font-bold text-slate-900 mb-4 flex items-center justify-center md:justify-start gap-4"> <svg class="w-9 h-9 text-brand shadow-soft" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-Der Service-Workflow
-</h2> <p class="text-lg text-slate-500 font-medium">So nahtlos dokumentiert das Team in der Praxis.</p> </div> <div class="relative"> <div class="absolute left-6 md:left-1/2 top-4 bottom-4 w-px bg-slate-200 transform md:-translate-x-1/2 hidden sm:block"></div> <div class="space-y-12"> <div class="relative flex flex-col md:flex-row items-start md:items-center group timeline-item"> <div class="hidden sm:flex absolute left-6 md:left-1/2 w-4 h-4 bg-white border-[3px] border-brand rounded-full transform -translate-x-1/2 z-10 shadow-sm ring-4 ring-slate-50 group-hover:scale-125 transition-transform duration-300"></div> <div class="w-full md:w-1/2 md:pr-12 md:text-right hidden md:block"> <div class="flex items-center justify-end gap-2 text-slate-800 mb-1"> <h3 class="text-xl font-bold tracking-tight uppercase">07:00 Uhr</h3> <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg> </div> <p class="text-brand text-sm font-bold uppercase tracking-widest pl-2">Arbeitsbeginn</p> </div> <div class="w-full md:w-1/2 md:pl-12 pl-14 sm:pl-16 relative"> <div class="bg-white rounded-2xl p-6 shadow-soft border border-slate-100 hover:shadow-md transition-shadow"> <div class="bg-chat-user p-4 rounded-xl rounded-tl-none inline-block mb-4 border border-sky-100 text-sm text-slate-700 font-medium italic">
-"Sind am Bauabschnitt A. Richten jetzt die Geräte ein."
-</div> <div class="flex items-start gap-4 border-t border-slate-100 pt-4"> <div class="w-7 h-7 rounded-lg bg-brand text-white flex items-center justify-center flex-shrink-0 shadow-glow"> <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> </div> <div class="font-mono text-[11px] md:text-xs text-slate-500 space-y-1.5 w-full"> <div class="flex gap-2 items-center text-slate-800 font-bold uppercase tracking-tighter transition-all"><span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span> LOG: Check-In</div> <div class="flex justify-between border-b border-slate-50 pb-1"><span>Time:</span> <span class="text-slate-400 font-medium">07:00:23 GMT+1</span></div> <div class="flex justify-between font-bold"><span>Pos:</span> <span class="text-brand">Bauabschnitt A</span></div> </div> </div> </div> </div> </div> </div> </div> </div> </section>  <section id="faq" class="py-24 bg-white border-t border-slate-200"> <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8"> <div class="text-center max-w-3xl mx-auto mb-16 gs-fade-up"> <span class="text-brand font-bold uppercase tracking-widest text-xs mb-3 block">Haeufig gestellte Fragen</span> <h2 class="text-3xl md:text-5xl font-bold text-slate-900 mb-6 tracking-tight">Dokumentation per Messenger</h2> <p class="text-lg text-slate-500 font-normal leading-relaxed font-light italic">
-Antworten fuer Geschaeftsfuehrer, Bauleiter und Teams, die Zettelwirtschaft durch digitale Dokumentation ersetzen wollen.
-</p> </div> <div class="grid md:grid-cols-2 gap-6"> <div class="bg-white rounded-2xl border border-slate-200 p-8 shadow-soft gs-fade-up hover:border-brand/30 transition-colors"> <h3 class="text-lg font-bold text-slate-800 mb-3 tracking-tight">Was ist Wissenssicherung im Handwerk?</h3> <p class="text-sm leading-relaxed text-slate-600 font-normal">
-Wissenssicherung bedeutet, dass Erfahrungen, Problemloesungen und Projektdetails nicht mit einzelnen Mitarbeitern verschwinden. NexWorker macht Sprachmemos, Fotos und Chatverlaeufe durchsuchbar und im Betrieb nutzbar.
-</p> </div> <div class="bg-white rounded-2xl border border-slate-200 p-8 shadow-soft gs-fade-up hover:border-brand/30 transition-colors"> <h3 class="text-lg font-bold text-slate-800 mb-3 tracking-tight">Wie funktioniert WhatsApp-Dokumentation?</h3> <p class="text-sm leading-relaxed text-slate-600 font-normal">
-Teams dokumentieren direkt im gewohnten Messenger. NexWorker ordnet Inhalte automatisch Projekten, Zeiten, Material, Maengeln und Berichten zu und uebergibt die Daten strukturiert ans Buero.
-</p> </div> </div> </div> </section>  <section class="py-20 bg-slate-50 border-y border-slate-200"> <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8"> <div class="grid grid-cols-2 md:grid-cols-4 gap-10 text-center gs-fade-up"> <div class="flex flex-col items-center"> <div class="text-4xl md:text-5xl font-bold text-slate-900 mb-2 font-mono italic">15</div> <div class="text-[11px] uppercase tracking-widest text-slate-400 font-bold">Minuten bis zum ersten Bericht</div> </div> <div class="flex flex-col items-center"> <div class="text-4xl md:text-5xl font-bold text-slate-900 mb-2 font-mono italic">5h</div> <div class="text-[11px] uppercase tracking-widest text-slate-400 font-bold">weniger Nacherfassung pro Woche</div> </div> <div class="flex flex-col items-center"> <div class="text-4xl md:text-5xl font-bold text-slate-900 mb-2 font-mono italic">0</div> <div class="text-[11px] uppercase tracking-widest text-slate-400 font-bold">neue Apps fuer Ihr Team</div> </div> <div class="flex flex-col items-center"> <div class="text-4xl md:text-5xl font-bold text-emerald-500 mb-2 font-mono italic">100%</div> <div class="text-[11px] uppercase tracking-widest text-slate-400 font-bold">DSGVO-konform, Hosting DE</div> </div> </div> </div> </section>  <section id="cta" class="py-24 bg-surface text-white relative overflow-hidden"> <div class="absolute inset-0 bg-grid-dark pointer-events-none opacity-40"></div> <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-brand/10 rounded-full blur-[100px] pointer-events-none"></div> <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10 gs-fade-up"> <h2 class="text-3xl md:text-5xl font-bold text-white mb-6 tracking-tight font-bold italic leading-tight">Schluss mit Zettelwirtschaft.</h2> <p class="text-lg md:text-xl text-slate-400 mb-12 max-w-2xl mx-auto leading-relaxed font-light italic">
-Testen Sie NexWorker risikofrei – bevor weiteres Wissen, weitere Fotos und weitere Zeiten unstrukturiert auf einzelnen Handys verschwinden.
-</p> <a href="#demo" class="group bg-brand hover:bg-brand-dark text-white px-10 py-5 rounded-2xl font-bold text-lg transition-all shadow-glow hover:shadow-lg inline-flex items-center justify-center gap-3 active:scale-95 transition-all">
-Kostenlose Demo anfragen
-<svg class="w-5 h-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg> </a> </div> </section>  <footer class="bg-surface py-10 text-center relative overflow-hidden"> <div class="absolute top-0 left-1/2 transform -translate-x-1/2 w-[300px] h-[100px] bg-brand/20 blur-[50px] pointer-events-none"></div> <div class="max-w-7xl mx-auto px-4 relative z-10 flex flex-col items-center"> <div class="flex items-center justify-center gap-3 mb-6"> <div class="w-8 h-8 bg-slate-800 rounded-lg flex items-center justify-center border border-slate-700"> <svg class="w-4 h-4 text-brand-light" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"> <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"></path> </svg> </div> <span class="text-slate-200 font-semibold tracking-wide">NexWorker</span> </div> <div class="flex gap-6 mb-8 mt-2"> <a href="/datenschutz" class="text-sm text-slate-500 hover:text-slate-300 transition-colors">Datenschutz</a> <a href="/impressum" class="text-sm text-slate-500 hover:text-slate-300 transition-colors">Impressum</a> </div> <p class="text-slate-600 text-xs font-mono">© 2026 NexTech Fusion GmbH. All rights reserved.</p> </div> </footer> <script>
+    </script>
+
+    <!-- Custom CSS -->
+    <style>
+        body {
+            background-color: #F8FAFC;
+            color: #334155;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Abstract Box Grid Pattern */
+        .bg-grid {
+            background-size: 40px 40px;
+            background-image: linear-gradient(to right, rgba(15, 23, 42, 0.03) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(15, 23, 42, 0.03) 1px, transparent 1px);
+            mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 100%);
+            -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 100%);
+        }
+
+        .bg-grid-dark {
+            background-size: 40px 40px;
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+        }
+
+        /* Chat Bubbles Tails */
+        .chat-bubble-user {
+            position: relative;
+            border-radius: 1rem;
+            border-bottom-right-radius: 0.25rem;
+        }
+        
+        .chat-bubble-bot {
+            position: relative;
+            border-radius: 1rem;
+            border-bottom-left-radius: 0.25rem;
+        }
+
+        .clip-diagonal {
+            clip-path: polygon(0 0, 100% 0, 100% 95%, 0 100%);
+        }
+
+        /* Custom Scrollbar for Chat */
+        .chat-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+        .chat-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .chat-scroll::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        .perspective-1000 {
+            perspective: 1000px;
+        }
+    </style>
+</head>
+<body class="selection:bg-brand selection:text-white relative">
+
+    <!-- Navigation -->
+    <nav class="fixed w-full z-50 transition-all duration-300 bg-white/80 backdrop-blur-lg border-b border-slate-200" id="navbar">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-20">
+                <div class="flex-shrink-0 flex items-center gap-3 cursor-pointer">
+                    <!-- Minimalist Logo -->
+                    <div class="w-10 h-10 bg-surface rounded-xl flex items-center justify-center shadow-inner-light">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                    </div>
+                    <span class="font-bold text-xl tracking-tight text-surface">NexWorker</span>
+                </div>
+                
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="#was-ist" class="text-slate-500 hover:text-surface transition-colors font-medium text-sm">Plattform</a>
+                    <a href="#kill-shots" class="text-slate-500 hover:text-surface transition-colors font-medium text-sm">Vorteile</a>
+                    <a href="#tagesablauf" class="text-slate-500 hover:text-surface transition-colors font-medium text-sm">Workflow</a>
+                    <a href="#cta" class="bg-surface hover:bg-surface-light text-white px-5 py-2.5 rounded-lg font-medium text-sm transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5">Demo starten</a>
+                </div>
+
+                <!-- Mobile menu button -->
+                <div class="md:hidden flex items-center">
+                    <button class="text-slate-600 hover:text-surface focus:outline-none">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="pt-32 pb-20 lg:pt-40 lg:pb-32 relative overflow-hidden clip-diagonal bg-white">
+        <div class="absolute inset-0 bg-grid pointer-events-none z-0"></div>
+        
+        <!-- Abstract blur -->
+        <div class="absolute top-0 right-0 -mr-40 -mt-40 w-[500px] h-[500px] rounded-full bg-brand-50 opacity-70 blur-[80px] pointer-events-none z-0"></div>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div class="lg:grid lg:grid-cols-12 lg:gap-16 items-center">
+                
+                <!-- Text Content -->
+                <div class="lg:col-span-7 gs-reveal-hero mb-16 lg:mb-0">
+                    <div class="inline-flex items-center px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 font-medium text-xs mb-8 border border-slate-200">
+                        <span class="flex h-2 w-2 rounded-full bg-brand mr-2"></span>
+                        Bereit für den europäischen Mittelstand
+                    </div>
+                    
+                    <h1 class="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6 text-surface leading-[1.05]">
+                        Intelligenter Service,<br>
+                        <span class="text-brand">direkt im Messenger.</span>
+                    </h1>
+                    
+                    <p class="text-lg md:text-xl text-slate-500 mb-10 max-w-2xl leading-relaxed font-normal">
+                        Keine neuen Apps. Keine Schulungen. NexWorker ist ein KI-Agent, der Handwerk und Field-Service durch natürliche Sprache organisiert, Zeiten erfasst und Berichte automatisiert.
+                    </p>
+                    
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <a href="#cta" class="bg-brand hover:bg-brand-dark text-white px-8 py-4 rounded-xl font-medium text-base transition-all shadow-glow hover:shadow-lg transform hover:-translate-y-1 text-center flex items-center justify-center gap-2">
+                            In 15 Min. einrichten
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                        </a>
+                        <a href="#tagesablauf" class="bg-white border hover:border-slate-300 text-slate-700 px-8 py-4 rounded-xl font-medium text-base transition-colors text-center shadow-sm hover:shadow">
+                            Workflow ansehen
+                        </a>
+                    </div>
+
+                    <div class="mt-12 flex flex-wrap items-center gap-x-8 gap-y-4 text-sm font-medium text-slate-400">
+                        <div class="flex items-center gap-2">
+                            <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            Keine App Installation
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            100% DSGVO konform
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            ERP Integration
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sleek Phone Mockup -->
+                <div class="lg:col-span-5 relative gs-reveal-hero perspective-1000" id="hero-phone-container">
+                    <div class="absolute -right-12 top-20 w-32 h-32 bg-brand/10 rounded-full blur-2xl"></div>
+                    
+                    <div class="relative mx-auto w-[320px] h-[650px] bg-slate-900 rounded-[3rem] p-2 shadow-2xl border-[6px] border-slate-800 transform rotate-[-2deg] hover:rotate-0 transition-transform duration-700 ease-out z-10">
+                        
+                        <!-- Screen -->
+                        <div class="w-full h-full bg-white rounded-[2.25rem] overflow-hidden flex flex-col relative">
+                            
+                            <!-- Dynamic Island / Notch area -->
+                            <div class="absolute top-0 inset-x-0 h-7 flex justify-center z-30 pt-2">
+                                <div class="w-24 h-5 bg-slate-900 rounded-full"></div>
+                            </div>
+
+                            <!-- Header -->
+                            <div class="bg-white/90 backdrop-blur pt-12 pb-4 px-5 flex items-center gap-3 relative z-20 border-b border-slate-100">
+                                <div class="w-10 h-10 rounded-full bg-brand flex items-center justify-center font-bold text-white shadow-sm">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                </div>
+                                <div>
+                                    <h3 class="font-semibold text-slate-800 leading-tight text-sm">NexWorker Assist</h3>
+                                    <p class="text-xs text-brand font-medium">Immer online</p>
+                                </div>
+                            </div>
+
+                            <!-- Chat Area -->
+                            <div class="flex-1 bg-slate-50 p-4 chat-scroll overflow-hidden relative flex flex-col justify-end pb-4 space-y-5">
+                                
+                                <!-- User Msg -->
+                                <div class="self-end chat-bubble-user bg-chat-user border border-sky-100 max-w-[85%] p-3.5 shadow-sm text-slate-700">
+                                    <p class="text-[13px] leading-relaxed font-medium">Moin, bin da. Mit Axel bei Kunde Müller.</p>
+                                    <span class="text-[10px] text-slate-400 block text-right mt-1">07:00</span>
+                                </div>
+
+                                <!-- Bot Msg -->
+                                <div class="self-start chat-bubble-bot bg-white border border-slate-200 max-w-[90%] p-4 shadow-sm relative">
+                                    <div class="absolute left-0 top-3 bottom-3 w-1 bg-brand rounded-r-md"></div>
+                                    <div class="text-[12px] font-mono text-slate-700 space-y-2 pl-2">
+                                        <div class="flex items-center gap-2 text-emerald-600 font-semibold">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                            Erfasst: 07:00
+                                        </div>
+                                        <div class="flex items-center gap-2 text-slate-500">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                                            Team: Lars, Axel
+                                        </div>
+                                        <div class="flex items-center gap-2 text-slate-500">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                            Ort: Kunde Müller
+                                        </div>
+                                        <div class="pt-1 mt-2 border-t border-slate-100 flex items-center gap-2 text-slate-400">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path></svg>
+                                            Projektbuchung aktiv
+                                        </div>
+                                    </div>
+                                    <span class="text-[10px] text-slate-400 block text-right mt-1">07:00</span>
+                                </div>
+
+                                <!-- User Voice Msg Mockup -->
+                                <div class="self-end chat-bubble-user bg-chat-user border border-sky-100 max-w-[65%] p-2 px-3 shadow-sm flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-full bg-brand flex items-center justify-center flex-shrink-0 shadow-sm">
+                                        <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    </div>
+                                    <div class="flex-1 h-3 flex items-center">
+                                        <div class="w-full bg-sky-200 h-1.5 rounded-full relative">
+                                            <div class="absolute left-0 top-0 h-full bg-brand rounded-full w-[45%]"></div>
+                                            <div class="absolute left-[45%] top-1/2 -translate-y-1/2 w-3 h-3 bg-brand rounded-full shadow"></div>
+                                        </div>
+                                    </div>
+                                    <span class="text-[11px] text-slate-600 font-medium">0:14</span>
+                                </div>
+                            </div>
+
+                            <!-- Input Area -->
+                            <div class="bg-white border-t border-slate-100 p-3 flex items-center gap-2 z-20">
+                                <button class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-brand transition-colors">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                </button>
+                                <div class="flex-1 bg-slate-50 border border-slate-200 h-10 rounded-full px-4 flex items-center text-[13px] text-slate-400">
+                                    Nachricht senden...
+                                </div>
+                                <button class="w-10 h-10 bg-brand hover:bg-brand-dark rounded-full flex items-center justify-center text-white transition-colors shadow-sm">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Floating Badge -->
+                    <div class="absolute -right-16 top-1/3 bg-white p-4 rounded-2xl shadow-floating gs-float border border-slate-100 hidden md:block z-20">
+                        <div class="flex items-center gap-4">
+                            <div class="bg-indigo-50 p-2.5 rounded-xl text-brand">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            </div>
+                            <div>
+                                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Zeiterfassung</p>
+                                <p class="font-bold text-surface text-sm">Synchronisiert</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Platform Features -->
+    <section id="was-ist" class="py-24 bg-slate-50 relative border-t border-slate-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-3xl mx-auto mb-20 gs-fade-up">
+                <span class="text-brand font-bold uppercase tracking-widest text-xs mb-3 block">Plattform Architektur</span>
+                <h2 class="text-3xl md:text-5xl font-bold text-surface mb-6 tracking-tight flex items-center justify-center gap-3">
+                    <svg class="w-8 h-8 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                    Was ist NexWorker?
+                </h2>
+                <p class="text-lg text-slate-500 font-normal">
+                    Keine isolierte Softwareinsel. NexWorker fungiert als intelligente Middleware, die in bekannten Messengern operiert und Daten strukturiert an Ihr Büro übergibt.
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-16 items-center">
+                
+                <!-- Feature List -->
+                <div class="space-y-4 gs-fade-up">
+                    <div class="group flex gap-5 p-5 rounded-2xl bg-white border border-slate-100 shadow-sm hover:border-brand/30 hover:shadow-md transition-all duration-300 relative overflow-hidden">
+                        <div class="absolute inset-y-0 left-0 w-1 bg-brand transform scale-y-0 group-hover:scale-y-100 transition-transform origin-top"></div>
+                        <div class="flex-shrink-0">
+                            <div class="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-slate-600 group-hover:text-brand group-hover:bg-brand/5 transition-colors border border-slate-100">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-surface mb-2">Semantische Sprachanalyse</h3>
+                            <p class="text-slate-500 text-sm leading-relaxed">Gesprochene Notizen werden durch NLP (Natural Language Processing) transkribiert, kontextualisiert und strukturiert – selbst bei Umgebungslärm.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="group flex gap-5 p-5 rounded-2xl bg-white border border-slate-100 shadow-sm hover:border-brand/30 hover:shadow-md transition-all duration-300 relative overflow-hidden">
+                        <div class="absolute inset-y-0 left-0 w-1 bg-brand transform scale-y-0 group-hover:scale-y-100 transition-transform origin-top"></div>
+                        <div class="flex-shrink-0">
+                            <div class="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-slate-600 group-hover:text-brand group-hover:bg-brand/5 transition-colors border border-slate-100">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-surface mb-2">Visuelle Baudokumentation</h3>
+                            <p class="text-slate-500 text-sm leading-relaxed">Gesendete Fotos werden projektbezogen archiviert. Computer Vision hilft bei der Kategorisierung von Materialien und Schäden.</p>
+                        </div>
+                    </div>
+
+                    <div class="group flex gap-5 p-5 rounded-2xl bg-white border border-slate-100 shadow-sm hover:border-brand/30 hover:shadow-md transition-all duration-300 relative overflow-hidden">
+                        <div class="absolute inset-y-0 left-0 w-1 bg-brand transform scale-y-0 group-hover:scale-y-100 transition-transform origin-top"></div>
+                        <div class="flex-shrink-0">
+                            <div class="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-slate-600 group-hover:text-brand group-hover:bg-brand/5 transition-colors border border-slate-100">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-surface mb-2">Automatisierte Berichterstellung</h3>
+                            <p class="text-slate-500 text-sm leading-relaxed">Aggregiert Daten in Echtzeit zu sauberen Tagesberichten. Eliminierung der fehleranfälligen manuellen Nacherfassung im Büro.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Callout Box Minimal -->
+                <div class="bg-surface rounded-3xl p-10 relative overflow-hidden shadow-2xl gs-fade-up border border-slate-700">
+                    <div class="absolute top-0 right-0 w-64 h-64 bg-brand/20 rounded-full blur-[80px] -mr-20 -mt-20 pointer-events-none"></div>
+                    
+                    <div class="relative z-10">
+                        <svg class="w-10 h-10 text-brand mb-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        <h3 class="text-3xl font-bold text-white mb-4 tracking-tight">Zero Onboarding.</h3>
+                        <p class="text-slate-300 text-base leading-relaxed mb-8">
+                            Ein digitaler Mitarbeiter, der sofort produktiv ist. Keine App-Rollouts, keine vergessenen Passwörter, keine Schulungstage.
+                        </p>
+                        
+                        <div class="border-t border-slate-700/50 pt-6">
+                            <div class="flex items-center gap-5 text-white">
+                                <div class="w-14 h-14 bg-brand rounded-xl flex items-center justify-center font-bold text-2xl shadow-glow">15</div>
+                                <div>
+                                    <p class="font-bold text-lg">Minuten Setup-Zeit</p>
+                                    <p class="text-slate-400 text-sm">bis zum ersten korrekten Tagesbericht.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Value Prop Section -->
+    <section id="kill-shots" class="py-24 bg-white relative">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div class="text-center max-w-3xl mx-auto mb-20 gs-fade-up">
+                <span class="text-brand font-bold uppercase tracking-widest text-xs mb-3 block">Wettbewerbsvorteile</span>
+                <h2 class="text-3xl md:text-5xl font-bold text-surface mb-6 tracking-tight flex items-center justify-center gap-3">
+                    <svg class="w-8 h-8 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                    Die 3 Kern-Argumente
+                </h2>
+            </div>
+
+            <div class="grid lg:grid-cols-3 gap-8">
+                
+                <!-- Card 1 -->
+                <div class="bg-slate-50 rounded-3xl p-8 shadow-sm border border-slate-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden group gs-fade-up">
+                    <div class="absolute top-0 left-0 w-full h-1.5 bg-brand transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-500 ease-out"></div>
+                    
+                    <div class="w-14 h-14 bg-white rounded-xl flex items-center justify-center mb-6 border border-slate-200 shadow-sm text-brand group-hover:bg-brand group-hover:text-white transition-colors duration-300">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 312c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                    </div>
+                    
+                    <h3 class="text-xl font-bold text-surface mb-2">Messenger Native</h3>
+                    <h4 class="text-sm font-semibold text-slate-500 mb-4 tracking-wide uppercase">Keine neue Software</h4>
+                    <p class="text-slate-600 text-sm leading-relaxed mb-8">
+                        Techniker dokumentieren im vertrauten Umfeld (WhatsApp, Telegram, Teams). Die KI im Hintergrund entwirrt unstrukturierte Sprachmemos und Fotos zu validen Datensätzen.
+                    </p>
+                    
+                    <div class="mt-auto px-4 py-3 bg-white border border-slate-100 rounded-lg">
+                        <p class="text-[13px] text-slate-600"><span class="font-semibold text-surface">Resultat:</span> 100% Akzeptanz ab Tag eins.</p>
+                    </div>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="bg-slate-50 rounded-3xl p-8 shadow-sm border border-slate-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden group gs-fade-up" data-delay="0.15">
+                    <div class="absolute top-0 left-0 w-full h-1.5 bg-brand transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-500 ease-out"></div>
+                    
+                    <div class="flex justify-between items-start mb-6">
+                        <div class="w-14 h-14 bg-white rounded-xl flex items-center justify-center border border-slate-200 shadow-sm text-brand group-hover:bg-brand group-hover:text-white transition-colors duration-300">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                        </div>
+                    </div>
+                    
+                    <h3 class="text-xl font-bold text-surface mb-2">Datensouveränität</h3>
+                    <h4 class="text-sm font-semibold text-slate-500 mb-4 tracking-wide uppercase">Local oder Cloud</h4>
+                    <p class="text-slate-600 text-sm leading-relaxed mb-6">
+                        Die DSGVO-konforme KI läuft auf zertifizierten deutschen Servern oder als lokale Edge-Computing-Lösung direkt in Ihrem Netzwerk.
+                    </p>
+
+                    <!-- VibeMedia Image Injection -> Clean Server image -->
+                    <div class="mb-8 rounded-xl overflow-hidden bg-white border border-slate-100 flex items-center justify-center p-2 h-32 relative group-hover:border-brand/30 transition-colors">
+                        <img src="https://vibemedia.space/nexworker_box_v3.png?prompt=A+sleek,+rugged+industrial+server+compute+box,+matte+dark+slate+finish,+subtle+glowing+blue+led+accents,+modern+high-tech+hardware,+studio+lighting,+high+resolution,+product+photography,+minimalist+design+language&removeBackground=true" alt="NexWorker Compute Box" class="object-contain h-full mix-blend-multiply opacity-80 group-hover:opacity-100 transition-opacity transform group-hover:scale-105 duration-500">
+                    </div>
+                    
+                    <div class="mt-auto px-4 py-3 bg-white border border-slate-100 rounded-lg">
+                        <p class="text-[13px] text-slate-600"><span class="font-semibold text-surface">Resultat:</span> Maximale Datensicherheit.</p>
+                    </div>
+                </div>
+
+                <!-- Card 3 -->
+                <div class="bg-slate-50 rounded-3xl p-8 shadow-sm border border-slate-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden group gs-fade-up" data-delay="0.3">
+                    <div class="absolute top-0 left-0 w-full h-1.5 bg-brand transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-500 ease-out"></div>
+                    
+                    <div class="w-14 h-14 bg-white rounded-xl flex items-center justify-center mb-6 border border-slate-200 shadow-sm text-brand group-hover:bg-brand group-hover:text-white transition-colors duration-300">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    </div>
+                    
+                    <h3 class="text-xl font-bold text-surface mb-2">Backoffice Integration</h3>
+                    <h4 class="text-sm font-semibold text-slate-500 mb-4 tracking-wide uppercase">Nahtloser Datenfluss</h4>
+                    <p class="text-slate-600 text-sm leading-relaxed mb-6">
+                        Strukturierte Ausgaben per API direkt in bestehende ERP/CRM Systeme. Bereitstellung als PDF, CSV oder per nativer Schnittstelle für Rechnungsstellung.
+                    </p>
+                    
+                    <div class="grid grid-cols-2 gap-3 mb-8">
+                        <div class="flex items-center gap-2 text-xs font-semibold text-slate-500 bg-white border border-slate-100 p-2 rounded justify-center"><svg class="w-3.5 h-3.5 text-brand" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> DATEV</div>
+                        <div class="flex items-center gap-2 text-xs font-semibold text-slate-500 bg-white border border-slate-100 p-2 rounded justify-center"><svg class="w-3.5 h-3.5 text-brand" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h16v16H4V4zm2 4v2h12V8H6zm0 4v2h12v-2H6zm0 4v2h8v-2H6z"/></svg> Lexware</div>
+                        <div class="flex items-center gap-2 text-xs font-semibold text-slate-500 bg-white border border-slate-100 p-2 rounded justify-center"><svg class="w-3.5 h-3.5 text-brand" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg> pds</div>
+                        <div class="flex items-center gap-2 text-xs font-semibold text-slate-500 bg-white border border-slate-100 p-2 rounded justify-center"><svg class="w-3.5 h-3.5 text-brand" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg> Excel</div>
+                    </div>
+
+                    <div class="mt-auto px-4 py-3 bg-white border border-slate-100 rounded-lg">
+                        <p class="text-[13px] text-slate-600"><span class="font-semibold text-surface">Resultat:</span> Beschleunigte Fakturierung.</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Timeline Section -->
+    <section id="tagesablauf" class="py-24 bg-slate-50 border-t border-slate-200 relative">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center md:text-left mb-16 gs-fade-up">
+                <h2 class="text-3xl md:text-4xl font-bold text-surface mb-4 flex items-center justify-center md:justify-start gap-3">
+                    <svg class="w-8 h-8 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Der Service-Workflow
+                </h2>
+                <p class="text-lg text-slate-500">So nahtlos dokumentiert das Team in der Praxis.</p>
+            </div>
+
+            <div class="relative">
+                <!-- Vertical Track -->
+                <div class="absolute left-6 md:left-1/2 top-4 bottom-4 w-px bg-slate-200 transform md:-translate-x-1/2 hidden sm:block"></div>
+
+                <div class="space-y-12">
+                    
+                    <!-- Item 1: Morning -->
+                    <div class="relative flex flex-col md:flex-row items-start md:items-center group timeline-item">
+                        <div class="hidden sm:flex absolute left-6 md:left-1/2 w-4 h-4 bg-white border-[3px] border-brand rounded-full transform -translate-x-1/2 z-10 shadow-sm ring-4 ring-slate-50 group-hover:scale-125 transition-transform"></div>
+                        
+                        <div class="w-full md:w-1/2 md:pr-12 md:text-right hidden md:block">
+                            <div class="flex items-center justify-end gap-2 text-surface mb-1">
+                                <h3 class="text-xl font-bold">07:00 Uhr</h3>
+                                <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                            </div>
+                            <p class="text-brand text-sm font-semibold uppercase tracking-wider">Arbeitsbeginn</p>
+                        </div>
+
+                        <div class="w-full md:w-1/2 md:pl-12 pl-14 sm:pl-16 relative">
+                            <!-- Mobile Header -->
+                            <div class="md:hidden flex items-center gap-2 mb-3 text-surface">
+                                <svg class="w-5 h-5 text-amber-500 absolute left-0 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                                <span class="font-bold">07:00 Uhr</span>
+                                <span class="text-slate-400 text-sm">Arbeitsbeginn</span>
+                            </div>
+
+                            <div class="bg-white rounded-2xl p-5 shadow-soft border border-slate-100">
+                                <div class="bg-chat-user p-3.5 rounded-xl rounded-tl-none inline-block mb-4 border border-sky-100 text-sm text-slate-700 font-medium">
+                                    "Sind am Bauabschnitt A. Richten jetzt die Geräte ein."
+                                </div>
+                                
+                                <div class="flex items-start gap-3 border-t border-slate-100 pt-3">
+                                    <div class="w-6 h-6 rounded-md bg-brand text-white flex items-center justify-center flex-shrink-0 mt-0.5">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                    </div>
+                                    <div class="font-mono text-[11px] md:text-xs text-slate-500 space-y-1 w-full mt-1">
+                                        <div class="flex gap-2 items-center text-slate-700 font-semibold"><svg class="w-3 h-3 text-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> LOG: Check-In</div>
+                                        <div>Time: 07:00:23 GMT+1</div>
+                                        <div>Pos: Bauabschnitt A</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Item 2: Midday -->
+                    <div class="relative flex flex-col md:flex-row-reverse items-start md:items-center group timeline-item">
+                        <div class="hidden sm:flex absolute left-6 md:left-1/2 w-4 h-4 bg-white border-[3px] border-slate-800 rounded-full transform -translate-x-1/2 z-10 shadow-sm ring-4 ring-slate-50 group-hover:scale-125 transition-transform"></div>
+                        
+                        <div class="w-full md:w-1/2 md:pl-12 hidden md:block text-left">
+                            <div class="flex items-center justify-start gap-2 text-surface mb-1">
+                                <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                                <h3 class="text-xl font-bold">11:30 Uhr</h3>
+                            </div>
+                            <p class="text-slate-500 text-sm font-semibold uppercase tracking-wider">Materialdoku</p>
+                        </div>
+
+                        <div class="w-full md:w-1/2 md:pr-12 pl-14 sm:pl-16 relative md:pl-0">
+                            <!-- Mobile Header -->
+                            <div class="md:hidden flex items-center gap-2 mb-3 text-surface">
+                                <svg class="w-5 h-5 text-slate-600 absolute left-0 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                                <span class="font-bold">11:30 Uhr</span>
+                                <span class="text-slate-400 text-sm">Materialdoku</span>
+                            </div>
+
+                            <div class="bg-white rounded-2xl p-5 shadow-soft border border-slate-100">
+                                <div class="flex flex-col items-start gap-3 mb-4">
+                                    <div class="bg-slate-100 w-24 h-16 rounded border border-slate-200 flex items-center justify-center">
+                                        <svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                    </div>
+                                    <div class="bg-chat-user px-4 py-2 rounded-full inline-flex items-center gap-2 border border-sky-100">
+                                        <svg class="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                                        <div class="w-12 h-1 bg-brand/20 rounded-full"><div class="w-full h-full bg-brand rounded-full"></div></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-start gap-3 border-t border-slate-100 pt-3">
+                                    <div class="w-6 h-6 rounded-md bg-brand text-white flex items-center justify-center flex-shrink-0 mt-0.5">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                    </div>
+                                    <div class="font-mono text-[11px] md:text-xs text-slate-500 w-full mt-1">
+                                        <div class="flex gap-2 items-center text-slate-700 font-semibold mb-1"><svg class="w-3 h-3 text-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> ACTION: Material Parsed</div>
+                                        <table class="w-full text-left border-collapse mt-2">
+                                            <tr class="border-b border-slate-100">
+                                                <th class="py-1 font-normal text-slate-400">ID</th>
+                                                <th class="py-1 font-normal text-slate-400">Item</th>
+                                                <th class="py-1 font-normal text-slate-400">Qty</th>
+                                            </tr>
+                                            <tr>
+                                                <td class="py-1">#458</td>
+                                                <td class="py-1">Kabel NYM-J</td>
+                                                <td class="py-1">50m</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Item 3: Alert -->
+                    <div class="relative flex flex-col md:flex-row items-start md:items-center group timeline-item">
+                        <div class="hidden sm:flex absolute left-6 md:left-1/2 w-4 h-4 bg-white border-[3px] border-rose-500 rounded-full transform -translate-x-1/2 z-10 shadow-sm ring-4 ring-slate-50 group-hover:scale-125 transition-transform"></div>
+                        
+                        <div class="w-full md:w-1/2 md:pr-12 md:text-right hidden md:block">
+                            <div class="flex items-center justify-end gap-2 text-rose-600 mb-1">
+                                <h3 class="text-xl font-bold">14:15 Uhr</h3>
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                            </div>
+                            <p class="text-rose-500 text-sm font-semibold uppercase tracking-wider">Vorfall / Mangel</p>
+                        </div>
+
+                        <div class="w-full md:w-1/2 md:pl-12 pl-14 sm:pl-16 relative">
+                            <!-- Mobile Header -->
+                            <div class="md:hidden flex items-center gap-2 mb-3 text-rose-600">
+                                <svg class="w-5 h-5 absolute left-0 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                <span class="font-bold">14:15 Uhr</span>
+                                <span class="text-rose-500 text-sm">Vorfall</span>
+                            </div>
+
+                            <div class="bg-white rounded-2xl p-5 shadow-soft border border-rose-100">
+                                <div class="bg-chat-user p-3.5 rounded-xl rounded-tl-none inline-block mb-4 border border-sky-100 text-sm text-slate-700 font-medium">
+                                    "Können Rohrleitungen nicht prüfen. Pumpe defekt vorgefunden."
+                                </div>
+                                
+                                <div class="flex items-start gap-3 border-t border-slate-100 pt-3">
+                                    <div class="w-6 h-6 rounded-md bg-brand text-white flex items-center justify-center flex-shrink-0 mt-0.5">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                    </div>
+                                    <div class="font-mono text-[11px] md:text-xs text-slate-500 space-y-1 w-full mt-1">
+                                        <div class="flex gap-2 items-center text-rose-600 font-bold bg-rose-50 px-2 py-1 rounded inline-flex"><svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> BLOCKER REGISTERED</div>
+                                        <div class="pt-1 text-slate-400">Trigger: "Pumpe defekt"</div>
+                                        <div class="text-slate-400">Action: Notification dispatched to PM.</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Item 4: End -->
+                    <div class="relative flex flex-col md:flex-row-reverse items-start md:items-center group timeline-item">
+                        <div class="hidden sm:flex absolute left-6 md:left-1/2 w-4 h-4 bg-brand border-[3px] border-white rounded-full transform -translate-x-1/2 z-10 shadow-sm ring-4 ring-brand/20 group-hover:scale-125 transition-transform"></div>
+                        
+                        <div class="w-full md:w-1/2 md:pl-12 hidden md:block text-left">
+                            <div class="flex items-center justify-start gap-2 text-surface mb-1">
+                                <svg class="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <h3 class="text-xl font-bold">16:30 Uhr</h3>
+                            </div>
+                            <p class="text-brand text-sm font-semibold uppercase tracking-wider">Tagesabschluss</p>
+                        </div>
+
+                        <div class="w-full md:w-1/2 md:pr-12 pl-14 sm:pl-16 relative md:pl-0">
+                             <!-- Mobile Header -->
+                             <div class="md:hidden flex items-center gap-2 mb-3 text-surface">
+                                <svg class="w-5 h-5 text-brand absolute left-0 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <span class="font-bold">16:30 Uhr</span>
+                                <span class="text-slate-400 text-sm">Tagesabschluss</span>
+                            </div>
+
+                            <div class="bg-white rounded-2xl p-5 shadow-soft border border-slate-100">
+                                <div class="bg-chat-user p-3.5 rounded-xl rounded-tl-none inline-block mb-4 border border-sky-100 text-sm text-slate-700 font-medium">
+                                    "Feierabend. 8 Stunden."
+                                </div>
+                                
+                                <div class="flex items-start gap-3 border-t border-slate-100 pt-3">
+                                    <div class="w-6 h-6 rounded-md bg-brand text-white flex items-center justify-center flex-shrink-0 mt-0.5">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                    </div>
+                                    <div class="font-mono text-[11px] md:text-xs text-slate-500 space-y-1 w-full mt-1">
+                                        <div class="flex gap-2 items-center text-emerald-600 font-semibold mb-1"><svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> STATE: COMPLETED</div>
+                                        <div>Duration Check: 8.0h registered</div>
+                                        <div>Payload: 1 Report generated</div>
+                                        <div class="text-brand font-semibold mt-1">Data synced to ERP.</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- The Magic Moment (PDF/Data Mockup) -->
+    <section id="magicmoment" class="py-24 bg-surface text-white relative overflow-hidden">
+        <div class="absolute inset-0 bg-grid-dark pointer-events-none z-0"></div>
+        <div class="absolute top-1/2 right-0 transform translate-x-1/3 -translate-y-1/2 w-[800px] h-[800px] bg-brand/10 rounded-full blur-[100px] pointer-events-none"></div>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div class="grid lg:grid-cols-2 gap-16 items-center">
+                
+                <!-- Text -->
+                <div class="gs-fade-up">
+                    <span class="inline-block py-1.5 px-3 rounded-md bg-slate-800 text-slate-300 font-bold text-xs uppercase tracking-widest mb-6 border border-slate-700 shadow-sm">Das Resultat</span>
+                    <h2 class="text-4xl md:text-5xl font-bold mb-6 leading-[1.1]">Die <span class="text-brand-light">"Ein-Klick" </span>Abrechnung.</h2>
+                    <p class="text-lg text-slate-400 mb-8 leading-relaxed font-light">
+                        Während das Team im Feierabend ist, liegt die formatierte Baudokumentation bereits auf Ihrem Schreibtisch. Sauber kategorisiert, fehlerfrei summiert und sofort fakturierbar.
+                    </p>
+                    
+                    <ul class="space-y-4 mb-2">
+                        <li class="flex items-center gap-3 text-slate-300">
+                            <svg class="w-5 h-5 text-brand-light" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            Kein Freitagnachmittag-Nachtragen mehr
+                        </li>
+                        <li class="flex items-center gap-3 text-slate-300">
+                            <svg class="w-5 h-5 text-brand-light" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            Lückenlose Objekt-Historie  
+                        </li>
+                        <li class="flex items-center gap-3 text-slate-300">
+                            <svg class="w-5 h-5 text-brand-light" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            Direkte Liquiditätssicherung
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- PDF Mockup Minimal -->
+                <div class="gs-fade-up perspective-1000 pl-0 lg:pl-10 relative">
+                    <div class="relative pt-[20px]">
+                        
+                        <!-- Back card (shadow effect) -->
+                        <div class="absolute inset-x-8 top-0 h-10 bg-slate-800 rounded-t-xl opacity-50 transform translate-y-2 border border-slate-700"></div>
+
+                        <!-- Main File Mockup -->
+                        <div class="bg-white rounded-xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] p-8 transform hover:translate-y-[-8px] transition-transform duration-500 relative border-t-[6px] border-brand z-10 mx-auto max-w-md">
+                            
+                            <!-- Document Header -->
+                            <div class="flex justify-between items-start mb-8 pb-4 border-b border-slate-100">
+                                <div>
+                                    <h3 class="font-bold text-surface text-xl uppercase tracking-tight">Tagesbericht</h3>
+                                    <p class="text-sm text-slate-500 font-medium">Proj: Neubau Allee (Obj. 4)</p>
+                                </div>
+                                <div class="text-right flex flex-col items-end">
+                                    <svg class="w-6 h-6 text-brand mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                    <span class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">NexWorker Auto-Gen</span>
+                                </div>
+                            </div>
+
+                            <!-- Data Display -->
+                            <div class="space-y-4 font-mono text-sm text-surface bg-slate-50 p-5 rounded-lg border border-slate-100">
+                                
+                                <div class="flex items-center gap-3">
+                                    <div class="w-5 flex justify-center text-slate-400">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                                    </div>
+                                    <div class="flex-1 text-slate-500">Personal</div>
+                                    <div class="font-semibold text-right">Lars (8h), Axel (8h)</div>
+                                </div>
+                                
+                                <div class="w-full h-px bg-slate-200/60"></div>
+
+                                <div class="flex items-center gap-3">
+                                    <div class="w-5 flex justify-center text-slate-400">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                                    </div>
+                                    <div class="flex-1 text-slate-500">Leistung</div>
+                                    <div class="font-semibold text-right">Montage (Abschnitt A)</div>
+                                </div>
+
+                                <div class="w-full h-px bg-slate-200/60"></div>
+
+                                <div class="flex items-start gap-3">
+                                    <div class="w-5 flex justify-center text-slate-400 pt-0.5">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                                    </div>
+                                    <div class="flex-1 text-slate-500">Material</div>
+                                    <div class="text-right">
+                                        <div class="font-semibold">3x VPE Klemmen</div>
+                                        <div class="font-semibold text-brand mt-0.5">147,50 EUR</div>
+                                    </div>
+                                </div>
+
+                                <div class="w-full h-px bg-slate-200/60"></div>
+
+                                <div class="flex items-center gap-3">
+                                    <div class="w-5 flex justify-center text-rose-400">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                    </div>
+                                    <div class="flex-1 text-slate-500">Meldungen</div>
+                                    <div class="text-right text-[11px] bg-rose-50 text-rose-700 px-2 py-0.5 rounded font-bold">1 BLOCKER</div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-8 pt-4 border-t border-slate-100 flex justify-between items-center">
+                                <div class="text-xs text-slate-400">Signatur: Validated AI</div>
+                                <div class="bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wider border border-emerald-100 flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                    Export Ready
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Call To Action -->
+    <section id="cta" class="py-24 bg-white border-b border-slate-200 relative overflow-hidden">
+        <div class="absolute inset-0 bg-slate-50/50"></div>
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10 gs-fade-up">
+            <h2 class="text-3xl md:text-5xl font-bold text-surface mb-6 tracking-tight">Zeit für modernes Handwerk.</h2>
+            <p class="text-lg md:text-xl text-slate-500 mb-10 max-w-2xl mx-auto">
+                Testen Sie NexWorker risikofrei in Ihrem Betrieb. Verbinden Sie den Bot mit Ihren Test-Systemen und überzeugen Sie sich selbst.
+            </p>
+            
+            <div class="flex flex-col sm:flex-row justify-center gap-4 mb-20">
+                <button class="bg-brand hover:bg-brand-dark text-white px-8 py-4 rounded-xl font-medium text-base transition-all shadow-glow hover:shadow-lg transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
+                    Kostenlose Demo anfragen
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                </button>
+                <button class="bg-white border hover:border-slate-300 text-slate-700 px-8 py-4 rounded-xl font-medium text-base transition-colors text-center shadow-sm hover:shadow">
+                    Technisches Whitepaper (PDF)
+                </button>
+            </div>
+
+            <!-- Mini Roadmap Status -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6 text-left border-t border-slate-200 pt-12">
+                <div>
+                    <div class="text-brand text-xs font-bold tracking-widest mb-1.5">PHASE 01</div>
+                    <div class="text-sm font-semibold text-surface mb-1">Architektur</div>
+                    <div class="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
+                        <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Abgeschlossen
+                    </div>
+                </div>
+                <div>
+                    <div class="text-brand text-xs font-bold tracking-widest mb-1.5">PHASE 02</div>
+                    <div class="text-sm font-semibold text-surface mb-1">KI Modell Training</div>
+                    <div class="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
+                        <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Abgeschlossen
+                    </div>
+                </div>
+                <div>
+                    <div class="text-brand text-xs font-bold tracking-widest mb-1.5">PHASE 03</div>
+                    <div class="text-sm font-semibold text-surface mb-1">Pilot Kunden</div>
+                    <div class="flex items-center gap-1.5 text-xs text-brand font-bold bg-brand/10 inline-flex px-1.5 rounded">Current</div>
+                </div>
+                <div>
+                    <div class="text-slate-400 text-xs font-bold tracking-widest mb-1.5">PHASE 04</div>
+                    <div class="text-sm font-semibold text-slate-400 mb-1">Public Launch</div>
+                    <div class="text-xs text-slate-400 font-medium">Q3 2026</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-surface py-10 text-center relative overflow-hidden">
+        <!-- Subtle glow -->
+        <div class="absolute top-0 left-1/2 transform -translate-x-1/2 w-[300px] h-[100px] bg-brand/20 blur-[50px] pointer-events-none"></div>
+
+        <div class="max-w-7xl mx-auto px-4 relative z-10 flex flex-col items-center">
+            <div class="flex items-center justify-center gap-3 mb-6">
+                <div class="w-8 h-8 bg-slate-800 rounded-lg flex items-center justify-center border border-slate-700">
+                    <svg class="w-4 h-4 text-brand-light" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                </div>
+                <span class="text-slate-200 font-semibold tracking-wide">NexWorker</span>
+            </div>
+            
+            <div class="flex gap-6 mb-8 mt-2">
+                <a href="#" class="text-sm text-slate-500 hover:text-slate-300 transition-colors">Datenschutz</a>
+                <a href="#" class="text-sm text-slate-500 hover:text-slate-300 transition-colors">Impressum</a>
+                <a href="#" class="text-sm text-slate-500 hover:text-slate-300 transition-colors">AGB</a>
+            </div>
+
+            <p class="text-slate-600 text-xs font-mono">© 2026 NexWorker Tech GmbH. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Init Animations -->
+    <script>
         window.addEventListener('load', () => {
-            const nav = document.getElementById('navbar');
-            const navLogoText = nav.querySelector('.nav-logo-text');
-            const navLinks = nav.querySelectorAll('.nav-link');
-
-            function updateNav() {
-                const scrolled = window.scrollY > 50;
-
-                if (scrolled) {
-                    nav.classList.add('nav-solid');
-                    navLogoText.classList.add('text-surface');
-                    navLogoText.classList.remove('text-white');
-                    navLinks.forEach(l => {
-                        l.classList.add('text-slate-500', 'hover:text-surface');
-                        l.classList.remove('text-slate-300', 'hover:text-white');
-                    });
-                } else {
-                    nav.classList.remove('nav-solid');
-                    navLogoText.classList.remove('text-surface');
-                    navLogoText.classList.add('text-white');
-                    navLinks.forEach(l => {
-                        l.classList.remove('text-slate-500', 'hover:text-surface');
-                        l.classList.add('text-slate-300', 'hover:text-white');
-                    });
-                }
+            // Check if GSAP loaded properly
+            if (typeof gsap === 'undefined') {
+                console.error("GSAP not loaded.");
+                return;
             }
 
-            window.addEventListener('scroll', updateNav, { passive: true });
-            updateNav();
-
-            if (typeof gsap !== 'undefined') {
-                gsap.registerPlugin(ScrollTrigger);
-                
-                gsap.from('.gs-reveal-hero', {
-                    y: 30,
+            // Hero Elements Reveal
+            const heroElements = gsap.utils.toArray('.gs-reveal-hero');
+            if(heroElements.length) {
+                gsap.from(heroElements, {
+                    y: 40,
                     opacity: 0,
-                    duration: 1,
-                    stagger: 0.2,
+                    duration: 1.2,
+                    stagger: 0.15,
                     ease: "power3.out"
                 });
+            }
 
-                document.querySelectorAll('.gs-fade-up').forEach(elem => {
-                    gsap.from(elem, {
-                        scrollTrigger: { trigger: elem, start: "top 88%" },
-                        y: 24,
-                        opacity: 0,
-                        duration: 0.7,
-                        ease: "power2.out"
-                    });
+            // General Fade Up logic
+            const fadeElements = gsap.utils.toArray('.gs-fade-up');
+            fadeElements.forEach(elem => {
+                let delay = elem.getAttribute('data-delay') || 0;
+                gsap.from(elem, {
+                    scrollTrigger: {
+                        trigger: elem,
+                        start: "top 85%", // Triggers when top of element hits 85% of viewport
+                    },
+                    y: 30,
+                    opacity: 0,
+                    duration: 0.8,
+                    delay: parseFloat(delay),
+                    ease: "power2.out"
                 });
+            });
 
-                document.querySelectorAll('.timeline-item').forEach((item, i) => {
-                    gsap.from(item, {
-                        scrollTrigger: { trigger: item, start: "top 82%" },
-                        y: 24,
-                        opacity: 0,
-                        duration: 0.5,
-                        delay: i * 0.08,
-                        ease: "power2.out"
-                    });
+            // Timeline Items
+            const tlItems = document.querySelectorAll('.timeline-item');
+            tlItems.forEach((item, i) => {
+                gsap.from(item, {
+                    scrollTrigger: {
+                        trigger: item,
+                        start: "top 80%",
+                    },
+                    y: 30,
+                    opacity: 0,
+                    duration: 0.6,
+                    delay: i * 0.1, // Stagger effect
+                    ease: "power2.out"
+                });
+            });
+
+            // Parallax Floating Badge (Hero area)
+            const floatBadge = document.querySelector(".gs-float");
+            if(floatBadge) {
+                gsap.to(floatBadge, {
+                    scrollTrigger: {
+                        trigger: "#hero-phone-container",
+                        start: "top bottom",
+                        end: "bottom top",
+                        scrub: 1.5 // Smooth scrubbing
+                    },
+                    y: -120,
+                    ease: "none"
                 });
             }
         });
-    </script> </body> </html>
+    </script>
+</body>
+</html>
