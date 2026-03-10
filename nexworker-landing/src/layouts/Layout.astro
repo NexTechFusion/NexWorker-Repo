@@ -4,76 +4,194 @@ interface Props {
 	description?: string;
 }
 
-const { title, description = "Messenger-basierte Dokumentation fuer Handwerk. Keine App, 15 Min. Setup, DSGVO-konform." } = Astro.props;
+const { title, description = "Baudokumentation per WhatsApp ohne neue App. Monteure chatten wie gewohnt – NexWorker sichert Zeiten, Fotos und Wissen automatisch. 15 Min. Setup, DSGVO-konform." } = Astro.props;
 ---
 
 <!doctype html>
 <html lang="de" class="scroll-smooth">
 	<head>
 		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<meta name="generator" content={Astro.generator} />
-		<title>{title} | NexWorker</title>
+		<title>{title}</title>
 		<meta name="description" content={description} />
+		
 		<!-- Google Fonts -->
 		<link rel="preconnect" href="https://fonts.googleapis.com">
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-	</head>
-	<body class="bg-slate-50 text-slate-700 antialiased">
-		<!-- Navigation Component would go here -->
-		<nav class="bg-white border-b border-slate-200 sticky top-0 z-50">
-				<div class="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
-						<a href="/" class="flex items-center gap-2">
-								<div class="w-8 h-8 bg-brand rounded-lg flex items-center justify-center">
-										<svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-								</div>
-								<span class="font-bold text-slate-900">NexWorker</span>
-						</a>
-						<div class="hidden md:flex gap-8 items-center text-sm font-medium text-slate-600">
-								<a href="#features" class="hover:text-brand transition-colors">Funktionen</a>
-								<a href="#workflow" class="hover:text-brand transition-colors">Workflow</a>
-								<a href="#faq" class="hover:text-brand transition-colors">FAQ</a>
-								<a href="#contact" class="bg-brand hover:bg-brand-dark text-white px-5 py-2 rounded-lg transition-all shadow-soft">Demo anfordern</a>
-						</div>
-				</div>
-		</nav>
 
+		<!-- Tailwind CSS -->
+		<script src="https://cdn.tailwindcss.com"></script>
+
+		<!-- GSAP for Animations -->
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+
+		<!-- Tailwind Configuration -->
+		<script>
+			tailwind.config = {
+				theme: {
+					extend: {
+						fontFamily: {
+							sans: ['Inter', 'sans-serif'],
+							mono: ['JetBrains Mono', 'monospace'],
+						},
+						colors: {
+							brand: {
+								DEFAULT: '#4F46E5',
+								dark: '#3730A3',
+								light: '#818CF8',
+								50: '#EEF2FF'
+							},
+							surface: {
+								DEFAULT: '#0F172A',
+								light: '#1E293B',
+								dark: '#020617'
+							},
+							chat: {
+								bg: '#F8FAFC',
+								user: '#E0F2FE',
+								bot: '#FFFFFF'
+							}
+						},
+						boxShadow: {
+							'soft': '0 4px 20px -2px rgba(15, 23, 42, 0.05)',
+							'floating': '0 20px 40px -10px rgba(15, 23, 42, 0.1)',
+							'inner-light': 'inset 0 2px 4px 0 rgba(255, 255, 255, 0.1)',
+							'glow': '0 0 20px rgba(79, 70, 229, 0.3)',
+						}
+					}
+				}
+			}
+		</script>
+
+		<!-- Custom CSS -->
+		<style>
+			body {
+				background-color: #F8FAFC;
+				color: #334155;
+				-webkit-font-smoothing: antialiased;
+				-moz-osx-font-smoothing: grayscale;
+			}
+
+			.bg-grid {
+				background-size: 40px 40px;
+				background-image: linear-gradient(to right, rgba(15, 23, 42, 0.03) 1px, transparent 1px),
+									linear-gradient(to bottom, rgba(15, 23, 42, 0.03) 1px, transparent 1px);
+				mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 100%);
+				-webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 100%);
+			}
+
+			.bg-grid-dark {
+				background-size: 40px 40px;
+				background-image: linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+									linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+			}
+
+			.chat-bubble-user {
+				position: relative;
+				border-radius: 1rem;
+				border-bottom-right-radius: 0.25rem;
+			}
+			
+			.chat-bubble-bot {
+				position: relative;
+				border-radius: 1rem;
+				border-bottom-left-radius: 0.25rem;
+			}
+
+			.clip-diagonal {
+				clip-path: polygon(0 0, 100% 0, 100% 95%, 0 100%);
+			}
+
+			.chat-scroll::-webkit-scrollbar {
+				width: 4px;
+			}
+			.chat-scroll::-webkit-scrollbar-track {
+				background: transparent;
+			}
+			.chat-scroll::-webkit-scrollbar-thumb {
+				background: #cbd5e1;
+				border-radius: 4px;
+			}
+
+			.perspective-1000 {
+				perspective: 1000px;
+			}
+		</style>
+	</head>
+	<body class="selection:bg-brand selection:text-white relative">
 		<slot />
 
-		<footer class="bg-surface-dark py-12 px-6">
-				<div class="max-w-6xl mx-auto grid md:grid-cols-4 gap-12">
-						<div class="col-span-2">
-								<div class="flex items-center gap-2 mb-4">
-										<div class="w-8 h-8 bg-brand rounded-lg flex items-center justify-center">
-												<svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-										</div>
-										<span class="font-bold text-white">NexWorker</span>
-								</div>
-								<p class="text-slate-400 max-w-sm mb-6">
-										Die KI-Instanz fuer Handwerk und Field-Service. 
-										Dokumentation ohne App direkt in WhatsApp, Telegram und Teams.
-								</p>
-						</div>
-						<div>
-								<h4 class="text-white font-bold mb-4">Rechtlich</h4>
-								<ul class="text-slate-400 flex flex-col gap-2">
-										<li><a href="/impressum" class="hover:text-white transition-colors">Impressum</a></li>
-										<li><a href="/datenschutz" class="hover:text-white transition-colors">Datenschutz</a></li>
-								</ul>
-						</div>
-						<div>
-								<h4 class="text-white font-bold mb-4">Support</h4>
-								<ul class="text-slate-400 flex flex-col gap-2">
-										<li><a href="#contact" class="hover:text-white transition-colors">Kontakt</a></li>
-										<li><a href="#faq" class="hover:text-white transition-colors">Hilfe-Center</a></li>
-								</ul>
-						</div>
-				</div>
-				<div class="max-w-6xl mx-auto mt-12 pt-8 border-t border-slate-800 text-center">
-						<p class="text-slate-500 text-sm">© {new Date().getFullYear()} NexTech Fusion GmbH. All rights reserved.</p>
-				</div>
-		</footer>
+		<!-- GSAP Init Script -->
+		<script>
+			window.addEventListener('load', () => {
+				if (typeof gsap === 'undefined') {
+					console.error("GSAP not loaded.");
+					return;
+				}
+
+				// Hero Elements Reveal
+				const heroElements = gsap.utils.toArray('.gs-reveal-hero');
+				if(heroElements.length) {
+					gsap.from(heroElements, {
+						y: 40,
+						opacity: 0,
+						duration: 1.2,
+						stagger: 0.15,
+						ease: "power3.out"
+					});
+				}
+
+				// General Fade Up logic
+				const fadeElements = gsap.utils.toArray('.gs-fade-up');
+				fadeElements.forEach(elem => {
+					let delay = elem.getAttribute('data-delay') || 0;
+					gsap.from(elem, {
+						scrollTrigger: {
+							trigger: elem,
+							start: "top 85%",
+						},
+						y: 30,
+						opacity: 0,
+						duration: 0.8,
+						delay: parseFloat(delay),
+						ease: "power2.out"
+					});
+				});
+
+				// Timeline Items
+				const tlItems = document.querySelectorAll('.timeline-item');
+				tlItems.forEach((item, i) => {
+					gsap.from(item, {
+						scrollTrigger: {
+							trigger: item,
+							start: "top 80%",
+						},
+						y: 30,
+						opacity: 0,
+						duration: 0.6,
+						delay: i * 0.1,
+						ease: "power2.out"
+					});
+				});
+
+				// Parallax Floating Badge
+				const floatBadge = document.querySelector(".gs-float");
+				if(floatBadge) {
+					gsap.to(floatBadge, {
+						scrollTrigger: {
+							trigger: "#hero-phone-container",
+							start: "top bottom",
+							end: "bottom top",
+							scrub: 1.5
+						},
+						y: -120,
+						ease: "none"
+					});
+				}
+			});
+		</script>
 	</body>
 </html>
