@@ -1027,4 +1027,39 @@ import Layout from '../layouts/Layout.astro';
             }
         });
     </script>
+
+    <!-- SoftwareApplication Schema -->
+    <script type="application/ld+json" set:html={JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "NexWorker",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "WhatsApp, Telegram, Signal, Microsoft Teams, Slack",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "EUR",
+            "availability": "https://schema.org/InStock"
+        },
+        "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.8",
+            "ratingCount": "50"
+        },
+        "featureList": [
+            "WhatsApp-basierte Dokumentation",
+            "KI-gestützte Wissenssuche",
+            "Rechtssichere Beweissicherung",
+            "Automatisierte Berichterstellung",
+            "ERP-Integration",
+            "DSGVO-konform"
+        ],
+        "description": "NexWorker ist eine WhatsApp-basierte Wissensmanagement- und Dokumentationslösung für Handwerksbetriebe und Baufirmen. Keine App-Installation erforderlich, Setup in 15 Minuten.",
+        "screenshot": "https://nexworker.de/og-image.png",
+        "publisher": {
+            "@type": "Organization",
+            "name": "NexTech Fusion GmbH",
+            "url": "https://www.nextech-fusion.com"
+        }
+    })} />
 </Layout>

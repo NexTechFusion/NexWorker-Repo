@@ -82,4 +82,52 @@ const solutions = [
 			</a>
 		</div>
 	</section>
+
+    <!-- FAQPage Schema -->
+    <script type="application/ld+json" set:html={JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            {
+                "@type": "Question",
+                "name": "Was ist Beweissicherung auf der Baustelle?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Beweissicherung auf der Baustelle bezeichnet die rechtssichere Dokumentation von Baufortschritten, Mängeln und Arbeitsleistungen mit Zeitstempel und GPS-Daten. In Deutschland ist dies besonders wichtig für Gewährleistungsfälle nach BGB § 633 und VOB/B."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Ist WhatsApp für Baudokumentation DSGVO-konform?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Ja, wenn die Datenverarbeitung in Deutschland erfolgt und ein Auftragsverarbeitungsvertrag (AVV) besteht. NexWorker speichert alle Daten auf Servern in Frankfurt und erfüllt die DSGVO-Anforderungen vollständig."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Wie lange muss Baudokumentation aufbewahrt werden?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Nach BGB § 634a beträgt die Verjährungsfrist für Mängelansprüche 5 Jahre bei Bauwerken. Die dazugehörige Dokumentation muss für diesen Zeitraum vollständig und nachvollziehbar aufbewahrt werden."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Was ändert sich durch NIS-2 im März 2026?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Die NIS-2-Richtung fordert von Unternehmen mit über 50 Mitarbeitern dokumentierte Sicherheitsmaßnahmen. Baudokumentation wird zur Compliance-Pflicht. NexWorker erfüllt diese Anforderungen automatisch durch audit-sichere Archivierung."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Kann man Fotos aus WhatsApp gerichtsfest nutzen?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Ja, wenn Metadaten wie Zeitstempel, GPS und Absender korrekt erfasst werden. NexWorker extrahiert und speichert diese automatisch, sodass die Dokumentation vor Gericht als Beweismittel taugt."
+                }
+            }
+        ]
+    })} />
 </Layout>

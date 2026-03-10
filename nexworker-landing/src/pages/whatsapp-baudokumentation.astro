@@ -86,6 +86,54 @@ const solutions = [
 			</a>
 		</div>
 	</section>
+
+    <!-- FAQPage Schema -->
+    <script type="application/ld+json" set:html={JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            {
+                "@type": "Question",
+                "name": "Wie funktioniert Baudokumentation per WhatsApp?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Monteure senden Fotos, Nachrichten und Standorte über WhatsApp an eine zentrale Nummer. NexWorker analysiert die Nachrichten automatisch, extrahiert relevante Informationen und strukturiert die Dokumentation. Keine App-Installation erforderlich."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Warum keine App für Baudokumentation?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Studien zeigen: 73% der Monteure nutzen WhatsApp bereits für die Arbeit. Eine zusätzliche App bedeutet Schulungsaufwand, Passwort-Management und geringere Akzeptanz. Mit WhatsApp nutzen Monteure ein vertrautes Tool mit 100% Akzeptanz."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Welche Messenger werden unterstützt?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "NexWorker unterstützt WhatsApp Business API, Telegram, Signal, Microsoft Teams und Slack. Alle Messenger werden zentral in einer Oberfläche verwaltet."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Wie lange dauert die Einrichtung?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Das Setup von NexWorker dauert etwa 15 Minuten. Sie verbinden Ihren Messenger-Account, laden Ihr Team per Link ein und können sofort mit der Dokumentation beginnen. Keine Schulung notwendig."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Ist die Kommunikation sicher?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Ja. NexWorker nutzt die offiziellen APIs von WhatsApp und anderen Messengern. Alle Daten werden in Deutschland (Frankfurt) gespeichert, sind Ende-zu-Ende-verschlüsselt und DSGVO-konform verarbeitet."
+                }
+            }
+        ]
+    })} />
 </Layout>
 
 <style>
