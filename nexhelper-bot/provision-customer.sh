@@ -701,9 +701,9 @@ User: "Erinnerung für Freitag: Angebot einholen"
 \`\`\`
 
 #### Zeit parsen:
-| Was Nutzer sagen | Wie du interpretierst |
-|------------------|----------------------|
-| "morgen" | morgen, gleiche Zeit |
+| Was Nutzer sagen | ISO Timestamp |
+|------------------|---------------|
+| "morgen" | morgen, gleiche Zeit (z.B. 2026-03-13T22:30:00) |
 | "übermorgen" | in 2 Tagen |
 | "Freitag" | nächsten Freitag |
 | "nächste Woche" | Montag in 7 Tagen |
@@ -711,16 +711,32 @@ User: "Erinnerung für Freitag: Angebot einholen"
 | "am 15." | am 15. des Monats |
 | "um 14 Uhr" | heute/today + 14:00 |
 
-#### Ablauf:
-\`\`\`
-1. Parse Zeit aus natürlicher Sprache
-2. Parse Inhalt/Task
-3. Extrahiere Channel-Info aus Inbound-Metadata
-4. Speichere in storage/reminders/ als JSON
-5. Bestätige mit Zeit
+---
 
+#### Ablauf (WICHTIG: Immer diese Schritte befolgen!)
+
+**Schritt 1: Zeit und Text extrahieren**
+- Parse die Zeit aus natürlicher Sprache
+- Wandle in ISO-8601 Format um: \`YYYY-MM-DDTHH:MM:SS\`
+
+**Schritt 2: Erinnerung erstellen mit exec**
+
+Verwende IMMER diesen exakten Befehl:
+
+\`\`\`bash
+exec("openclaw cron add --at 'YYYY-MM-DDTHH:MM:SS' --message '⏰ ERINNERUNG: [TEXT]' --channel telegram --to [SENDER_ID] --announce")
+\`\`\`
+
+**Beispiel:**
+\`\`\`
 User: "Erinnere mich morgen um 10 an den Müller Auftrag"
 
+# Du berechnest: morgen = 2026-03-13, 10:00
+exec("openclaw cron add --at '2026-03-13T10:00:00' --message '⏰ ERINNERUNG: Müller Auftrag nicht vergessen!' --channel telegram --to 579539601 --announce")
+\`\`\`
+
+**Schritt 3: Bestätigung senden**
+\`\`\`
 Bot: "⏰ Erinnerung gesetzt
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📅 Wann:  Morgen, 10:00 (13.03.2026)
@@ -728,63 +744,33 @@ Bot: "⏰ Erinnerung gesetzt
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 \`\`\`
 
-#### Reminder speichern (Custom System):
-**WICHTIG:** Nutze die Inbound-Metadata für Channel-Info!
+---
 
-\`\`\`javascript
-// Extrahiere aus Inbound Context:
-const reminder = {
-  "id": "rem-" + Date.now(),
-  "user_id": "<sender_id from inbound>",
-  "channel": "<channel from inbound>",  // "telegram" oder "whatsapp"
-  "account_id": "<account_id from inbound>",
-  "chat_id": "<chat_id from inbound>",
-  "time": "2026-03-13T10:00:00",
-  "text": "Müller Auftrag nicht vergessen!",
-  "created": "2026-03-12T20:45:00",
-  "status": "pending"
-};
+#### WICHTIGE REGELN:
 
-// Speichere als JSON:
-write(
-  file_path: "storage/reminders/rem-[timestamp].json",
-  content: JSON.stringify(reminder, null, 2)
-);
-\`\`\`
+1. **Immer exec verwenden** - nicht write, nicht andere Tools
+2. **Exaktes Format** - \`--at 'YYYY-MM-DDTHH:MM:SS'\` (einfache Anführungszeichen!)
+3. **Channel aus Inbound-Metadata** - bei Telegram: \`--channel telegram\`
+4. **Sender-ID aus Inbound-Metadata** - \`--to [sender_id]\`
+5. **Immer --announce** - damit die Nachricht zugestellt wird
+
+---
 
 #### Erinnerungen anzeigen:
 \`\`\`
 User: "Zeig meine Erinnerungen"
-User: "Was habe ich geplant?"
 
-// Lese alle reminders und filtere nach user_id
-read("storage/reminders/*.json")
+exec("openclaw cron list --json")
 
-Bot: "⏰ Deine Erinnerungen
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📅 Morgen 10:00
-   Müller Auftrag
-
-📅 Freitag 14:00
-   Steuererklärung abgeben
-
-📅 20.03. 09:00
-   Angebot einholen
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+# Filtere nach aktuellen Jobs und zeige sie an
 \`\`\`
 
 #### Erinnerung löschen:
 \`\`\`
 User: "Lösch die Erinnerung für morgen"
 
-Bot: "⚠️ Welche Erinnerung löschen?
-   1. Müller Auftrag (Morgen 10:00)
-   2. Steuererklärung (Freitag 14:00)
-   
-   [1] [2] [Abbrechen]"
-
-// Nach Auswahl:
-exec("rm storage/reminders/rem-[id].json")
+# Zeige Liste, dann:
+exec("openclaw cron remove --id [JOB_ID]")
 \`\`\`
 
 ---
@@ -1210,62 +1196,13 @@ cat <<EOF > "$CUSTOMER_DIR/storage/IDENTITY.md"
 - **Customer:** $CUSTOMER_NAME
 EOF
 
-# HEARTBEAT.md - Reminder check logic
+# HEARTBEAT.md
 cat <<'EOF' > "$CUSTOMER_DIR/storage/HEARTBEAT.md"
-# HEARTBEAT.md - Periodic Tasks for NexHelper
+# HEARTBEAT.md
 
-## ⏰ Check Pending Reminders
+# Keep this file empty (or with only comments) to skip heartbeat API calls.
 
-Every heartbeat, check for due reminders and deliver them:
-
-```
-1. Read all files in storage/reminders/*.json
-2. For each reminder:
-   - If reminder.time <= now AND status == "pending":
-     - Use message tool to deliver:
-       message(
-         action: "send",
-         channel: reminder.channel,
-         target: reminder.chat_id,
-         message: "⏰ ERINNERUNG:\n\n" + reminder.text
-       )
-     - Update reminder.status = "delivered"
-     - OR delete the reminder file
-3. Reply HEARTBEAT_OK if no reminders due
-```
-
-### Implementation:
-```javascript
-// Check reminders
-const now = new Date().toISOString();
-const reminders = exec("ls storage/reminders/*.json 2>/dev/null || true");
-
-if (reminders) {
-  for (const file of reminders.split("\n")) {
-    if (!file) continue;
-    const reminder = JSON.parse(read(file));
-    
-    if (reminder.time <= now && reminder.status === "pending") {
-      // Deliver reminder
-      message({
-        action: "send",
-        channel: reminder.channel,
-        target: reminder.chat_id,
-        message: `⏰ ERINNERUNG:\n\n${reminder.text}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
-      });
-      
-      // Delete reminder
-      exec(`rm ${file}`);
-    }
-  }
-}
-```
-
----
-
-## 📋 Default Behavior
-
-If no reminders are due, reply: `HEARTBEAT_OK`
+# Add tasks below when you want the agent to check something periodically.
 EOF
 
 # Today's memory file + documents folder
