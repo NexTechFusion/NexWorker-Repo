@@ -58,5 +58,7 @@ ENV NODE_ENV=production \
 # Expose default port
 EXPOSE ${PORT:-3000}
 
-# Entrypoint
-ENTRYPOINT ["openclaw", "gateway", "start", "--config", "/app/config/config.yaml"]
+# Entrypoint - use docker-compose command override or default
+# Config is loaded from /root/.openclaw/openclaw.json by the container's entrypoint script
+ENTRYPOINT ["openclaw"]
+CMD ["gateway", "run"]

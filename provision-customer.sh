@@ -1,15 +1,17 @@
 #!/bin/bash
-# NexHelper Customer Provisioning (v3.0)
-# Spins up a new OpenClaw instance per customer
+# NexHelper Customer Provisioning (v4.0)
+# Spins up a new OpenClaw instance per customer with working Telegram/WhatsApp
 #
 # Architecture: 1 Kunde = 1 Bot Token = 1 Docker Container
 # DSGVO: Isolated storage per customer, consent-based
 #
 # Usage:
-#   ./provision-customer.sh <customer-id> <customer-name> --bot-token <token>
+#   ./provision-customer.sh <customer-id> <customer-name> --telegram <token>
+#   ./provision-customer.sh <customer-id> <customer-name> --whatsapp
 #
-# Example:
-#   OPENAI_API_KEY=sk-xxx ./provision-customer.sh 001 "Acme GmbH" --bot-token "123:ABC"
+# Examples:
+#   OPENAI_API_KEY=sk-xxx ./provision-customer.sh 001 "Acme GmbH" --telegram "123:ABC"
+#   OPENAI_API_KEY=sk-xxx ./provision-customer.sh 002 "Müller Bau" --whatsapp
 
 set -e
 
@@ -19,24 +21,34 @@ set -e
 CUSTOMER_ID=""
 CUSTOMER_NAME=""
 BASE_DIR="${BASE_DIR:-/opt/nexhelper/customers}"
-BOT_TOKEN=""
+TELEGRAM_TOKEN=""
+WHATSAPP_MODE=false
 API_KEY="${OPENAI_API_KEY:-}"
 ENABLE_WHATSAPP=false
 AUTO_START=true
 CONSENT_VERSION="1.0"
+DEFAULT_MODEL="openrouter/stepfun/step-3.5-flash"
 
 # ============================================
 # Parse Arguments
 # ============================================
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --bot-token)
-            BOT_TOKEN="$2"
+        --telegram)
+            TELEGRAM_TOKEN="$2"
             shift 2
             ;;
         --whatsapp)
-            ENABLE_WHATSAPP=true
+            WHATSAPP_MODE=true
             shift
+            ;;
+        --api-key)
+            API_KEY="$2"
+            shift 2
+            ;;
+        --model)
+            DEFAULT_MODEL="$2"
+            shift 2
             ;;
         --no-start)
             AUTO_START=false
@@ -44,6 +56,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --consent-version)
             CONSENT_VERSION="$2"
+            shift 2
+            ;;
+        --base-dir)
+            BASE_DIR="$2"
             shift 2
             ;;
         -*)
@@ -65,20 +81,20 @@ done
 # Validation
 # ============================================
 if [ -z "$CUSTOMER_ID" ] || [ -z "$CUSTOMER_NAME" ]; then
-    echo "Usage: ./provision-customer.sh <customer-id> <customer-name> --bot-token <token>"
+    echo "Usage: ./provision-customer.sh <customer-id> <customer-name> [options]"
     echo ""
     echo "Options:"
-    echo "  --bot-token <token>       Telegram bot token (REQUIRED)"
-    echo "  --whatsapp                Enable WhatsApp channel"
-    echo "  --no-start                Don't auto-start container"
-    echo "  --consent-version <ver>   Consent text version (default: 1.0)"
+    echo "  --telegram <token>    Telegram bot token (REQUIRED unless --whatsapp)"
+    echo "  --whatsapp            Enable WhatsApp channel (will show QR on first start)"
+    echo "  --api-key <key>       OpenAI/OpenRouter API key (or set OPENAI_API_KEY)"
+    echo "  --model <model>       Default model (default: openrouter/stepfun/step-3.5-flash)"
+    echo "  --no-start            Don't auto-start container"
+    echo "  --consent-version <v> Consent text version (default: 1.0)"
+    echo "  --base-dir <path>     Base directory (default: /opt/nexhelper/customers)"
     echo ""
-    echo "Environment Variables:"
-    echo "  OPENAI_API_KEY      OpenAI/OpenRouter API key (required)"
-    echo "  BASE_DIR            Base directory (default: /opt/nexhelper/customers)"
-    echo ""
-    echo "Example:"
-    echo "  OPENAI_API_KEY=sk-xxx ./provision-customer.sh 001 'Acme GmbH' --bot-token '123:ABC'"
+    echo "Examples:"
+    echo "  OPENAI_API_KEY=sk-xxx ./provision-customer.sh 001 'Acme GmbH' --telegram '123:ABC'"
+    echo "  OPENAI_API_KEY=sk-xxx ./provision-customer.sh 002 'Müller Bau' --whatsapp"
     exit 1
 fi
 
@@ -86,15 +102,43 @@ fi
 if [ -z "$API_KEY" ]; then
     echo "❌ Error: OPENAI_API_KEY not set"
     echo "   Set it via: export OPENAI_API_KEY=your-api-key"
+    echo "   Or use: --api-key your-api-key"
     exit 1
 fi
 
-# Check bot token
-if [ -z "$BOT_TOKEN" ]; then
-    echo "❌ Error: --bot-token is required"
-    echo "   Create a bot via @BotFather in Telegram"
-    echo "   Then: ./provision-customer.sh 001 'Kunde' --bot-token '123:ABC'"
+# Check channel selection
+if [ -z "$TELEGRAM_TOKEN" ] && [ "$WHATSAPP_MODE" = false ]; then
+    echo "❌ Error: Must specify either --telegram <token> or --whatsapp"
+    echo ""
+    echo "For Telegram:"
+    echo "  1. Open Telegram and chat with @BotFather"
+    echo "  2. Run /newbot and follow prompts"
+    echo "  3. Copy the token and use: --telegram '123:ABC'"
+    echo ""
+    echo "For WhatsApp:"
+    echo "  Use --whatsapp (you'll scan a QR code on first start)"
     exit 1
+fi
+
+# ============================================
+# Validate Telegram Token (if provided)
+# ============================================
+if [ -n "$TELEGRAM_TOKEN" ]; then
+    echo "🔍 Validating Telegram bot token..."
+    TELEGRAM_VALIDATION=$(curl -s "https://api.telegram.org/bot${TELEGRAM_TOKEN}/getMe")
+    if echo "$TELEGRAM_VALIDATION" | grep -q '"ok":true'; then
+        BOT_USERNAME=$(echo "$TELEGRAM_VALIDATION" | grep -o '"username":"[^"]*"' | cut -d'"' -f4)
+        echo "✅ Telegram bot validated: @$BOT_USERNAME"
+    else
+        echo "❌ Error: Invalid Telegram bot token"
+        echo "   Response: $TELEGRAM_VALIDATION"
+        echo ""
+        echo "   Get a valid token from @BotFather:"
+        echo "   1. Open Telegram"
+        echo "   2. Search for @BotFather"
+        echo "   3. Run /newbot"
+        exit 1
+    fi
 fi
 
 # ============================================
@@ -108,8 +152,9 @@ CUSTOMER_DIR="${BASE_DIR}/${SLUG}"
 # ============================================
 # Display Configuration
 # ============================================
+echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "🚀 NexHelper Provisioning v3.0"
+echo "🚀 NexHelper Provisioning v4.0"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "Customer:        $CUSTOMER_NAME"
 echo "ID:              $CUSTOMER_ID"
@@ -117,8 +162,13 @@ echo "Slug:            $SLUG"
 echo "Instance:        $INSTANCE_NAME"
 echo "Port:            $PORT"
 echo "Directory:       $CUSTOMER_DIR"
-echo "Bot Token:       ${BOT_TOKEN:0:10}..."
-echo "WhatsApp:        $([ "$ENABLE_WHATSAPP" = true ] && echo "enabled" || echo "disabled")"
+echo "Model:           $DEFAULT_MODEL"
+if [ -n "$TELEGRAM_TOKEN" ]; then
+    echo "Channel:         Telegram (@$BOT_USERNAME)"
+fi
+if [ "$WHATSAPP_MODE" = true ]; then
+    echo "Channel:         WhatsApp (QR scan required)"
+fi
 echo "Consent Version: $CONSENT_VERSION"
 echo ""
 
@@ -142,6 +192,7 @@ fi
 # ============================================
 echo "📁 Creating directory structure..."
 mkdir -p "$CUSTOMER_DIR"/{config,logs,storage/{memory,consent,audit}}
+mkdir -p "$CUSTOMER_DIR/storage/.openclaw"
 
 # ============================================
 # 2. Generate Consent Configuration
@@ -184,27 +235,137 @@ consent:
 EOF
 
 # ============================================
-# 3. Generate OpenClaw config
+# 3. Generate OpenClaw Configuration (JSON5)
 # ============================================
-echo "⚙️  Generating OpenClaw config..."
+echo "⚙️  Generating OpenClaw configuration..."
 
-# openclaw.json - Main config
+# Build channels section based on selected channels
+CHANNELS_CONFIG=""
+
+if [ -n "$TELEGRAM_TOKEN" ]; then
+    CHANNELS_CONFIG+="  telegram: {
+    enabled: true,
+    botToken: \"\${TELEGRAM_BOT_TOKEN}\",
+    dmPolicy: \"pairing\",
+    groups: { \"*\": { requireMention: true } },
+  },
+"
+fi
+
+if [ "$WHATSAPP_MODE" = true ]; then
+    CHANNELS_CONFIG+="  whatsapp: {
+    enabled: true,
+    dmPolicy: \"pairing\",
+    groupPolicy: \"allowlist\",
+  },
+"
+fi
+
 cat <<EOF > "$CUSTOMER_DIR/config/openclaw.json"
 {
+  // NexHelper Configuration for $CUSTOMER_NAME
+  // Generated: $(date -Iseconds)
+  
+  "gateway": {
+    "port": $PORT,
+    "mode": "local",
+    "bind": "lan",
+    "reload": { "mode": "hybrid" },
+  },
+  
   "auth": {
     "profiles": {
       "openrouter:default": {
         "provider": "openrouter",
-        "mode": "api_key"
-      }
-    }
+        "mode": "api_key",
+      },
+    },
   },
+  
   "agents": {
     "defaults": {
-      "model": "openrouter/stepfun/step-3.5-flash",
-      "workspace": "/root/.openclaw/workspace"
-    }
+      "model": "$DEFAULT_MODEL",
+      "workspace": "/root/.openclaw/workspace",
+      "thinking": "low",
+      "systemPrompt": \`
+Du bist NexHelper für $CUSTOMER_NAME.
+
+Du hilfst bei der Dokumentenverwaltung über Messenger.
+
+## Deine Aufgaben:
+- Dokumente empfangen und analysieren (Bilder, PDFs)
+- Dokumente kategorisieren und archivieren
+- Fragen zu Dokumenten beantworten
+- An Fristen erinnern
+- Export in DATEV/SAP/Lexware (auf Anfrage)
+
+## Verfügbare Tools:
+- image: Bilder analysieren
+- pdf: PDFs analysieren
+- memory_search: Dokumente durchsuchen
+- memory_get: Dokumente lesen
+- cron: Erinnerungen setzen
+- exec: Skills ausführen (Export, OCR)
+
+## Workflows:
+
+### Dokument empfangen:
+1. Consent prüfen (falls nicht vorhanden, fragen)
+2. Dokument analysieren (image/pdf tool)
+3. Typ erkennen (Rechnung, Angebot, etc.)
+4. Wichtige Daten extrahieren:
+   - Datum
+   - Betrag
+   - Lieferant
+   - Rechnungsnummer
+   - Kategorie
+5. In Memory speichern
+6. Bestätigung senden
+
+### Dokument suchen:
+1. Query verstehen (Was sucht der Nutzer?)
+2. memory_search mit relevanten Keywords
+3. Ergebnisse formatieren
+4. Senden
+
+### Export:
+1. Bestätigung einholen (Wirklich exportieren?)
+2. Dokumente sammeln
+3. Format konvertieren (DATEV CSV, etc.)
+4. An Ziel senden
+5. Bestätigung senden
+6. Audit-Log eintragen
+
+## Stil:
+- Freundlich, professionell, effizient
+- Kurz und prägnant
+- Deutsch
+- Emoji sparsam verwenden (max 1-2 pro Nachricht)
+- Kein "Gerne!" oder "Natürlich!" - einfach machen
+
+## Datenschutz:
+- Daten bleiben auf EU-Servern
+- DSGVO-konform
+- Keine sensiblen Daten an Dritte
+- Consent vor Verarbeitung
+
+## Consent (DSGVO):
+- Bei /start: Einwilligungstext anzeigen
+- Erst nach Zustimmung verarbeiten
+- Widerruf möglich mit /widerruf
+\`,
+    },
+    "list": [
+      {
+        "id": "main",
+        "default": true,
+        "groupChat": {
+          "mentionPatterns": ["!doc", "!suche", "!hilfe", "@nexhelper"],
+        },
+      },
+    ],
   },
+  
   "tools": {
     "profile": "minimal",
     "allow": [
@@ -217,7 +378,7 @@ cat <<EOF > "$CUSTOMER_DIR/config/openclaw.json"
       "image",
       "pdf",
       "cron",
-      "tts"
+      "tts",
     ],
     "deny": [
       "browser",
@@ -229,28 +390,38 @@ cat <<EOF > "$CUSTOMER_DIR/config/openclaw.json"
       "sessions_list",
       "subagents",
       "agents_list",
-      "message"
-    ]
+      "message",
+    ],
   },
-  "commands": {
-    "native": false,
-    "nativeSkills": false,
-    "restart": false,
-    "ownerDisplay": "hash"
+  
+  "session": {
+    "dmScope": "per-channel-peer",
+    "reset": {
+      "mode": "daily",
+      "atHour": 4,
+    },
   },
-  "gateway": {
-    "port": $PORT,
-    "mode": "local",
-    "bind": "lan",
-    "auth": {
-      "mode": "token",
-      "token": "nexhelper-${SLUG}-$(echo $CUSTOMER_ID | sha256sum | cut -c1-16)"
-    }
-  }
+  
+  "channels": {
+$CHANNELS_CONFIG  },
+  
+  "cron": {
+    "enabled": true,
+    "jobs": [
+      {
+        "name": "daily-summary",
+        "schedule": { "kind": "cron", "expr": "0 18 * * *", "tz": "Europe/Berlin" },
+        "payload": { "kind": "systemEvent", "text": "Generate daily summary of documents processed today" },
+        "sessionTarget": "main",
+      },
+    ],
+  },
 }
 EOF
 
-# auth-profiles.json - API keys
+# ============================================
+# 4. Generate auth-profiles.json
+# ============================================
 cat <<EOF > "$CUSTOMER_DIR/config/auth-profiles.json"
 {
   "version": 1,
@@ -268,17 +439,9 @@ cat <<EOF > "$CUSTOMER_DIR/config/auth-profiles.json"
 EOF
 
 # ============================================
-# 4. Generate docker-compose.yaml
+# 5. Generate docker-compose.yaml
 # ============================================
 echo "🐳 Generating docker-compose.yaml..."
-
-WHATSAPP_ENV=""
-if [ "$ENABLE_WHATSAPP" = true ]; then
-    WHATSAPP_ENV="
-      - WHATSAPP_TOKEN=\${WHATSAPP_TOKEN:-}
-      - WHATSAPP_PHONE_NUMBER=\${WHATSAPP_PHONE_NUMBER:-}
-"
-fi
 
 cat <<EOF > "$CUSTOMER_DIR/docker-compose.yaml"
 services:
@@ -286,21 +449,31 @@ services:
     image: nexhelper:latest
     container_name: $INSTANCE_NAME
     restart: unless-stopped
-    entrypoint: ["/bin/bash", "-c", "mkdir -p /root/.openclaw/agents/main/agent && cp /app/config/openclaw.json /root/.openclaw/openclaw.json && cp /app/config/auth-profiles.json /root/.openclaw/agents/main/agent/auth-profiles.json 2>/dev/null || true && rm -f /root/.openclaw/workspace/BOOTSTRAP.md && exec openclaw gateway run --port $PORT --bind lan"]
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        mkdir -p /root/.openclaw
+        cp /app/config/openclaw.json /root/.openclaw/openclaw.json
+        cp /app/config/auth-profiles.json /root/.openclaw/auth-profiles.json 2>/dev/null || true
+        rm -f /root/.openclaw/workspace/BOOTSTRAP.md
+        exec openclaw gateway run --port $PORT --bind lan
     ports:
       - "$PORT:$PORT"
     volumes:
-      - ./config:/app/config
+      - ./config:/app/config:ro
       - ./storage:/root/.openclaw/workspace
       - ./logs:/app/logs
+      - nexhelper-data-${SLUG}:/root/.openclaw
     environment:
       - OPENAI_API_KEY=\${OPENAI_API_KEY}
-      - TELEGRAM_BOT_TOKEN=\${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_BOT_TOKEN=\${TELEGRAM_BOT_TOKEN:-}
       - PORT=$PORT
       - NODE_ENV=production
       - CUSTOMER_ID=$CUSTOMER_ID
+      - CUSTOMER_NAME=$CUSTOMER_NAME
       - CUSTOMER_SLUG=$SLUG
-      - CONSENT_VERSION=$CONSENT_VERSION$WHATSAPP_ENV
+      - CONSENT_VERSION=$CONSENT_VERSION
+      - TZ=Europe/Berlin
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:$PORT/health"]
       interval: 30s
@@ -317,6 +490,9 @@ services:
         max-size: "10m"
         max-file: "3"
 
+volumes:
+  nexhelper-data-${SLUG}:
+
 networks:
   default:
     name: nexhelper-network
@@ -324,7 +500,7 @@ networks:
 EOF
 
 # ============================================
-# 5. Generate .env file
+# 6. Generate .env file
 # ============================================
 echo "🔐 Generating .env file..."
 cat <<EOF > "$CUSTOMER_DIR/.env"
@@ -332,25 +508,19 @@ cat <<EOF > "$CUSTOMER_DIR/.env"
 # Generated: $(date -Iseconds)
 
 OPENAI_API_KEY=$API_KEY
-TELEGRAM_BOT_TOKEN=$BOT_TOKEN
+TELEGRAM_BOT_TOKEN=${TELEGRAM_TOKEN:-}
 PORT=$PORT
 CUSTOMER_ID=$CUSTOMER_ID
 CUSTOMER_NAME=$CUSTOMER_NAME
 CUSTOMER_SLUG=$SLUG
 CONSENT_VERSION=$CONSENT_VERSION
+TZ=Europe/Berlin
 EOF
 
-if [ "$ENABLE_WHATSAPP" = true ]; then
-    echo "WHATSAPP_TOKEN=" >> "$CUSTOMER_DIR/.env"
-    echo "WHATSAPP_PHONE_NUMBER=" >> "$CUSTOMER_DIR/.env"
-fi
-
 # ============================================
-# 6. Generate Workspace Files
+# 7. Generate Workspace Files
 # ============================================
 echo "📝 Generating workspace files..."
-
-mkdir -p "$CUSTOMER_DIR/storage/memory"
 
 # AGENTS.md
 cat <<EOF > "$CUSTOMER_DIR/storage/AGENTS.md"
@@ -374,7 +544,6 @@ Du bist NexHelper, der Dokumenten-Assistent für $CUSTOMER_NAME.
 Du hast folgende Skills:
 - **document-export** - Export in DATEV/SAP/Lexware
 - **document-ocr** - OCR für Dokumente
-- **email-sender** - E-Mails senden
 - **reminder-system** - Erinnerungen
 
 ## Commands
@@ -385,6 +554,7 @@ Du hast folgende Skills:
 | /suche | Dokumente suchen |
 | /export | Export starten |
 | /erinnerung | Erinnerung setzen |
+| /widerruf | Consent widerrufen |
 EOF
 
 # SOUL.md
@@ -464,6 +634,8 @@ cat <<EOF > "$CUSTOMER_DIR/storage/memory/$TODAY.md"
 
 - Instanz erstellt: $(date -Iseconds)
 - Port: $PORT
+$(if [ -n "$TELEGRAM_TOKEN" ]; then echo "- Bot: @$BOT_USERNAME"; fi)
+$(if [ "$WHATSAPP_MODE" = true ]; then echo "- WhatsApp: QR-Scan ausstehend"; fi)
 
 ## Events
 
@@ -474,9 +646,11 @@ NexHelper für $CUSTOMER_NAME
 EOF
 
 # ============================================
-# 7. Create utility scripts
+# 8. Create Utility Scripts
 # ============================================
+echo "🛠️  Creating utility scripts..."
 
+# start.sh
 cat <<'SCRIPT' > "$CUSTOMER_DIR/start.sh"
 #!/bin/bash
 cd "$(dirname "$0")"
@@ -485,6 +659,7 @@ echo "✅ Started $(basename $(pwd))"
 SCRIPT
 chmod +x "$CUSTOMER_DIR/start.sh"
 
+# stop.sh
 cat <<'SCRIPT' > "$CUSTOMER_DIR/stop.sh"
 #!/bin/bash
 cd "$(dirname "$0")"
@@ -493,6 +668,7 @@ echo "🛑 Stopped $(basename $(pwd))"
 SCRIPT
 chmod +x "$CUSTOMER_DIR/stop.sh"
 
+# logs.sh
 cat <<'SCRIPT' > "$CUSTOMER_DIR/logs.sh"
 #!/bin/bash
 cd "$(dirname "$0")"
@@ -500,6 +676,7 @@ docker-compose logs -f --tail=100
 SCRIPT
 chmod +x "$CUSTOMER_DIR/logs.sh"
 
+# status.sh
 cat <<'SCRIPT' > "$CUSTOMER_DIR/status.sh"
 #!/bin/bash
 cd "$(dirname "$0")"
@@ -516,6 +693,7 @@ docker-compose logs --tail=5
 SCRIPT
 chmod +x "$CUSTOMER_DIR/status.sh"
 
+# remove.sh
 cat <<SCRIPT > "$CUSTOMER_DIR/remove.sh"
 #!/bin/bash
 # Remove NexHelper Instance: $SLUG
@@ -540,6 +718,7 @@ fi
 SCRIPT
 chmod +x "$CUSTOMER_DIR/remove.sh"
 
+# consent.sh
 cat <<'SCRIPT' > "$CUSTOMER_DIR/consent.sh"
 #!/bin/bash
 # Manage consent for this instance
@@ -574,32 +753,86 @@ esac
 SCRIPT
 chmod +x "$CUSTOMER_DIR/consent.sh"
 
+# onboard.sh - Helper for WhatsApp QR or Telegram setup
+cat <<SCRIPT > "$CUSTOMER_DIR/onboard.sh"
+#!/bin/bash
+# NexHelper Onboarding Helper
+cd "$(dirname "\$0")"
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🚀 NexHelper Onboarding: $CUSTOMER_NAME"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+if [ "$WHATSAPP_MODE" = true ]; then
+    echo "📱 WhatsApp Setup"
+    echo ""
+    echo "1. Start the container:"
+    echo "   ./start.sh"
+    echo ""
+    echo "2. Watch logs for QR code:"
+    echo "   ./logs.sh"
+    echo ""
+    echo "3. Scan the QR code with WhatsApp:"
+    echo "   - Open WhatsApp on your phone"
+    echo "   - Settings > Linked Devices > Link Device"
+    echo "   - Scan the QR code shown in logs"
+    echo ""
+    echo "4. Send a message to test:"
+    echo "   - Send any message to your WhatsApp"
+    echo "   - The bot will respond with a pairing code"
+    echo ""
+    echo "5. Approve pairing:"
+    echo "   docker exec -it $INSTANCE_NAME openclaw pairing list whatsapp"
+    echo "   docker exec -it $INSTANCE_NAME openclaw pairing approve whatsapp <CODE>"
+else
+    echo "📱 Telegram Setup"
+    echo ""
+    echo "✅ Bot already configured: @$BOT_USERNAME"
+    echo ""
+    echo "1. Start the container:"
+    echo "   ./start.sh"
+    echo ""
+    echo "2. Open Telegram and search for @$BOT_USERNAME"
+    echo ""
+    echo "3. Send /start to begin"
+    echo "   - The bot will respond with a pairing code"
+    echo ""
+    echo "4. Approve pairing:"
+    echo "   docker exec -it $INSTANCE_NAME openclaw pairing list telegram"
+    echo "   docker exec -it $INSTANCE_NAME openclaw pairing approve telegram <CODE>"
+    echo ""
+    echo "💡 Tip: Add the bot to a group for team access"
+fi
+
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+SCRIPT
+chmod +x "$CUSTOMER_DIR/onboard.sh"
+
 # ============================================
-# 8. Create network if not exists
+# 9. Create Docker network if not exists
 # ============================================
 echo "🌐 Ensuring Docker network exists..."
 docker network create nexhelper-network 2>/dev/null || true
 
 # ============================================
-# 9. Check for nexhelper image
+# 10. Check for nexhelper image
 # ============================================
 if ! docker image inspect nexhelper:latest &> /dev/null; then
     echo ""
     echo "⚠️  nexhelper:latest image not found!"
-    echo "   Building image first..."
+    echo "   You need to build it first:"
     echo ""
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    if [ -f "$SCRIPT_DIR/build-image.sh" ]; then
-        "$SCRIPT_DIR/build-image.sh" latest
-    else
-        echo "❌ build-image.sh not found"
-        echo "   Run: ./build-image.sh"
-        exit 1
-    fi
+    echo "   cd /root/.openclaw/workspace/NexWorker-Repo"
+    echo "   ./build-image.sh latest"
+    echo ""
+    echo "   Or use a pre-built image if available."
+    AUTO_START=false
 fi
 
 # ============================================
-# 10. Start the container (if auto-start)
+# 11. Start the container (if auto-start)
 # ============================================
 if [ "$AUTO_START" = true ]; then
     echo ""
@@ -614,13 +847,15 @@ if [ "$AUTO_START" = true ]; then
         STARTED=true
     else
         STARTED=false
+        echo "⚠️  Container failed to start. Check logs:"
+        echo "   $CUSTOMER_DIR/logs.sh"
     fi
 else
     STARTED=false
 fi
 
 # ============================================
-# 11. Display Summary
+# 12. Display Summary
 # ============================================
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -632,10 +867,30 @@ echo "   Customer:   $CUSTOMER_NAME"
 echo "   Instance:   $INSTANCE_NAME"
 echo "   Port:       $PORT"
 echo "   Directory:  $CUSTOMER_DIR"
+echo "   Model:      $DEFAULT_MODEL"
 echo ""
-echo "📱 Telegram Bot:"
-echo "   Token: ${BOT_TOKEN:0:15}..."
-echo "   Setup via @BotFather"
+
+if [ -n "$TELEGRAM_TOKEN" ]; then
+    echo "📱 Telegram Bot:"
+    echo "   Bot: @$BOT_USERNAME"
+    echo "   Token: ${TELEGRAM_TOKEN:0:15}..."
+    echo ""
+    echo "   Quick test:"
+    echo "   1. Open Telegram"
+    echo "   2. Search for @$BOT_USERNAME"
+    echo "   3. Send /start"
+fi
+
+if [ "$WHATSAPP_MODE" = true ]; then
+    echo "📱 WhatsApp Setup:"
+    echo "   Status: QR scan required"
+    echo ""
+    echo "   To link WhatsApp:"
+    echo "   1. Run: $CUSTOMER_DIR/start.sh"
+    echo "   2. Run: $CUSTOMER_DIR/logs.sh"
+    echo "   3. Scan the QR code with WhatsApp"
+fi
+
 echo ""
 echo "🔐 DSGVO Features:"
 echo "   ✅ Isolated storage per customer"
@@ -649,17 +904,28 @@ echo "   Stop:    $CUSTOMER_DIR/stop.sh"
 echo "   Status:  $CUSTOMER_DIR/status.sh"
 echo "   Logs:    $CUSTOMER_DIR/logs.sh"
 echo "   Consent: $CUSTOMER_DIR/consent.sh"
+echo "   Onboard: $CUSTOMER_DIR/onboard.sh"
 echo "   Remove:  $CUSTOMER_DIR/remove.sh"
 echo ""
 
 if [ "$STARTED" = true ]; then
     echo "🚀 Container is running!"
     echo ""
-    echo "📱 Test your bot:"
-    echo "   1. Open Telegram"
-    echo "   2. Search for your bot (from @BotFather)"
-    echo "   3. Send /start"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "📱 NEXT STEP: Pair your device"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    if [ -n "$TELEGRAM_TOKEN" ]; then
+        echo "1. Open Telegram and find @$BOT_USERNAME"
+        echo "2. Send /start"
+        echo "3. Note the pairing code"
+        echo "4. Approve: docker exec -it $INSTANCE_NAME openclaw pairing approve telegram <CODE>"
+    else
+        echo "Run: $CUSTOMER_DIR/onboard.sh"
+    fi
 else
-    echo "⏸️  Container not started (--no-start)"
+    echo "⏸️  Container not started"
     echo "   Run: $CUSTOMER_DIR/start.sh"
 fi
+
+echo ""

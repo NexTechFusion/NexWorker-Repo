@@ -11,13 +11,13 @@
                         │   └── OpenClaw Instance
                         │   └── Isolated Storage ✅
                         │   └── Consent Management ✅
-                        │   └── tenant_id: acme
+                        │   └── Telegram/WhatsApp Channel
                         │
-@NexHelperBot ── Router ─┼→ Docker: nexhelper-mueller
-(Shared)                 │   └── OpenClaw Instance
+Customer Bot ───────────┼→ Docker: nexhelper-mueller
+                        │   └── OpenClaw Instance
                         │   └── Isolated Storage ✅
                         │   └── Consent Management ✅
-                        │   └── tenant_id: mueller
+                        │   └── Telegram/WhatsApp Channel
                         │
                         └→ Docker: nexhelper-...
 ```
@@ -26,47 +26,63 @@
 
 ## ✨ Features
 
-| Feature | Standard | Optional |
-|---------|----------|----------|
-| OpenClaw Instance | ✅ Pro Kunde | - |
-| Isolated Storage | ✅ DSGVO-konform | - |
-| Consent Management | ✅ Automatisch | - |
-| Audit Logging | ✅ DSGVO Art. 30 | - |
-| Shared Bot | ✅ @NexHelperBot | - |
-| **Dedicated Bot** | - | 💶 `--dedicated-bot` |
-| **WhatsApp** | - | 💶 `--whatsapp` |
+| Feature | Standard | Notes |
+|---------|----------|-------|
+| OpenClaw Instance | ✅ Pro Kunde | Isolated Docker container |
+| Isolated Storage | ✅ DSGVO-konform | File-based, no shared DB |
+| Consent Management | ✅ Automatisch | DSGVO Art. 7 |
+| Audit Logging | ✅ DSGVO Art. 30 | All events logged |
+| Telegram Bot | ✅ Per customer | Dedicated bot per instance |
+| WhatsApp | ✅ Per customer | QR-code pairing |
 
 ---
 
 ## 🚀 Quick Start
 
-### Voraussetzungen
+### 1. First-Time Setup
 
 ```bash
-# Docker & Docker Compose installiert
-docker --version
-docker-compose --version
+# Clone and setup
+cd NexWorker-Repo
+./setup-nexhelper.sh
 
-# Umgebungsvariablen setzen
-export TELEGRAM_BOT_TOKEN="123456789:ABC..."  # Shared Bot Token
-export OPENAI_API_KEY="sk-..."                 # API Key
+# Set API key
+export OPENAI_API_KEY="sk-or-..."  # OpenRouter recommended
 ```
 
-### Kunden provisionieren
+### 2. Create a Telegram Bot
+
+1. Open Telegram
+2. Search for **@BotFather**
+3. Run `/newbot`
+4. Follow prompts and copy the token
+
+### 3. Provision a Customer
 
 ```bash
-# Standard (Shared Bot)
-./provision-customer.sh 001 "Acme GmbH"
+# Telegram bot
+./provision-customer.sh 001 "Acme GmbH" --telegram "123456789:ABC-DEF..."
 
-# Mit Dedicated Bot
-./provision-customer.sh 001 "Acme GmbH" --dedicated-bot "789:XYZ..."
+# WhatsApp (scan QR after start)
+./provision-customer.sh 002 "Müller Bau" --whatsapp
 
-# Mit WhatsApp
-./provision-customer.sh 001 "Acme GmbH" --whatsapp
-
-# Ohne Auto-Start
-./provision-customer.sh 001 "Acme GmbH" --no-start
+# Custom model
+./provision-customer.sh 003 "Test AG" --telegram "123:ABC" --model "openrouter/anthropic/claude-sonnet-4"
 ```
+
+### 4. Complete Pairing
+
+**Telegram:**
+1. Open your bot in Telegram
+2. Send `/start`
+3. Note the pairing code
+4. Approve: `docker exec -it nexhelper-<slug> openclaw pairing approve telegram <CODE>`
+
+**WhatsApp:**
+1. Run `./logs.sh` in the customer directory
+2. Scan the QR code with WhatsApp
+3. Send any message
+4. Approve pairing as above
 
 ---
 
