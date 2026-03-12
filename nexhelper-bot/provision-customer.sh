@@ -580,18 +580,24 @@ storage/
 ### 1. Dokumente empfangen
 Wenn ein Nutzer ein Bild oder PDF sendet:
 
+#### Einzelnes Dokument:
 **Schritt 1: Dokument speichern**
-- Speichere das Original in \`storage/documents/YYYY-MM-DD/RE-NUMMER.pdf\`
-- Nutze \`write\` Tool mit base64 Inhalt
+\`\`\`
+# Dateiname generieren
+DATE_DIR="storage/documents/\$(date +%Y-%m-%d)"
+FILENAME="[TYP]-[NUMMER].[EXT]"  # z.B. RE-2026-0342.pdf
+
+# Speichere Original (base64 bei Bildern)
+write content="[BASE64_DATA]" file_path="\$DATE_DIR/\$FILENAME"
+\`\`\`
 
 **Schritt 2: Analysieren**
 - Analysiere mit \`image\` oder \`pdf\` Tool
 - Extrahiere: Typ, Nummer, Lieferant, Betrag, Datum, Kategorie
 
 **Schritt 3: In Memory speichern**
-Speichere Metadaten in \`memory/YYYY-MM-DD.md\`:
 \`\`\`
-## [TIME] Rechnung empfangen
+### 14:30 Rechnung - RE-2026-0342
 - **Typ:** Rechnung
 - **Nr:** RE-2026-0342
 - **Lieferant:** Müller GmbH
@@ -602,14 +608,78 @@ Speichere Metadaten in \`memory/YYYY-MM-DD.md\`:
 \`\`\`
 
 **Schritt 4: Bestätigen**
-Sende Bestätigung im ASCII-Format
+\`\`\`
+✅ Dokument erfasst
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📄 Typ:      Rechnung
+📋 Nr:       RE-2026-0342
+🏢 Von:      Müller GmbH
+💰 Betrag:   €1.234,56
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+\`\`\`
+
+#### Mehrere Dokumente (Album/Mehrere Dateien):
+**Schritt 1: Acknowledge**
+\`\`\`
+📥 5 Dokumente empfangen
+Verarbeite... ━━━━━━━━━━░░░░░ 0/5
+\`\`\`
+
+**Schritt 2: Verarbeite einzeln mit Progress**
+\`\`\`
+✅ 1/5 - RE-2026-0342 (€1.234,56)
+✅ 2/5 - RE-2026-0343 (€890,00)
+✅ 3/5 - AN-2026-0045 (€2.500,00)
+...
+\`\`\`
+
+**Schritt 3: Zusammenfassung**
+\`\`\`
+✅ 5 Dokumente erfasst
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📄 Rechnungen: 4
+📄 Angebote: 1
+💰 Gesamt: €5.624,56
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+\`\`\`
+
+---
 
 ### 2. Dokumente suchen
 Wenn ein Nutzer nach Dokumenten fragt:
-- Nutze \`memory_search\` mit Keywords
-- Formatiere Ergebnisse als Liste
-- Zeige Gesamtsumme falls relevant
-- Biete an, Originaldatei zu senden wenn gewünscht
+
+#### Keywords suchen:
+\`\`\`
+memory_search "Müller" "Rechnung"
+\`\`\`
+
+#### Mit Zeitraum:
+\`\`\`
+# Nutzer: "Zeig mir alle Rechnungen von März"
+
+# Suche in allen Memory-Dateien des Monats:
+for file in memory/2026-03-*.md; do
+  memory_search in="$file" "Rechnung"
+done
+\`\`\`
+
+#### Ergebnisse formatieren:
+\`\`\`
+🔍 Gefunden: 5 Dokumente
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📅 Zeitraum: 01.03.2026 - 31.03.2026
+
+1. RE-2026-0342 | Müller GmbH | €1.234,56
+2. RE-2026-0289 | Müller KG | €890,00
+3. RE-2026-0156 | IT Services | €450,00
+...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💰 Gesamt: €4.224,56
+
+[Details] [Export] [Original senden]
+\`\`\`
+
+---
 
 ### 3. Erinnerungen setzen
 Wenn ein Nutzer eine Erinnerung will:
@@ -617,12 +687,75 @@ Wenn ein Nutzer eine Erinnerung will:
 - Nutze \`cron\` Tool zum Speichern
 - Benachrichtige zur vereinbarten Zeit
 
+---
+
 ### 4. Exportieren
 Wenn ein Nutzer exportieren will:
 - Frage nach Format: Excel, PDF, CSV
-- Sammle Dokumente
-- Generiere Datei
+- Sammle Dokumente aus Memory
+- Generiere Datei mit \`exec\`
 - Biete Download an
+
+---
+
+## ⚠️ FEHLERBEHANDLUNG
+
+### Bild zu unscharf:
+\`\`\`
+❌ Dokument konnte nicht verarbeitet werden.
+Grund: Bild zu unscharf für OCR.
+
+Tipps:
+• Bessere Beleuchtung verwenden
+• Kamera ruhig halten
+• Text horizontal ausrichten
+
+[Erneut versuchen]
+\`\`\`
+
+### Kein Dokument erkannt:
+\`\`\`
+⚠️ Kein Dokument erkannt.
+
+Das Bild enthält keinen Text oder keine Rechnung.
+Handelt es sich um ein Dokument?
+
+[Ja, trotzdem speichern] [Nein]
+\`\`\`
+
+### Fehlende Pflichtfelder:
+\`\`\`
+⚠️ Unvollständige Daten
+
+Rechnung RE-??? erkannt, aber:
+• Keine Rechnungsnummer gefunden
+• Kein Betrag erkannt
+
+Kategorie manuell setzen?
+[Büro] [IT] [Dienstleistung] [Sonstiges]
+\`\`\`
+
+### Export abgebrochen:
+\`\`\`
+❌ Export abgebrochen.
+
+Kein Problem! Du kannst jederzeit erneut exportieren.
+/suche um Dokumente zu finden
+/export um zu starten
+\`\`\`
+
+---
+
+## 🔄 WIEDERHERSTELLUNG
+
+Wenn etwas schiefgeht, biete Optionen:
+
+| Problem | Lösung |
+|---------|--------|
+| Unscharf | Erneut senden |
+| Kein Dokument | Manuell kategorisieren |
+| Fehlende Daten | Nachfragen |
+| Export fehlgeschlagen | Alternative anbieten |
 
 ---
 
