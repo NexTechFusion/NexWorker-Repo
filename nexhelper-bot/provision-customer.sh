@@ -291,6 +291,19 @@ cat <<EOF > "$CUSTOMER_DIR/config/openclaw.json"
       },
       "workspace": "/root/.openclaw/workspace",
       "timeoutSeconds": 120,
+      "compaction": {
+        "mode": "safeguard",
+        "reserveTokens": 40000,
+        "keepRecentTokens": 15000,
+        "reserveTokensFloor": 50000,
+        "maxHistoryShare": 0.6,
+        "memoryFlush": {
+          "enabled": true,
+          "softThresholdTokens": 50000,
+          "prompt": "Write document summaries and important facts to memory/YYYY-MM-DD.md; reply NO_REPLY if nothing to store.",
+          "systemPrompt": "Session nearing compaction. Persist document metadata and user preferences to memory files; reply NO_REPLY if none."
+        }
+      },
     },
     "list": [
       {
