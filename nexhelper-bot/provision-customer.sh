@@ -290,6 +290,7 @@ cat <<EOF > "$CUSTOMER_DIR/config/openclaw.json"
         "fallbacks": ["openrouter/google/gemini-2.5-flash", "openrouter/google/gemini-2.0-flash-001"]
       },
       "workspace": "/root/.openclaw/workspace",
+      "thinkingDefault": "medium",
       "timeoutSeconds": 120,
       "compaction": {
         "mode": "safeguard",
