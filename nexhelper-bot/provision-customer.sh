@@ -243,7 +243,7 @@ echo "⚙️  Generating OpenClaw configuration..."
 CHANNELS_CONFIG=""
 
 if [ -n "$TELEGRAM_TOKEN" ]; then
-    CHANNELS_CONFIG+="  telegram: {
+    CHANNELS_CONFIG+="  \"telegram\": {
     enabled: true,
     botToken: \"\${TELEGRAM_BOT_TOKEN}\",
     dmPolicy: \"pairing\",
@@ -253,7 +253,7 @@ if [ -n "$TELEGRAM_TOKEN" ]; then
 fi
 
 if [ "$WHATSAPP_MODE" = true ]; then
-    CHANNELS_CONFIG+="  whatsapp: {
+    CHANNELS_CONFIG+="  \"whatsapp\": {
     enabled: true,
     dmPolicy: \"pairing\",
     groupPolicy: \"allowlist\",
@@ -286,8 +286,6 @@ cat <<EOF > "$CUSTOMER_DIR/config/openclaw.json"
     "defaults": {
       "model": "$DEFAULT_MODEL",
       "workspace": "/root/.openclaw/workspace",
-      "thinking": "low",
-      "systemPrompt": "Du bist NexHelper für $CUSTOMER_NAME. WICHTIG: Lies zuerst SOUL.md, USER.md und AGENTS.md. Dein Verhalten ist in SOUL.md definiert. Du bist ein Dokumenten-Assistent, kein Chatbot.",
     },
     "list": [
       {
@@ -329,27 +327,11 @@ cat <<EOF > "$CUSTOMER_DIR/config/openclaw.json"
   },
   
   "session": {
-    "dmScope": "per-channel-peer",
-    "reset": {
-      "mode": "daily",
-      "atHour": 4,
-    },
+    "dmScope": "per-channel-peer"
   },
   
   "channels": {
 $CHANNELS_CONFIG  },
-  
-  "cron": {
-    "enabled": true,
-    "jobs": [
-      {
-        "name": "daily-summary",
-        "schedule": { "kind": "cron", "expr": "0 18 * * *", "tz": "Europe/Berlin" },
-        "payload": { "kind": "systemEvent", "text": "Generate daily summary of documents processed today" },
-        "sessionTarget": "main",
-      },
-    ],
-  },
 }
 EOF
 
