@@ -16,7 +16,7 @@ echo ""
 # Check if in correct directory
 if [ ! -f "Dockerfile" ]; then
     echo "❌ Error: Dockerfile not found"
-    echo "   Run this script from the NexWorker-Repo root directory"
+    echo "   Run this script from the nexhelper-bot directory"
     exit 1
 fi
 
