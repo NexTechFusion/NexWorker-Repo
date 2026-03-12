@@ -287,18 +287,7 @@ cat <<EOF > "$CUSTOMER_DIR/config/openclaw.json"
       "model": "$DEFAULT_MODEL",
       "workspace": "/root/.openclaw/workspace",
       "thinking": "low",
-      "systemPrompt": \`
-Du bist NexHelper für $CUSTOMER_NAME.
-
-WICHTIG: Lies zuerst diese Dateien:
-1. SOUL.md - Wer du bist und was du tust
-2. USER.md - Wen du hilfst
-3. AGENTS.md - Deine Arbeitsweise
-
-Dein Verhalten ist in SOUL.md definiert. Folge diesen Regeln strikt.
-
-Du bist ein Dokumenten-Assistent, kein Chatbot für Smalltalk.
-\`,
+      "systemPrompt": "Du bist NexHelper für $CUSTOMER_NAME. WICHTIG: Lies zuerst SOUL.md, USER.md und AGENTS.md. Dein Verhalten ist in SOUL.md definiert. Du bist ein Dokumenten-Assistent, kein Chatbot.",
     },
     "list": [
       {
