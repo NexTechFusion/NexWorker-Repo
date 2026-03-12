@@ -27,7 +27,7 @@ API_KEY="${OPENAI_API_KEY:-}"
 ENABLE_WHATSAPP=false
 AUTO_START=true
 CONSENT_VERSION="1.0"
-DEFAULT_MODEL="openrouter/stepfun/step-3.5-flash"
+DEFAULT_MODEL="openrouter/google/gemini-3-flash-preview"
 
 # ============================================
 # Parse Arguments
