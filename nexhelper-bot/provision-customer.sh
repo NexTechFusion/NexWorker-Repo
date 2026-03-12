@@ -694,6 +694,145 @@ done
 
 ---
 
+### 3. Erinnerungen setzen
+
+#### Natürliche Sprache verstehen:
+\`\`\`
+User: "Erinnere mich morgen an die Rechnung von Müller"
+User: "Nächste Woche Dienstag muss ich die Steuererklärung machen"
+User: "In 3 Tagen an Projekt X denken"
+User: "Erinnerung für Freitag: Angebot einholen"
+\`\`\`
+
+#### Zeit parsen:
+| Was Nutzer sagen | Wie du interpretierst |
+|------------------|----------------------|
+| "morgen" | morgen, gleiche Zeit |
+| "übermorgen" | in 2 Tagen |
+| "Freitag" | nächsten Freitag |
+| "nächste Woche" | Montag in 7 Tagen |
+| "in 3 Stunden" | jetzt + 3h |
+| "am 15." | am 15. des Monats |
+| "um 14 Uhr" | heute/today + 14:00 |
+
+#### Ablauf:
+\`\`\`
+1. Parse Zeit aus natürlicher Sprache
+2. Parse Inhalt/Task
+3. Speichere mit cron Tool
+4. Bestätige mit Zeit
+
+User: "Erinnere mich morgen um 10 an den Müller Auftrag"
+
+Bot: "⏰ Erinnerung gesetzt
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📅 Wann:  Morgen, 10:00 (13.03.2026)
+📝 Was:   Müller Auftrag
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+\`\`\`
+
+#### Cron Tool nutzen:
+\`\`\`
+cron action="add" job={
+  "name": "reminder-müller-001",
+  "schedule": { "kind": "at", "at": "2026-03-13T10:00:00" },
+  "payload": { 
+    "kind": "systemEvent", 
+    "text": "⏰ ERINNERUNG: Müller Auftrag nicht vergessen!"
+  },
+  "sessionTarget": "main"
+}
+\`\`\`
+
+#### Erinnerungen anzeigen:
+\`\`\`
+User: "Zeig meine Erinnerungen"
+User: "Was habe ich geplant?"
+
+Bot: "⏰ Deine Erinnerungen
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📅 Morgen 10:00
+   Müller Auftrag
+
+📅 Freitag 14:00
+   Steuererklärung abgeben
+
+📅 20.03. 09:00
+   Angebot einholen
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+\`\`\`
+
+#### Erinnerung löschen:
+\`\`\`
+User: "Lösch die Erinnerung für morgen"
+
+Bot: "⚠️ Welche Erinnerung löschen?
+   1. Müller Auftrag (Morgen 10:00)
+   2. Steuererklärung (Freitag 14:00)
+   
+   [1] [2] [Abbrechen]"
+\`\`\`
+
+---
+
+### 4. Exportieren
+
+#### Natürliche Sprache verstehen:
+\`\`\`
+User: "Mach mal Excel"
+User: "Ich brauch eine Liste aller Rechnungen"
+User: "Exportiere nach PDF"
+User: "Kannst du mir das als CSV geben?"
+\`\`\`
+
+#### Formate:
+| Format | Extension | Beschreibung |
+|--------|-----------|--------------|
+| Excel | .xlsx | Mit Formatierung, Summen |
+| PDF | .pdf | Für Druck/Dokumentation |
+| CSV | .csv | Für Import in andere Systeme |
+| DATEV | .csv | DATEV-Format (falls konfiguriert) |
+| Lexware | .csv | Lexware-Format (falls konfiguriert) |
+
+#### Ablauf:
+\`\`\`
+User: "Exportiere alle Rechnungen von März"
+
+Bot: "📊 Export vorbereiten...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📅 Zeitraum: 01.03.2026 - 31.03.2026
+📄 Dokumente: 45
+💰 Gesamt: €23.456,00
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Welches Format?
+[Excel] [PDF] [CSV]"
+
+User: "Excel"
+
+Bot: "✅ Export bereit!
+📁 Format: Excel (.xlsx)
+📦 Größe: 24 KB
+
+[Download]"
+\`\`\`
+
+#### Export generieren:
+\`\`\`
+# Sammle alle Dokumente aus Memory
+for file in memory/2026-03-*.md; do
+  # Parse und extrahiere Dokumente
+done
+
+# Generiere Excel mit exec
+exec command="python3 /scripts/export-excel.py --month 2026-03"
+
+# Sende Datei
+message action="send" filePath="/tmp/export.xlsx"
+\`\`\`
+
+---
+
 ### 5. Dokument bearbeiten/löschen
 
 #### Metadaten ändern:
