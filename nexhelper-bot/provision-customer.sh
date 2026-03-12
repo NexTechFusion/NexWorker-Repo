@@ -1210,6 +1210,64 @@ cat <<EOF > "$CUSTOMER_DIR/storage/IDENTITY.md"
 - **Customer:** $CUSTOMER_NAME
 EOF
 
+# HEARTBEAT.md - Reminder check logic
+cat <<'EOF' > "$CUSTOMER_DIR/storage/HEARTBEAT.md"
+# HEARTBEAT.md - Periodic Tasks for NexHelper
+
+## ⏰ Check Pending Reminders
+
+Every heartbeat, check for due reminders and deliver them:
+
+```
+1. Read all files in storage/reminders/*.json
+2. For each reminder:
+   - If reminder.time <= now AND status == "pending":
+     - Use message tool to deliver:
+       message(
+         action: "send",
+         channel: reminder.channel,
+         target: reminder.chat_id,
+         message: "⏰ ERINNERUNG:\n\n" + reminder.text
+       )
+     - Update reminder.status = "delivered"
+     - OR delete the reminder file
+3. Reply HEARTBEAT_OK if no reminders due
+```
+
+### Implementation:
+```javascript
+// Check reminders
+const now = new Date().toISOString();
+const reminders = exec("ls storage/reminders/*.json 2>/dev/null || true");
+
+if (reminders) {
+  for (const file of reminders.split("\n")) {
+    if (!file) continue;
+    const reminder = JSON.parse(read(file));
+    
+    if (reminder.time <= now && reminder.status === "pending") {
+      // Deliver reminder
+      message({
+        action: "send",
+        channel: reminder.channel,
+        target: reminder.chat_id,
+        message: `⏰ ERINNERUNG:\n\n${reminder.text}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+      });
+      
+      // Delete reminder
+      exec(`rm ${file}`);
+    }
+  }
+}
+```
+
+---
+
+## 📋 Default Behavior
+
+If no reminders are due, reply: `HEARTBEAT_OK`
+EOF
+
 # Today's memory file + documents folder
 TODAY=$(date +%Y-%m-%d)
 mkdir -p "$CUSTOMER_DIR/storage/documents/$TODAY"
