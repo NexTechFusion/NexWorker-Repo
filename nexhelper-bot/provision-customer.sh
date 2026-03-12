@@ -327,6 +327,12 @@ cat <<EOF > "$CUSTOMER_DIR/config/openclaw.json"
     ],
   },
   
+  "commands": {
+    "native": "disabled",
+    "nativeSkills": "disabled",
+    "restart": false
+  },
+  
   "session": {
     "dmScope": "per-channel-peer"
   },
