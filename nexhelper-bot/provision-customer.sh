@@ -191,7 +191,7 @@ fi
 # 1. Create Directory Structure
 # ============================================
 echo "📁 Creating directory structure..."
-mkdir -p "$CUSTOMER_DIR"/{config,logs,storage/{memory,consent,audit,documents}}
+mkdir -p "$CUSTOMER_DIR"/{config,logs,storage/{memory,consent,audit,documents,reminders}}
 mkdir -p "$CUSTOMER_DIR/storage/.openclaw"
 
 # ============================================
@@ -327,8 +327,8 @@ cat <<EOF > "$CUSTOMER_DIR/config/openclaw.json"
       "memory_get",
       "image",
       "pdf",
-      "cron",
       "tts",
+      "message",
     ],
     "deny": [
       "browser",
@@ -340,7 +340,6 @@ cat <<EOF > "$CUSTOMER_DIR/config/openclaw.json"
       "sessions_list",
       "subagents",
       "agents_list",
-      "message",
     ],
   },
   
@@ -716,8 +715,9 @@ User: "Erinnerung für Freitag: Angebot einholen"
 \`\`\`
 1. Parse Zeit aus natürlicher Sprache
 2. Parse Inhalt/Task
-3. Speichere mit cron Tool
-4. Bestätige mit Zeit
+3. Extrahiere Channel-Info aus Inbound-Metadata
+4. Speichere in storage/reminders/ als JSON
+5. Bestätige mit Zeit
 
 User: "Erinnere mich morgen um 10 an den Müller Auftrag"
 
@@ -728,23 +728,37 @@ Bot: "⏰ Erinnerung gesetzt
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 \`\`\`
 
-#### Cron Tool nutzen:
-\`\`\`
-cron action="add" job={
-  "name": "reminder-müller-001",
-  "schedule": { "kind": "at", "at": "2026-03-13T10:00:00" },
-  "payload": { 
-    "kind": "systemEvent", 
-    "text": "⏰ ERINNERUNG: Müller Auftrag nicht vergessen!"
-  },
-  "sessionTarget": "main"
-}
+#### Reminder speichern (Custom System):
+**WICHTIG:** Nutze die Inbound-Metadata für Channel-Info!
+
+\`\`\`javascript
+// Extrahiere aus Inbound Context:
+const reminder = {
+  "id": "rem-" + Date.now(),
+  "user_id": "<sender_id from inbound>",
+  "channel": "<channel from inbound>",  // "telegram" oder "whatsapp"
+  "account_id": "<account_id from inbound>",
+  "chat_id": "<chat_id from inbound>",
+  "time": "2026-03-13T10:00:00",
+  "text": "Müller Auftrag nicht vergessen!",
+  "created": "2026-03-12T20:45:00",
+  "status": "pending"
+};
+
+// Speichere als JSON:
+write(
+  file_path: "storage/reminders/rem-[timestamp].json",
+  content: JSON.stringify(reminder, null, 2)
+);
 \`\`\`
 
 #### Erinnerungen anzeigen:
 \`\`\`
 User: "Zeig meine Erinnerungen"
 User: "Was habe ich geplant?"
+
+// Lese alle reminders und filtere nach user_id
+read("storage/reminders/*.json")
 
 Bot: "⏰ Deine Erinnerungen
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -768,6 +782,9 @@ Bot: "⚠️ Welche Erinnerung löschen?
    2. Steuererklärung (Freitag 14:00)
    
    [1] [2] [Abbrechen]"
+
+// Nach Auswahl:
+exec("rm storage/reminders/rem-[id].json")
 \`\`\`
 
 ---
@@ -1077,7 +1094,7 @@ Du hast Zugriff auf:
 | \`read\` | Dateien lesen |
 | \`write\` | Dateien schreiben |
 | \`edit\` | Dateien bearbeiten |
-| \`cron\` | Erinnerungen |
+| \`message\` | Erinnerungen senden |
 | \`exec\` | Export-Scripts |
 
 ---
