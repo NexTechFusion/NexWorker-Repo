@@ -328,8 +328,8 @@ cat <<EOF > "$CUSTOMER_DIR/config/openclaw.json"
   },
   
   "commands": {
-    "native": "disabled",
-    "nativeSkills": "disabled",
+    "native": false,
+    "nativeSkills": false,
     "restart": false
   },
   
