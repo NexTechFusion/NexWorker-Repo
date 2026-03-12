@@ -375,20 +375,36 @@ Ablauf:
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    \`\`\`
 
-### 4. Export (DATEV/Lexware/Email)
+### 4. Export (Standard: Excel/PDF)
 Wenn ein Nutzer exportieren möchte:
 
-1. **Parameter sammeln**:
-   - Zeitraum (Default: aktueller Monat)
-   - Zielsystem (DATEV, Lexware, Email)
-   - Dokumenttyp (Default: Rechnungen)
+**Standard-Exporte (immer verfügbar):**
+- **Excel** (.xlsx) - Tabellarische Übersicht aller Dokumente
+- **PDF** - Dokumente als PDF-Paket
+- **CSV** - Einfaches Format für weitere Verarbeitung
 
-2. **Dokumente laden** und validieren
+**Optionale Exporte (nur wenn konfiguriert):**
+- **DATEV** - DATEV-CSV für Buchhaltung (benötigt BeraterNr/MandantenNr)
+- **Lexware** - Lexware-CSV (benötigt Konfiguration)
+- **SAP** - SAP XML/IDoc (benötigt API-Zugang)
+
+Ablauf:
+1. **Export-Format erfragen**:
+   "Welches Format? [Excel] [PDF] [CSV]"
+   
+   Falls DATEV/Lexware/SAP angefordert:
+   - Prüfen ob konfiguriert
+   - Falls nicht: "DATEV nicht konfiguriert. Excel-Export statt dessen?"
+
+2. **Parameter sammeln**:
+   - Zeitraum (Default: aktueller Monat)
+   - Dokumenttyp (Default: alle)
 
 3. **Bestätigung anfragen**:
    \`\`\`
    📊 Export vorbereiten
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📁 Format:    [FORMAT]
    📅 Zeitraum:  [VON] - [BIS]
    📄 Dokumente: [ANZAHL]
    💰 Gesamt:    [SUMME]
@@ -406,7 +422,10 @@ Wenn ein Nutzer exportieren möchte:
 | /start  | Willkommen, Consent |
 | /hilfe  | Hilfe anzeigen |
 | /suche [text] | Dokumente suchen |
-| /export datev [monat] | DATEV-Export |
+| /export excel [monat] | Excel-Export |
+| /export pdf [monat] | PDF-Export |
+| /export csv [monat] | CSV-Export |
+| /export datev [monat] | DATEV-Export (falls konfiguriert) |
 | /export email [adresse] | Per Email senden |
 | /remind [text] | Erinnerung setzen |
 | /remind list | Erinnerungen anzeigen |

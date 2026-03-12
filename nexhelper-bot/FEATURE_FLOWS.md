@@ -18,7 +18,8 @@ NexHelper is a messenger-native document assistant for German KMU. This document
 | Document Search | Text query | `memory_search`, `memory_get` | Results list |
 | OCR Extraction | Image/PDF | `exec` (ocr scripts) | Extracted text |
 | Reminders | Natural language | `cron`, `memory` | Scheduled notification |
-| DATEV Export | `/export datev` | `exec`, `write` | CSV file |
+| Export (Standard) | `/export` | `exec`, `write` | Excel/PDF/CSV file |
+| Export (DATEV) | `/export datev` | `exec`, `write` | DATEV CSV (optional) |
 | Email Send | `/email` | `exec` (sendmail) | Sent email |
 | Consent | `/start`, `/widerruf` | `memory` | Consent record |
 
@@ -364,75 +365,110 @@ date_patterns:
 
 ---
 
-## Flow 5: DATEV Export
+## Flow 5: Export (Standard: Excel/PDF)
 
 ### Trigger
-User requests DATEV export
+User requests document export
+
+### Available Export Formats
+
+**Standard (always available):**
+- **Excel** (.xlsx) - Spreadsheet with all document data
+- **PDF** - Document package as PDF
+- **CSV** - Simple tabular format
+
+**Optional (requires configuration):**
+- **DATEV** - DATEV-CSV for German accounting (needs BeraterNr/MandantenNr)
+- **Lexware** - Lexware-compatible CSV (needs configuration)
+- **SAP** - SAP XML/IDoc (needs API access)
 
 ### Flow
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  1. EXPORT REQUEST                                           │
-│     "/export datev"                                          │
-│     "Exportiere alle Rechnungen nach DATEV"                 │
-│     "DATEV-Export für März"                                 │
+│     "/export"                                                │
+│     "Exportiere alle Rechnungen"                            │
+│     "Ich brauch eine Excel-Listige"                         │
 └─────────────────────┬───────────────────────────────────────┘
                       │
                       ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  2. PARAMETER COLLECTION                                     │
-│     Ask for missing info:                                    │
-│     - Date range (default: current month)                    │
-│     - Document types (default: invoices only)               │
-│     - BeraterNr/MandantenNr (if not configured)             │
-└─────────────────────┬───────────────────────────────────────┘
-                      │
-                      ▼
-┌─────────────────────────────────────────────────────────────┐
-│  3. DATA COLLECTION                                          │
-│     a) Search memory for matching documents                  │
-│     b) Validate each document has required fields:          │
-│        - Date                                                │
-│        - Amount                                              │
-│        - Account (Soll/Haben)                               │
-│        - Document number                                     │
-│        - Vendor name                                         │
-└─────────────────────┬───────────────────────────────────────┘
-                      │
-                      ▼
-┌─────────────────────────────────────────────────────────────┐
-│  4. CONFIRMATION                                             │
+│  2. FORMAT SELECTION                                         │
 │                                                              │
-│     📊 DATEV-Export vorbereiten                              │
+│     📁 Welches Export-Format?                                │
 │     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━                     │
+│                                                              │
+│     [Excel]  [PDF]  [CSV]                                    │
+│                                                              │
+│     Optional (falls konfiguriert):                           │
+│     [DATEV]  [Lexware]  [SAP]                                │
+│     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━                     │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│  3. CHECK OPTIONAL FORMAT                                    │
+│     If DATEV/Lexware/SAP requested:                         │
+│     ├─ Configured → Continue                                │
+│     └─ Not configured → Offer standard format:              │
+│                                                              │
+│        ⚠️ DATEV nicht konfiguriert.                          │
+│                                                              │
+│        Stattdessen:                                          │
+│        [Excel] [PDF] [CSV]                                  │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│  4. PARAMETER COLLECTION                                     │
+│     Ask for:                                                 │
+│     - Date range (default: current month)                    │
+│     - Document types (default: all)                         │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│  5. CONFIRMATION                                             │
+│                                                              │
+│     📊 Export vorbereiten                                    │
+│     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━                     │
+│     📁 Format:    Excel (.xlsx)                              │
 │     📅 Zeitraum:  01.03.2026 - 31.03.2026                    │
-│     📄 Dokumente: 23 Rechnungen                              │
+│     📄 Dokumente: 23                                         │
 │     💰 Gesamt:    €12.450,00                                 │
 │     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━                     │
 │                                                              │
-│     Exportieren? [Ja] [Abbrechen]                           │
+│     [Exportieren] [Abbrechen]                               │
 └─────────────────────┬───────────────────────────────────────┘
                       │
                       ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  5. FILE GENERATION                                          │
-│     Generate DATEV CSV format:                               │
+│  6. FILE GENERATION                                          │
 │                                                              │
-│     EXTF;510;DATEV Buchungsstapel;...                        │
-│     450.00;S;1400;6000;09.03.2026;RE-123;Müller GmbH;...    │
-│     1250.00;S;1400;6200;10.03.2026;RE-124;IT GmbH;...       │
+│     For Excel:                                               │
+│     - Create .xlsx with columns:                            │
+│       Datum | Nr | Lieferant | Betrag | Kategorie | Typ     │
+│     - Include summary sheet with totals                     │
+│                                                              │
+│     For PDF:                                                 │
+│     - Combine all document images                           │
+│     - Add summary page at front                             │
+│                                                              │
+│     For CSV:                                                 │
+│     - Simple tabular format                                 │
+│     - UTF-8 encoded, German number format                   │
 └─────────────────────┬───────────────────────────────────────┘
                       │
                       ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  6. OUTPUT                                                   │
+│  7. OUTPUT                                                   │
 │                                                              │
-│     ✅ DATEV-Export erstellt!                                │
+│     ✅ Export erstellt!                                      │
 │     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━                     │
-│     📁 Datei: EXTF_Buchungsstapel.csv                        │
-│     📊 Buchungen: 23                                         │
-│     💰 Summe: €12.450,00                                     │
+│     📁 Datei: export_2026-03.xlsx                            │
+│     📊 Größe: 45 KB                                          │
+│     📄 Dokumente: 23                                         │
 │     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━                     │
 │                                                              │
 │     [Herunterladen] [Per Email] [In Cloud speichern]        │
@@ -440,15 +476,48 @@ User requests DATEV export
                       │
                       ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  7. AUDIT LOG                                                │
+│  8. AUDIT LOG                                                │
 │     Log export action:                                       │
 │     {                                                        │
 │       "event": "export",                                     │
-│       "type": "datev",                                       │
+│       "format": "excel",                                     │
 │       "documents": 23,                                       │
 │       "timestamp": "2026-03-12T13:30:00"                     │
 │     }                                                        │
 └─────────────────────────────────────────────────────────────┘
+```
+
+### Excel Export Format
+
+```xlsx
+| Datum       | Nr          | Lieferant      | Betrag    | Kategorie    | Typ       |
+|-------------|-------------|----------------|-----------|--------------|-----------|
+| 12.03.2026  | RE-2026-342 | Müller GmbH    | €1.234,56 | Büromaterial | Rechnung  |
+| 11.03.2026  | RE-2026-341 | IT Services    | €890,00   | IT          | Rechnung  |
+| 10.03.2026  | AN-2026-045 | Weber KG       | €2.500,00 | Beratung    | Angebot   |
+
+Summary:
+Total: €4.624,56
+Rechnungen: 2
+Angebote: 1
+```
+
+### DATEV Export (Optional)
+
+Only available when configured with:
+
+```bash
+# Required for DATEV
+DATEV_BERATER_NR=123456
+DATEV_MANDANTEN_NR=78900
+```
+
+Generates DATEV-compliant CSV:
+
+```csv
+EXTF;510;DATEV Buchungsstapel;123456;78900;20260301;20260331;;;4;0
+1234.56;S;1400;6000;12.03.2026;RE-2026-342;Müller GmbH;Büromaterial
+890.00;S;1400;6200;11.03.2026;RE-2026-341;IT Services;Dienstleistung
 ```
 
 ---
@@ -606,7 +675,11 @@ Bot:  ✅ Einwilligung widerrufen.
 | `/start` | Start bot, show consent | `/start` |
 | `/hilfe` | Show help | `/hilfe` |
 | `/suche <query>` | Search documents | `/suche Müller Rechnung` |
-| `/export datev [month]` | DATEV export | `/export datev 03.2026` |
+| `/export` | Start export (select format) | `/export` |
+| `/export excel [month]` | Excel export | `/export excel 03.2026` |
+| `/export pdf [month]` | PDF export | `/export pdf` |
+| `/export csv [month]` | CSV export | `/export csv` |
+| `/export datev [month]` | DATEV export (if configured) | `/export datev 03.2026` |
 | `/export email <address>` | Email export | `/export email buch@firma.de` |
 | `/remind <text>` | Create reminder | `/remind Morgen Meeting` |
 | `/remind list` | List reminders | `/remind list` |
