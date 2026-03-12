@@ -692,10 +692,21 @@ done
 
 ### 3. Erinnerungen setzen
 
+#### ⚠️ WICHTIG: DU MUSST TOOLS VERWENDEN!
+
+**Du darfst NICHT nur sagen, dass du eine Erinnerung gesetzt hast.**
+**Du MUSST den exec-Befehl ausführen!**
+
+Wenn ein Nutzer eine Erinnerung anfordert:
+1. Parse Zeit und Text
+2. **FÜHRE DEN EXEC-BEFEHL AUS** (nicht nur schreiben!)
+3. Bestätige
+
+---
+
 #### Natürliche Sprache verstehen:
 \`\`\`
 User: "Erinnere mich morgen an die Rechnung von Müller"
-User: "Nächste Woche Dienstag muss ich die Steuererklärung machen"
 User: "In 3 Tagen an Projekt X denken"
 User: "Erinnerung für Freitag: Angebot einholen"
 \`\`\`
@@ -706,53 +717,58 @@ User: "Erinnerung für Freitag: Angebot einholen"
 | "morgen" | morgen, gleiche Zeit (z.B. 2026-03-13T22:30:00) |
 | "übermorgen" | in 2 Tagen |
 | "Freitag" | nächsten Freitag |
-| "nächste Woche" | Montag in 7 Tagen |
-| "in 3 Stunden" | jetzt + 3h |
-| "am 15." | am 15. des Monats |
+| "in 5 Minuten" | jetzt + 5min |
+| "in 2 Stunden" | jetzt + 2h |
 | "um 14 Uhr" | heute/today + 14:00 |
 
 ---
 
-#### Ablauf (WICHTIG: Immer diese Schritte befolgen!)
+#### 🔧 SCHRITT-FÜR-SCHRITT (BEFOLGEN!)
 
-**Schritt 1: Zeit und Text extrahieren**
-- Parse die Zeit aus natürlicher Sprache
-- Wandle in ISO-8601 Format um: \`YYYY-MM-DDTHH:MM:SS\`
+**Schritt 1: Berechne den ISO Timestamp**
+- Aktuelle Zeit: Lese aus inbound metadata
+- Addiere die gewünschte Zeit
+- Format: \`YYYY-MM-DDTHH:MM:SS\`
 
-**Schritt 2: Erinnerung erstellen mit exec**
+**Schritt 2: FÜHRE EXEC AUS** ⚠️
 
-Verwende IMMER diesen exakten Befehl:
+\`\`\`
+Verwende das exec tool mit genau diesem Befehl:
 
-\`\`\`bash
-exec("openclaw cron add --at 'YYYY-MM-DDTHH:MM:SS' --message '⏰ ERINNERUNG: [TEXT]' --channel telegram --to [SENDER_ID] --announce")
+openclaw cron add --at 'YYYY-MM-DDTHH:MM:SS' --message '⏰ ERINNERUNG: [TEXT]' --channel telegram --to [SENDER_ID] --announce
 \`\`\`
 
-**Beispiel:**
+**BEISPIEL - So sieht der Tool-Aufruf aus:**
 \`\`\`
-User: "Erinnere mich morgen um 10 an den Müller Auftrag"
+User sagt: "Erinnere mich in 5 Minuten an Test"
+Aktuelle Zeit: 22:40
 
-# Du berechnest: morgen = 2026-03-13, 10:00
-exec("openclaw cron add --at '2026-03-13T10:00:00' --message '⏰ ERINNERUNG: Müller Auftrag nicht vergessen!' --channel telegram --to 579539601 --announce")
+Du berechnest: 22:40 + 5min = 22:45
+Timestamp: 2026-03-12T22:45:00
+Sender ID: 579539601
+
+DANN FÜHRST DU AUS:
+exec command="openclaw cron add --at '2026-03-12T22:45:00' --message '⏰ ERINNERUNG: Test' --channel telegram --to 579539601 --announce"
 \`\`\`
 
 **Schritt 3: Bestätigung senden**
 \`\`\`
 Bot: "⏰ Erinnerung gesetzt
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📅 Wann:  Morgen, 10:00 (13.03.2026)
-📝 Was:   Müller Auftrag
+📅 Wann:  Heute, 22:45 (12.03.2026)
+📝 Was:   Test
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 \`\`\`
 
 ---
 
-#### WICHTIGE REGELN:
+#### ❌ WAS DU NICHT TUN DARFST:
 
-1. **Immer exec verwenden** - nicht write, nicht andere Tools
-2. **Exaktes Format** - \`--at 'YYYY-MM-DDTHH:MM:SS'\` (einfache Anführungszeichen!)
-3. **Channel aus Inbound-Metadata** - bei Telegram: \`--channel telegram\`
-4. **Sender-ID aus Inbound-Metadata** - \`--to [sender_id]\`
-5. **Immer --announce** - damit die Nachricht zugestellt wird
+- **NICHT nur sagen:** "Ich habe die Erinnerung gesetzt"
+- **NICHT nur bestätigen** ohne exec aufzurufen
+- **NICHT "ich speichere das"** ohne Tool-Call
+
+**DU MUSST DAS EXEC TOOL AUSRUFEN!**
 
 ---
 
@@ -760,17 +776,14 @@ Bot: "⏰ Erinnerung gesetzt
 \`\`\`
 User: "Zeig meine Erinnerungen"
 
-exec("openclaw cron list --json")
-
-# Filtere nach aktuellen Jobs und zeige sie an
+exec command="openclaw cron list"
 \`\`\`
 
 #### Erinnerung löschen:
 \`\`\`
-User: "Lösch die Erinnerung für morgen"
+User: "Lösch die Erinnerung"
 
-# Zeige Liste, dann:
-exec("openclaw cron remove --id [JOB_ID]")
+exec command="openclaw cron remove --id [JOB_ID]"
 \`\`\`
 
 ---
