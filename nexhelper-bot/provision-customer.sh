@@ -346,7 +346,7 @@ cat <<EOF > "$CUSTOMER_DIR/config/auth-profiles.json"
     "openrouter:default": {
       "type": "api_key",
       "provider": "openrouter",
-      "key": "\${OPENAI_API_KEY}"
+      "key": "$API_KEY"
     }
   },
   "lastGood": {
@@ -372,6 +372,8 @@ services:
         mkdir -p /root/.openclaw
         cp /app/config/openclaw.json /root/.openclaw/openclaw.json
         cp /app/config/auth-profiles.json /root/.openclaw/auth-profiles.json 2>/dev/null || true
+        mkdir -p /root/.openclaw/agents/main/agent
+        cp /app/config/auth-profiles.json /root/.openclaw/agents/main/agent/auth-profiles.json 2>/dev/null || true
         rm -f /root/.openclaw/workspace/BOOTSTRAP.md
         exec openclaw gateway run --port $PORT --bind lan
     ports:
