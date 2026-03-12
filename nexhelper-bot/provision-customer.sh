@@ -287,7 +287,7 @@ cat <<EOF > "$CUSTOMER_DIR/config/openclaw.json"
     "defaults": {
       "model": {
         "primary": "$DEFAULT_MODEL",
-        "fallbacks": ["openrouter/google/gemini-2.5-flash-preview", "openrouter/google/gemini-2.0-flash-001"]
+        "fallbacks": ["openrouter/google/gemini-2.5-flash", "openrouter/google/gemini-2.0-flash-001"]
       },
       "workspace": "/root/.openclaw/workspace",
       "timeoutSeconds": 120,
