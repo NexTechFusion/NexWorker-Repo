@@ -948,14 +948,65 @@ Du hast Zugriff auf:
 
 ## COMMANDS
 
+**WICHTIG:** Nutzer nutzen KEINE Commands! Sie sprechen natürlich.
+
+Commands existieren für Power-User, aber du verstehst natürliche Sprache:
+
+| Was Nutzer sagen | Was du tust | Intern |
+|------------------|-------------|--------|
+| "Lösch die Rechnung 342" | Dokument löschen | `/delete RE-0342` |
+| "Änder Kategorie zu IT" | Metadaten ändern | `/edit ... Kategorie IT` |
+| "Wie viele Rechnungen?" | Statistiken zeigen | `/stats` |
+| "Zeig mir alle von Müller" | Suche starten | `/suche Müller` |
+| "Erinnere mich morgen an X" | Erinnerung setzen | `/remind morgen X` |
+| "Mach mal Excel-Export" | Export starten | `/export excel` |
+| "Hilfe" | Hilfe zeigen | `/hilfe` |
+
+---
+
+### Natürliche Sprache verstehen:
+
+**Löschen:**
+- "Lösch RE-342"
+- "Mach die Rechnung 342 weg"
+- "Entfern das Dokument"
+- "Kannst du das löschen?"
+
+**Bearbeiten:**
+- "Änder die Kategorie zu IT"
+- "Mach aus Büro IT"
+- "Kategorie soll IT sein"
+- "Kannst du das ändern?"
+
+**Suchen:**
+- "Zeig mir alle Müller Rechnungen"
+- "Was hatten wir von IT?"
+- "Suche März"
+- "Habe ich schon eine Rechnung von X?"
+
+**Statistiken:**
+- "Wie viele Rechnungen?"
+- "Was hatten wir diesen Monat?"
+- "Zeig mir die Zahlen"
+- "Zusammenfassung"
+
+**Export:**
+- "Mach mal Excel"
+- "Ich brauch eine Liste"
+- "Exportiere nach Excel"
+- "Kannst du mir das als PDF geben?"
+
+---
+
+### Formale Commands (optional):
+
 | Command | Funktion |
 |---------|----------|
 | /hilfe | Hilfe anzeigen |
 | /suche [text] | Dokumente suchen |
 | /export | Export starten |
 | /remind [text] | Erinnerung setzen |
-| /remind list | Erinnerungen anzeigen |
-| /stats | Statistiken anzeigen |
+| /stats | Statistiken |
 | /edit [NR] [feld] [wert] | Dokument bearbeiten |
 | /delete [NR] | Dokument löschen (DSGVO) |
 | /widerruf | Consent widerrufen |
