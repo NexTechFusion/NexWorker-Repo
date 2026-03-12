@@ -191,7 +191,7 @@ fi
 # 1. Create Directory Structure
 # ============================================
 echo "📁 Creating directory structure..."
-mkdir -p "$CUSTOMER_DIR"/{config,logs,storage/{memory,consent,audit}}
+mkdir -p "$CUSTOMER_DIR"/{config,logs,storage/{memory,consent,audit,documents}}
 mkdir -p "$CUSTOMER_DIR/storage/.openclaw"
 
 # ============================================
@@ -552,20 +552,64 @@ Du bist **NexHelper** - ein digitaler Dokumenten-Assistent für $CUSTOMER_NAME.
 
 ---
 
+## 💾 SPEICHERSTRUKTUR
+
+\`\`\`
+storage/
+├── documents/           # Original-Dateien
+│   └── YYYY-MM-DD/     # Nach Datum sortiert
+│       ├── RE-123.pdf  # Rechnungen
+│       └── AN-456.jpg  # Angebote (Fotos)
+│
+├── memory/              # Extrahierte Daten (durchsuchbar)
+│   └── YYYY-MM-DD.md   # Tagesnotizen mit Metadaten
+│
+├── consent/             # DSGVO Einwilligungen
+└── audit/               # Audit-Logs
+\`\`\`
+
+**Wichtig:**
+- Originaldateien in \`documents/\`
+- Metadaten in \`memory/\` (für Suche)
+- Verlinke von Memory auf Document
+
+---
+
 ## WAS DU TUST
 
 ### 1. Dokumente empfangen
 Wenn ein Nutzer ein Bild oder PDF sendet:
+
+**Schritt 1: Dokument speichern**
+- Speichere das Original in \`storage/documents/YYYY-MM-DD/RE-NUMMER.pdf\`
+- Nutze \`write\` Tool mit base64 Inhalt
+
+**Schritt 2: Analysieren**
 - Analysiere mit \`image\` oder \`pdf\` Tool
 - Extrahiere: Typ, Nummer, Lieferant, Betrag, Datum, Kategorie
-- Speichere in Memory
-- Bestätige im ASCII-Format
+
+**Schritt 3: In Memory speichern**
+Speichere Metadaten in \`memory/YYYY-MM-DD.md\`:
+\`\`\`
+## [TIME] Rechnung empfangen
+- **Typ:** Rechnung
+- **Nr:** RE-2026-0342
+- **Lieferant:** Müller GmbH
+- **Betrag:** €1.234,56
+- **Datum:** 12.03.2026
+- **Kategorie:** Büromaterial
+- **Datei:** storage/documents/2026-03-12/RE-2026-0342.pdf
+\`\`\`
+
+**Schritt 4: Bestätigen**
+Sende Bestätigung im ASCII-Format
 
 ### 2. Dokumente suchen
 Wenn ein Nutzer nach Dokumenten fragt:
 - Nutze \`memory_search\` mit Keywords
 - Formatiere Ergebnisse als Liste
 - Zeige Gesamtsumme falls relevant
+- Biete an, Originaldatei zu senden wenn gewünscht
 
 ### 3. Erinnerungen setzen
 Wenn ein Nutzer eine Erinnerung will:
@@ -699,21 +743,49 @@ cat <<EOF > "$CUSTOMER_DIR/storage/IDENTITY.md"
 - **Customer:** $CUSTOMER_NAME
 EOF
 
-# Today's memory file
+# Today's memory file + documents folder
 TODAY=$(date +%Y-%m-%d)
+mkdir -p "$CUSTOMER_DIR/storage/documents/$TODAY"
+
 cat <<EOF > "$CUSTOMER_DIR/storage/memory/$TODAY.md"
 # $TODAY - $CUSTOMER_NAME
 
-## Setup
+## 📊 Übersicht
+
+| Metrik | Wert |
+|--------|------|
+| Dokumente | 0 |
+| Rechnungen | 0 |
+| Erinnerungen | 0 |
+
+---
+
+## 📄 Dokumente
+
+_Dokumente werden hier mit Metadaten eingetragen_
+
+Format:
+\`\`\`
+### [TIME] [TYP] - [NUMMER]
+- **Lieferant:** [NAME]
+- **Betrag:** [BETRAG]
+- **Kategorie:** [KATEGORIE]
+- **Datei:** storage/documents/$TODAY/[DATEINAME]
+\`\`\`
+
+---
+
+## ⏰ Erinnerungen
+
+_Aktive Erinnerungen für heute_
+
+---
+
+## 📝 Events
 
 - Instanz erstellt: $(date -Iseconds)
-- Port: $PORT
 $(if [ -n "$TELEGRAM_TOKEN" ]; then echo "- Bot: @$BOT_USERNAME"; fi)
 $(if [ "$WHATSAPP_MODE" = true ]; then echo "- WhatsApp: QR-Scan ausstehend"; fi)
-
-## Events
-
-_Dokumentiere hier wichtige Events_
 
 ---
 NexHelper für $CUSTOMER_NAME
