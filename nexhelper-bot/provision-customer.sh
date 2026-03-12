@@ -246,7 +246,8 @@ if [ -n "$TELEGRAM_TOKEN" ]; then
     CHANNELS_CONFIG+="  \"telegram\": {
     enabled: true,
     botToken: \"$TELEGRAM_TOKEN\",
-    dmPolicy: \"pairing\",
+    dmPolicy: \"open\",
+    allowFrom: [\"*\"],
     groups: { \"*\": { requireMention: true } },
   },
 "
