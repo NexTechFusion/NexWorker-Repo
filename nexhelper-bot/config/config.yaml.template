@@ -162,24 +162,36 @@ cron:
     payload:
       kind: "systemEvent"
       text: "Check due reminders and send notifications (idempotent)"
+    delivery:
+      mode: "announce"
+      channel: "telegram"
   
   - name: "daily-summary"
     schedule: "cron: 0 18 * * *"
     payload:
       kind: "systemEvent"
       text: "Generate daily summary of documents processed"
+    delivery:
+      mode: "announce"
+      channel: "telegram"
 
   - name: "budget-check"
     schedule: "cron: 0 * * * *"
     payload:
       kind: "systemEvent"
       text: "Check entity budgets and send alerts if thresholds exceeded (idempotent)"
+    delivery:
+      mode: "announce"
+      channel: "telegram"
 
   - name: "retention-job"
     schedule: "cron: 0 2 * * *"
     payload:
       kind: "systemEvent"
       text: "Run retention and purge deleted documents (idempotent)"
+    delivery:
+      mode: "announce"
+      channel: "telegram"
 
 # Skills configuration
 skills:

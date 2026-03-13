@@ -366,7 +366,8 @@ cat <<EOF > "$CUSTOMER_DIR/config/openclaw.json"
     "defaults": {
       "model": {
         "primary": "$DEFAULT_MODEL",
-        "fallbacks": ["openrouter/google/gemini-2.5-flash", "openrouter/google/gemini-2.0-flash-001"]
+        "fallbacks": ["openrouter/google/gemini-2.5-flash", "openrouter/google/gemini-2.0-flash-001"],
+        "imageModel": "openrouter/google/gemini-3-flash-preview"
       },
       "workspace": "/root/.openclaw/workspace",
       "thinkingDefault": "medium",
@@ -1352,6 +1353,34 @@ if [ "${RUN_SMOKE_ON_START:-true}" = "true" ]; then
   if [ "$READY" = true ]; then
     if docker-compose exec -T nexhelper nexhelper-smoke >/dev/null 2>&1; then
       echo "✅ Startup smoke check passed"
+      
+      # Setup Cron Jobs (if not already present)
+      echo "⏰ Setting up scheduled jobs..."
+      docker-compose exec -T nexhelper openclaw cron add \
+        --name "check-reminders" \
+        --every "1m" \
+        --message "Check due reminders and send notifications. Use exec: nexhelper-reminder check" \
+        --announce --channel telegram --session isolated 2>/dev/null || true
+      
+      docker-compose exec -T nexhelper openclaw cron add \
+        --name "budget-check" \
+        --cron "0 * * * *" \
+        --message "Check entity budgets and send alerts if thresholds exceeded. Use exec: nexhelper-entity check" \
+        --announce --channel telegram --session isolated 2>/dev/null || true
+      
+      docker-compose exec -T nexhelper openclaw cron add \
+        --name "daily-summary" \
+        --cron "0 18 * * *" \
+        --message "Generate daily summary of documents processed today" \
+        --announce --channel telegram --session isolated 2>/dev/null || true
+      
+      docker-compose exec -T nexhelper openclaw cron add \
+        --name "retention-job" \
+        --cron "0 2 * * *" \
+        --message "Run retention and purge deleted documents. Use exec: nexhelper-retention purge" \
+        --announce --channel telegram --session isolated 2>/dev/null || true
+      
+      echo "✅ Scheduled jobs configured"
     else
       echo "⚠️ Startup smoke check failed (inspect with ./smoke.sh)"
       if [ "${SMOKE_REQUIRED_ON_START:-false}" = "true" ]; then
@@ -1609,6 +1638,34 @@ if [ "$AUTO_START" = true ]; then
     
     if docker ps | grep -q "$INSTANCE_NAME"; then
         STARTED=true
+        
+        # Setup Cron Jobs (if not already present)
+        echo "⏰ Setting up scheduled jobs..."
+        docker exec -it "$INSTANCE_NAME" openclaw cron add \
+          --name "check-reminders" \
+          --every "1m" \
+          --message "Check due reminders and send notifications. Use exec: nexhelper-reminder check" \
+          --announce --channel telegram --session isolated 2>/dev/null || true
+        
+        docker exec -it "$INSTANCE_NAME" openclaw cron add \
+          --name "budget-check" \
+          --cron "0 * * * *" \
+          --message "Check entity budgets and send alerts if thresholds exceeded. Use exec: nexhelper-entity check" \
+          --announce --channel telegram --session isolated 2>/dev/null || true
+        
+        docker exec -it "$INSTANCE_NAME" openclaw cron add \
+          --name "daily-summary" \
+          --cron "0 18 * * *" \
+          --message "Generate daily summary of documents processed today" \
+          --announce --channel telegram --session isolated 2>/dev/null || true
+        
+        docker exec -it "$INSTANCE_NAME" openclaw cron add \
+          --name "retention-job" \
+          --cron "0 2 * * *" \
+          --message "Run retention and purge deleted documents. Use exec: nexhelper-retention purge" \
+          --announce --channel telegram --session isolated 2>/dev/null || true
+        
+        echo "✅ Scheduled jobs configured"
     else
         STARTED=false
         echo "⚠️  Container failed to start. Check logs:"
