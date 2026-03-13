@@ -28,6 +28,8 @@ ENABLE_WHATSAPP=false
 AUTO_START=true
 CONSENT_VERSION="1.0"
 DEFAULT_MODEL="openrouter/google/gemini-3-flash-preview"
+ENTITIES="${ENTITIES:-default}"
+BUDGETS="${BUDGETS:-}"
 
 # ============================================
 # Parse Arguments
@@ -60,6 +62,14 @@ while [[ $# -gt 0 ]]; do
             ;;
         --base-dir)
             BASE_DIR="$2"
+            shift 2
+            ;;
+        --entities)
+            ENTITIES="$2"
+            shift 2
+            ;;
+        --budgets)
+            BUDGETS="$2"
             shift 2
             ;;
         -*)
@@ -191,7 +201,7 @@ fi
 # 1. Create Directory Structure
 # ============================================
 echo "📁 Creating directory structure..."
-mkdir -p "$CUSTOMER_DIR"/{config,logs,storage/{memory,consent,audit,documents,reminders}}
+mkdir -p "$CUSTOMER_DIR"/{config,logs,storage/{memory,consent,audit,documents,reminders,entities}}
 mkdir -p "$CUSTOMER_DIR/storage/.openclaw"
 
 # ============================================
@@ -233,6 +243,75 @@ consent:
     enabled: true
     path: ./storage/audit/consent.log
 EOF
+
+# ============================================
+# 2b. Generate Entity Configuration
+# ============================================
+echo "🏢 Generating entity configuration..."
+
+# Parse entities and budgets
+IFS=',' read -ra ENTITY_ARRAY <<< "$ENTITIES"
+IFS=',' read -ra BUDGET_ARRAY <<< "$BUDGETS"
+
+# Build budget map
+declare -A BUDGET_MAP
+for b in "${BUDGET_ARRAY[@]}"; do
+    key="${b%%:*}"
+    val="${b##*:}"
+    BUDGET_MAP[$key]="$val"
+done
+
+# Build entities YAML
+ENTITIES_YAML="entities:"
+for e in "${ENTITY_ARRAY[@]}"; do
+    budget="${BUDGET_MAP[$e]:-null}"
+    if [ "$e" = "default" ]; then
+        ENTITIES_YAML+="
+  - id: default
+    name: \"Default\"
+    budget: null
+    budgetPeriod: null
+    aliases: []
+    active: true
+    notifyOnOverBudget: false"
+    else
+        ENTITIES_YAML+="
+  - id: $e
+    name: \"${e^} Dept\"
+    budget: $budget
+    budgetPeriod: monthly
+    aliases: [\"@$e\"]
+    active: true
+    notifyOnOverBudget: true
+    notifyChannel: telegram"
+    fi
+done
+
+cat <<ENTITYEOF > "$CUSTOMER_DIR/config/entities.yaml"
+# Entity Configuration for $CUSTOMER_NAME
+# Generated: $(date -Iseconds)
+# 
+# Entities allow tracking documents by department/division with budgets
+
+$ENTITIES_YAML
+ENTITYEOF
+
+echo "   Created: ${#ENTITY_ARRAY[@]} entity(s)"
+
+# Initialize entity storage
+for e in "${ENTITY_ARRAY[@]}"; do
+    mkdir -p "$CUSTOMER_DIR/storage/entities/$e"
+    echo "[]" > "$CUSTOMER_DIR/storage/entities/$e/suppliers.json"
+    cat <<EOF > "$CUSTOMER_DIR/storage/entities/$e/stats.json
+{
+  \"period\": \"$(date +%Y-%m)\",
+  \"spent\": 0,
+  \"budget\": ${BUDGET_MAP[$e]:-0},
+  \"transactions\": [],
+  \"lastUpdated\": \"$(date -Iseconds)\"
+}
+EOF
+done
 
 # ============================================
 # 3. Generate OpenClaw Configuration (JSON5)

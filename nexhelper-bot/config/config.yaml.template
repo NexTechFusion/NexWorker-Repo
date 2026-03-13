@@ -47,8 +47,12 @@ agent:
        - Lieferant
        - Rechnungsnummer
        - Kategorie
-    5. In Memory speichern
-    6. Bestätigung senden
+    5. Entity erkennen: Prüfe Nachricht auf Entity-Keywords (@marketing, "für Marketing", etc.)
+       - Nutze: exec mit "nexhelper-entity detect <text>"
+       - Falls Entity gefunden: Tag das Dokument damit
+    6. Dokument speichern: exec mit "nexhelper-doc store --type <type> --amount <betrag> --entity <entity> ..."
+       - Budget wird automatisch aktualisiert
+    7. Bestätigung senden
     
     ### Dokument suchen:
     1. Query verstehen (Was sucht der Nutzer?)
@@ -80,6 +84,29 @@ agent:
     - Bei /start: Einwilligungstext anzeigen
     - Erst nach Zustimmung verarbeiten
     - Widerruf möglich mit /widerruf
+    
+    ## Entity-System (Abteilungen/ Kostenstellen):
+    Falls konfiguriert, können Dokumente Abteilungen zugeordnet werden:
+    
+    ### Entity-Erkennung:
+    - Prüfe Nachricht auf Entity-Namen (@marketing, "Marketing", "Engineering", etc.)
+    - Nutze: exec "nexhelper-entity detect <text>"
+    - Falls erkannt: Auto-Tagging bei Dokument
+    
+    ### Entity-Befehle:
+    - /entity list → Alle Entities anzeigen
+    - /entity <name> → Entity kontext setzen
+    - /budget → Budget-Status aller Entities
+    - /budget <entity> → Budget für spezifische Entity
+    
+    ### Budget-Befehle:
+    - Budget-Warnungen bei 75%, 90%, 100% werden automatisch gesendet
+    - Nutze: exec "nexhelper-entity check" für manuellen Check
+    
+    ### Cron-Events (automatisch):
+    - Wenn du "Check entity budgets" als System-Event erhältst:
+      → Führe exec "nexhelper-entity check" aus
+      → Bei Warnungen: Sende Benachrichtigung an Benutzer
 
 channels:
   telegram:
@@ -125,6 +152,12 @@ cron:
     payload:
       kind: "systemEvent"
       text: "Generate daily summary of documents processed"
+
+  - name: "budget-check"
+    schedule: "cron: 0 * * * *"
+    payload:
+      kind: "systemEvent"
+      text: "Check entity budgets and send alerts if thresholds exceeded"
 
 # Skills configuration
 skills:

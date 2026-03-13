@@ -1,0 +1,272 @@
+#!/bin/bash
+# Document Handler CLI for NexHelper
+# Handles document receipt, storage, and entity tagging
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_DIR="${CONFIG_DIR:-/app/config}"
+STORAGE_DIR="${STORAGE_DIR:-/root/.openclaw/workspace/storage}"
+ENTITIES_SCRIPT="$SCRIPT_DIR/../entity-system/nexhelper-entity"
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
+log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+
+# Get today's date for storage
+get_date() { date +%Y-%m-%d; }
+get_datetime() { date -Iseconds; }
+
+# Generate unique document ID
+gen_id() {
+    echo "doc_$(date +%s)_$RANDOM"
+}
+
+# Ensure storage directories exist
+init_dirs() {
+    mkdir -p "$STORAGE_DIR/memory"
+    mkdir -p "$STORAGE_DIR/documents/$(get_date)"
+    mkdir -p "$STORAGE_DIR/entities"
+}
+
+# Store a document
+store_document() {
+    local type="$1"
+    local amount="$2"
+    local entity="$3"
+    local supplier="$4"
+    local number="$5"
+    local date="$6"
+    local due_date="$7"
+    local category="$8"
+    local file_ref="$9"
+    
+    local doc_id=$(gen_id)
+    local datetime=$(get_datetime)
+    
+    # Build JSON document
+    local doc_json=$(cat <<DOCEOF
+{
+  "id": "$doc_id",
+  "type": "$type",
+  "number": "$number",
+  "supplier": "$supplier",
+  "amount": $amount,
+  "currency": "EUR",
+  "date": "$date",
+  "dueDate": "$due_date",
+  "category": "$category",
+  "entity": "$entity",
+  "tags": [],
+  "fileRef": "$file_ref",
+  "extractedAt": "$datetime",
+  "source": "telegram"
+}
+DOCEOF
+)
+    
+    # Store in memory file (append)
+    local memory_file="$STORAGE_DIR/memory/$(get_date).md"
+    local doc_record="## [$datetime] Dokument: $type"
+    if [ -n "$supplier" ]; then
+        doc_record+="\n- Lieferant: $supplier"
+    fi
+    if [ -n "$number" ]; then
+        doc_record+="\n- Nr: $number"
+    fi
+    if [ "$amount" != "0" ] && [ -n "$amount" ]; then
+        doc_record+="\n- Betrag: €$amount"
+    fi
+    if [ -n "$date" ]; then
+        doc_record+="\n- Datum: $date"
+    fi
+    if [ -n "$due_date" ]; then
+        doc_record+="\n- Fällig: $due_date"
+    fi
+    if [ -n "$entity" ]; then
+        doc_record+="\n- Entity: $entity"
+    fi
+    doc_record+="\n- ID: $doc_id"
+    
+    echo -e "$doc_record" >> "$memory_file"
+    
+    # Store JSON for programmatic access
+    local json_file="$STORAGE_DIR/documents/$(get_date)/$doc_id.json"
+    echo "$doc_json" > "$json_file"
+    
+    # Update entity budget if this is an expense (rechnung)
+    if [ "$type" = "rechnung" ] && [ -n "$amount" ] && [ "$amount" != "0" ]; then
+        if [ -n "$entity" ] && [ "$entity" != "default" ]; then
+            log_info "Updating budget for $entity: €$amount"
+            $ENTITIES_SCRIPT spend "$entity" "$amount" 2>/dev/null || true
+        fi
+    fi
+    
+    echo "$doc_id"
+}
+
+# Search documents
+search_documents() {
+    local query="$1"
+    local entity="$2"
+    local limit="${3:-10}"
+    
+    local memory_file="$STORAGE_DIR/memory/$(get_date).md"
+    
+    if [ ! -f "$memory_file" ]; then
+        echo "[]"
+        return
+    fi
+    
+    # Simple grep search with entity filter
+    local results
+    results=$(grep -i "$query" "$memory_file" | tail -"$limit")
+    
+    if [ -z "$results" ]; then
+        echo "[]"
+    else
+        echo "$results"
+    fi
+}
+
+# List documents
+list_documents() {
+    local entity="$1"
+    local limit="${2:-10}"
+    
+    local memory_file="$STORAGE_DIR/memory/$(get_date).md"
+    
+    if [ ! -f "$memory_file" ]; then
+        echo "[]"
+        return
+    fi
+    
+    if [ -n "$entity" ] && [ "$entity" != "default" ]; then
+        grep -E "^##.*Dokument" "$memory_file" | grep -i "$entity" | tail -"$limit"
+    else
+        grep -E "^##.*Dokument" "$memory_file" | tail -"$limit"
+    fi
+}
+
+# Get document by ID
+get_document() {
+    local doc_id="$1"
+    
+    # Search in today's documents
+    local json_file="$STORAGE_DIR/documents/$(get_date)/$doc_id.json"
+    
+    if [ -f "$json_file" ]; then
+        cat "$json_file"
+    else
+        # Search all document files
+        local found
+        found=$(find "$STORAGE_DIR/documents" -name "$doc_id.json" 2>/dev/null | head -1)
+        if [ -n "$found" ]; then
+            cat "$found"
+        else
+            echo "{}"
+        fi
+    fi
+}
+
+# Update document entity
+update_entity() {
+    local doc_id="$1"
+    local new_entity="$2"
+    
+    # Find and update JSON file
+    local json_file
+    json_file=$(find "$STORAGE_DIR/documents" -name "$doc_id.json" 2>/dev/null | head -1)
+    
+    if [ -n "$json_file" ] && [ -f "$json_file" ]; then
+        sed -i "s/\"entity\": \"[^\"]*\"/\"entity\": \"$new_entity\"/" "$json_file"
+        log_info "Updated document $doc_id entity to $new_entity"
+    else
+        log_error "Document $doc_id not found"
+        return 1
+    fi
+}
+
+# Main command handler
+case "${1:-}" in
+    store)
+        init_dirs
+        shift
+        # store --type rechnung --amount 1234.56 --entity marketing
+        TYPE="rechnung"
+        AMOUNT="0"
+        ENTITY="default"
+        SUPPLIER=""
+        NUMBER=""
+        DATE=""
+        DUE_DATE=""
+        CATEGORY=""
+        FILE_REF=""
+        
+        while [[ $# -gt 0 ]]; do
+            case $1 in
+                --type) TYPE="$2"; shift 2 ;;
+                --amount) AMOUNT="$2"; shift 2 ;;
+                --entity) ENTITY="$2"; shift 2 ;;
+                --supplier) SUPPLIER="$2"; shift 2 ;;
+                --number) NUMBER="$2"; shift 2 ;;
+                --date) DATE="$2"; shift 2 ;;
+                --due-date) DUE_DATE="$2"; shift 2 ;;
+                --category) CATEGORY="$2"; shift 2 ;;
+                --file) FILE_REF="$2"; shift 2 ;;
+                *) shift ;;
+            esac
+        done
+        
+        store_document "$TYPE" "$AMOUNT" "$ENTITY" "$SUPPLIER" "$NUMBER" "$DATE" "$DUE_DATE" "$CATEGORY" "$FILE_REF"
+        ;;
+    search)
+        init_dirs
+        search_documents "$2" "$3" "$4"
+        ;;
+    list)
+        init_dirs
+        list_documents "$2" "$3"
+        ;;
+    get)
+        init_dirs
+        get_document "$2"
+        ;;
+    update-entity)
+        init_dirs
+        update_entity "$2" "$3"
+        ;;
+    init)
+        init_dirs
+        log_info "Document handler initialized"
+        ;;
+    *)
+        echo "NexHelper Document Handler"
+        echo ""
+        echo "Usage: nexhelper-doc <command> [args]"
+        echo ""
+        echo "Commands:"
+        echo "  store --type <type> --amount <€> --entity <entity> [options]"
+        echo "    --type: rechnung|angebot|lieferschein|gutschrift|quittung"
+        echo "    --amount: numeric amount"
+        echo "    --entity: entity ID"
+        echo "    --supplier: supplier name"
+        echo "    --number: document number"
+        echo "    --date: document date (YYYY-MM-DD)"
+        echo "    --due-date: due date (YYYY-MM-DD)"
+        echo "    --category: category"
+        echo "    --file: file reference"
+        echo ""
+        echo "  search <query> [entity] [limit]"
+        echo "  list [entity] [limit]"
+        echo "  get <doc_id>"
+        echo "  update-entity <doc_id> <new_entity>"
+        echo "  init"
+        ;;
+esac

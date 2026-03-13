@@ -45,7 +45,8 @@ RUN mkdir -p /app/config /app/skills /app/exports /app/storage/{memory,consent,a
 COPY skills/ /app/skills/
 
 # Make scripts executable
-RUN find /app/skills -name "*.sh" -exec chmod +x {} \;
+RUN find /app/skills -name "*.sh" -exec chmod +x {} \; \
+ && find /app/skills -name "nexhelper-*" -exec chmod +x {} \;
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
