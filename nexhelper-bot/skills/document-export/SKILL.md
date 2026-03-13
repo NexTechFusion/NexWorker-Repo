@@ -161,7 +161,7 @@ Bot:  "📊 DATEV-Export für März 2026:
 ## Data Flow
 
 ```
-Memory Storage
+Canonical Document Store
       ↓
 Read documents
       ↓
@@ -171,7 +171,7 @@ Generate file / Call API
       ↓
 Confirm to user
       ↓
-Audit log entry
+Audit log entry with operation id
 ```
 
 ## DSGVO Compliance

@@ -50,13 +50,18 @@ agent:
     5. Entity erkennen: Prüfe Nachricht auf Entity-Keywords (@marketing, "für Marketing", etc.)
        - Nutze: exec mit "nexhelper-entity detect <text>"
        - Falls Entity gefunden: Tag das Dokument damit
-    6. Dokument speichern: exec mit "nexhelper-doc store --type <type> --amount <betrag> --entity <entity> ..."
+    6. Dokument speichern: exec mit "nexhelper-doc store --type <type> --amount <betrag> --entity <entity> --idempotency-key <event-id> ..."
        - Budget wird automatisch aktualisiert
     7. Bestätigung senden
+
+    ### Event-Loop-Sicherheit:
+    - Nutze idempotency keys aus message/event IDs
+    - Canonical JSON in storage/canonical ist Source-of-Truth
+    - memory/*.md nur als lesbare Zusammenfassung nutzen
     
     ### Dokument suchen:
     1. Query verstehen (Was sucht der Nutzer?)
-    2. memory_search mit relevanten Keywords
+    2. Nutze canonical Suche: exec "nexhelper-doc search --query '<query>' --semantic true"
     3. Ergebnisse formatieren
     4. Senden
     
@@ -104,9 +109,14 @@ agent:
     - Nutze: exec "nexhelper-entity check" für manuellen Check
     
     ### Cron-Events (automatisch):
-    - Wenn du "Check entity budgets" als System-Event erhältst:
-      → Führe exec "nexhelper-entity check" aus
-      → Bei Warnungen: Sende Benachrichtigung an Benutzer
+    - Bei jedem systemEvent zuerst den Workflow-Adapter nutzen:
+      → exec "nexhelper-workflow run --event-json '<normalized-event-json>'"
+    - Reminder-Lieferungen:
+      → exec "nexhelper-reminder due"
+    - Budget-Prüfung:
+      → exec "nexhelper-entity check"
+    - Retention:
+      → exec "nexhelper-retention"
 
 channels:
   telegram:
@@ -123,6 +133,7 @@ channels:
 
 memory:
   path: ./storage/memory
+  canonicalPath: ./storage/canonical
   autoArchive: true
 
 consent:
@@ -135,6 +146,11 @@ audit:
   path: ./storage/audit
   events: ["message", "consent", "export", "access"]
 
+retention:
+  documentDays: ${RETENTION_DAYS:-365}
+  purgeDeletedAfterDays: ${PURGE_DELETED_AFTER_DAYS:-30}
+  opsReportDays: ${OPS_REPORT_DAYS:-30}
+
 routing:
   tenantId: "${CUSTOMER_SLUG}"
   sharedBot: ${SHARED_BOT:-true}
@@ -145,7 +161,7 @@ cron:
     schedule: "every 1 minute"
     payload:
       kind: "systemEvent"
-      text: "Check due reminders and send notifications"
+      text: "Check due reminders and send notifications (idempotent)"
   
   - name: "daily-summary"
     schedule: "cron: 0 18 * * *"
@@ -157,7 +173,13 @@ cron:
     schedule: "cron: 0 * * * *"
     payload:
       kind: "systemEvent"
-      text: "Check entity budgets and send alerts if thresholds exceeded"
+      text: "Check entity budgets and send alerts if thresholds exceeded (idempotent)"
+
+  - name: "retention-job"
+    schedule: "cron: 0 2 * * *"
+    payload:
+      kind: "systemEvent"
+      text: "Run retention and purge deleted documents (idempotent)"
 
 # Skills configuration
 skills:

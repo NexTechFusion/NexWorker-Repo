@@ -1,31 +1,21 @@
 #!/bin/bash
-# Entity Management CLI for NexHelper
-# Usage: nexhelper-entity <command> [args]
 
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../common/nexhelper-core.sh"
+
 CONFIG_DIR="${CONFIG_DIR:-/app/config}"
-STORAGE_DIR="${STORAGE_DIR:-/root/.openclaw/workspace/storage}"
 ENTITIES_CONFIG="$CONFIG_DIR/entities.yaml"
-ENTITIES_STORAGE="$STORAGE_DIR/entities"
+ENTITIES_STORAGE="$NX_STORAGE_DIR/entities"
+CLASSIFIER_SCRIPT="$SCRIPT_DIR/../classifier/nexhelper-classify"
+DOC_SCRIPT="$SCRIPT_DIR/../document-handler/nexhelper-doc"
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
-
-log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
-log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
-
-# Ensure directories exist
 init_dirs() {
-    mkdir -p "$ENTITIES_STORAGE"
-    if [ ! -f "$ENTITIES_CONFIG" ]; then
-        log_warn "No entities.yaml found, creating default..."
-        cat <<EOF > "$ENTITIES_CONFIG"
+  mkdir -p "$ENTITIES_STORAGE"
+  nx_require_tenant_path "$ENTITIES_STORAGE"
+  if [ ! -f "$ENTITIES_CONFIG" ]; then
+    cat <<EOF > "$ENTITIES_CONFIG"
 entities:
   - id: default
     name: "Default"
@@ -35,273 +25,187 @@ entities:
     active: true
     notifyOnOverBudget: false
 EOF
-    fi
+  fi
 }
 
-# Get current period (YYYY-MM)
 get_period() {
-    date +%Y-%m
+  date +%Y-%m
 }
 
-# Load entities config
-load_entities() {
-    if [ -f "$ENTITIES_CONFIG" ]; then
-        cat "$ENTITIES_CONFIG"
-    else
-        echo '{"entities": []}'
-    fi
+list_entities_json() {
+  awk '/- id:/ {print $3}' "$ENTITIES_CONFIG" | jq -R -s -c 'split("\n") | map(select(length>0))'
 }
 
-# Find entity by alias in text
-detect_entity() {
-    local text="$1"
-    local entities
-    entities=$(load_entities)
-    
-    # Check each entity
-    while IFS= read -r entity_id; do
-        # Skip empty
-        [ -z "$entity_id" ] && continue
-        
-        # Get name for this entity
-        local name
-        name=$(echo "$entities" | sed -n "/- id: $entity_id/,/^- /p" | grep "name:" | head -1 | sed 's/.*name: "*\(.*\)"*/\1/' | tr -d ' ')
-        
-        # Check if entity name appears in text
-        if [ -n "$name" ] && echo "$text" | grep -qi "$name"; then
-            echo "$entity_id"
-            return 0
-        fi
-        
-        # Also check id itself (e.g., "marketing")
-        if echo "$text" | grep -qi "$entity_id"; then
-            echo "$entity_id"
-            return 0
-        fi
-        
-        # Get aliases for this entity
-        local aliases
-        aliases=$(echo "$entities" | sed -n "/- id: $entity_id/,/^- /p" | grep -oP 'aliases: \[\K[^\]]+' || echo "")
-        
-        # Check if any alias matches
-        for alias in $(echo "$aliases" | tr ',' '\n' | tr -d '"' | tr -d ' '); do
-            if [ -n "$alias" ] && echo "$text" | grep -qi "$alias"; then
-                echo "$entity_id"
-                return 0
-            fi
-        done
-    done < <(echo "$entities" | grep -oP '^\s+- id: \K[^$]+')
-    
-    echo "default"
+entity_block() {
+  local id="$1"
+  awk -v target="$id" '
+    $0 ~ "- id: "target"$" {in_block=1}
+    in_block {print}
+    in_block && /^  - id:/ && $0 !~ "- id: "target"$" {exit}
+  ' "$ENTITIES_CONFIG"
 }
 
-# Get entity budget stats
+entity_budget_from_config() {
+  local id="$1"
+  local budget
+  budget="$(entity_block "$id" | awk '/budget:/ {print $2; exit}')"
+  if [ -z "$budget" ]; then
+    echo "0"
+  else
+    echo "$budget"
+  fi
+}
+
+entity_notify_from_config() {
+  local id="$1"
+  entity_block "$id" | awk '/notifyOnOverBudget:/ {print $2; exit}'
+}
+
+stats_file_for() {
+  local id="$1"
+  echo "$ENTITIES_STORAGE/$id/stats.json"
+}
+
 get_budget() {
-    local entity_id="${1:-default}"
-    local stats_file="$ENTITIES_STORAGE/$entity_id/stats.json"
-    
-    if [ -f "$stats_file" ]; then
-        cat "$stats_file"
-    else
-        # Initialize stats file
-        local budget
-        budget=$(load_entities | grep -A5 "id: $entity_id" | grep "budget:" | awk '{print $2}' || echo "0")
-        
-        cat <<EOF > "$stats_file"
-{
-  "period": "$(get_period)",
-  "spent": 0,
-  "budget": $budget,
-  "transactions": [],
-  "lastUpdated": "$(date -Iseconds)"
-}
-EOF
-        cat "$stats_file"
-    fi
-}
-
-# Add spending to entity
-spend() {
-    local entity_id="$1"
-    local amount="$2"
-    
-    if [ -z "$entity_id" ] || [ -z "$amount" ]; then
-        echo "Usage: spend <entity_id> <amount>"
-        exit 1
-    fi
-    
-    local stats_file="$ENTITIES_STORAGE/$entity_id/stats.json"
-    local current_period=$(get_period)
-    
-    # Get current stats or initialize
-    local stats
-    stats=$(get_budget "$entity_id")
-    
-    local spent
-    spent=$(echo "$stats" | grep -oP '"spent": \K[^,]+' || echo "0")
-    local period
-    period=$(echo "$stats" | grep -oP '"period": "\K[^"]+' || echo "")
+  local entity_id="${1:-default}"
+  local stats_file
+  stats_file="$(stats_file_for "$entity_id")"
+  mkdir -p "$ENTITIES_STORAGE/$entity_id"
+  if [ ! -f "$stats_file" ]; then
     local budget
-    budget=$(echo "$stats" | grep -oP '"budget": \K[^,]+' || echo "0")
-    
-    # Reset if new period
-    if [ "$period" != "$current_period" ]; then
-        spent=0
-        period="$current_period"
-    fi
-    
-    # Add amount (can be negative for credits) - use C locale for numeric formatting
-    spent=$(LC_ALL=C awk '{printf "%.2f", $1+$2}' <<< "$spent $amount")
-    
-    # Update stats
+    budget="$(entity_budget_from_config "$entity_id")"
     cat <<EOF > "$stats_file"
 {
-  "period": "$period",
-  "spent": $spent,
-  "budget": $budget,
-  "transactions": [],
-  "lastUpdated": "$(date -Iseconds)"
+  "entity":"$entity_id",
+  "period":"$(get_period)",
+  "spent":0,
+  "budget":$budget,
+  "thresholdsNotified":[],
+  "lastUpdated":"$(nx_now_iso)"
 }
 EOF
-    
-    # Calculate percentage - use C locale
-    if [ "$budget" != "null" ] && [ "$budget" != "0" ]; then
-        local percent
-        percent=$(LC_ALL=C awk '{printf "%.2f", $1/$2*100}' <<< "$spent $budget")
-        echo "✅ $entity_id: €$spent / €$budget ($percent%)"
-    else
-        echo "✅ $entity_id: €$spent (no budget set)"
-    fi
+  fi
+  cat "$stats_file"
 }
 
-# Check all entities for budget alerts
-check_budgets() {
-    local entities
-    entities=$(load_entities)
-    local alerts=()
-    local current_period=$(get_period)
-    
-    # Get all entity IDs (skip default if no budget)
-    local entity_ids
-    entity_ids=$(echo "$entities" | grep -oP '^\s+- id: \K[^$]+' | grep -v "^$")
-    
-    for entity_id in $entity_ids; do
-        # Skip if no budget
-        local entity_config
-        entity_config=$(echo "$entities" | sed -n "/- id: $entity_id/,/^- /p" | head -10)
-        local budget
-        budget=$(echo "$entity_config" | grep "budget:" | awk '{print $2}' | tr -d ' ')
-        
-        if [ "$budget" = "null" ] || [ -z "$budget" ]; then
-            continue
-        fi
-        
-        # Get current spending
-        local stats_file="$ENTITIES_STORAGE/$entity_id/stats.json"
-        if [ -f "$stats_file" ]; then
-            local spent
-            spent=$(cat "$stats_file" | grep -oP '"spent": \K[^,]+')
-        else
-            spent=0
-        fi
-        
-        # Calculate percentage - use C locale
-        local percent
-        percent=$(LC_ALL=C awk '{printf "%.2f", $1/$2*100}' <<< "$spent $budget")
-        
-        # Check thresholds - compare as numbers
-        local notify
-        notify=$(echo "$entity_config" | grep "notifyOnOverBudget:" | awk '{print $2}')
-        
-        if [ "$notify" = "true" ]; then
-            if LC_ALL=C awk -v p="$percent" 'BEGIN {exit !(p >= 100)}'; then
-                alerts+=("🚨 $entity_id: BUDGET EXCEEDED! €$spent / €$budget")
-            elif LC_ALL=C awk -v p="$percent" 'BEGIN {exit !(p >= 90)}'; then
-                alerts+=("⚠️ $entity_id: 90% reached (€$spent / €$budget)")
-            elif LC_ALL=C awk -v p="$percent" 'BEGIN {exit !(p >= 75)}'; then
-                alerts+=("⚡ $entity_id: 75% reached (€$spent / €$budget)")
-            fi
-        fi
-    done
-    
-    if [ ${#alerts[@]} -eq 0 ]; then
-        echo "[]"
-    else
-        printf '%s\n' "${alerts[@]}"
-    fi
+detect_entity() {
+  local text="$1"
+  local entities_json
+  entities_json="$(list_entities_json)"
+  "$CLASSIFIER_SCRIPT" entity --text "$text" --entities-json "$entities_json"
 }
 
-# List all entities
-list_entities() {
-    local entities
-    entities=$(load_entities)
-    
-    echo "$entities" | grep -oP '^\s+- id: \K[^$]+' | while read -r id; do
-        local name
-        name=$(echo "$entities" | sed -n "/- id: $id/,/^- /p" | grep "name:" | head -1 | sed 's/.*name: "\?"\(.*\)"\?/\1/')
-        local budget
-        budget=$(echo "$entities" | sed -n "/- id: $id/,/^- /p" | grep "budget:" | head -1 | awk '{print $2}')
-        echo "$id: $name (Budget: $budget)"
-    done
+spend() {
+  local entity_id="$1"
+  local amount="${2:-0}"
+  local stats
+  stats="$(get_budget "$entity_id")"
+  local current_period
+  current_period="$(get_period)"
+  local period
+  period="$(echo "$stats" | jq -r '.period')"
+  local budget
+  budget="$(echo "$stats" | jq -r '.budget')"
+  local spent
+  spent="$(echo "$stats" | jq -r '.spent')"
+  if [ "$period" != "$current_period" ]; then
+    spent="0"
+    period="$current_period"
+  fi
+  local updated_spent
+  updated_spent="$(LC_ALL=C awk -v a="$spent" -v b="$amount" 'BEGIN {printf "%.2f", a+b}')"
+  local updated
+  updated="$(echo "$stats" | jq -c \
+    --arg period "$period" \
+    --argjson spent "$updated_spent" \
+    --arg now "$(nx_now_iso)" \
+    '.period=$period | .spent=$spent | .lastUpdated=$now')"
+  printf "%s\n" "$updated" > "$(stats_file_for "$entity_id")"
+  jq -c -n --arg entity "$entity_id" --argjson spent "$updated_spent" --argjson budget "${budget:-0}" \
+    '{entity:$entity,spent:$spent,budget:$budget}'
 }
 
-# Tag a document (update its entity)
 tag_document() {
-    local doc_id="$1"
-    local entity_id="$2"
-    
-    if [ -z "$doc_id" ] || [ -z "$entity_id" ]; then
-        echo "Usage: tag <doc_id> <entity_id>"
-        exit 1
-    fi
-    
-    # This would update the document in memory
-    # For now, just echo what would happen
-    echo "Would tag document $doc_id with entity $entity_id"
+  local doc_id="$1"
+  local entity_id="$2"
+  "$DOC_SCRIPT" update "$doc_id" --field entity --value "$entity_id" --reason "entity_tag"
 }
 
-# Main command handler
-case "${1:-}" in
-    detect)
-        init_dirs
-        detect_entity "$2"
-        ;;
-    tag)
-        init_dirs
-        tag_document "$2" "$3"
-        ;;
-    budget)
-        init_dirs
-        get_budget "$2"
-        ;;
-    spend)
-        init_dirs
-        spend "$2" "$3"
-        ;;
-    check)
-        init_dirs
-        check_budgets
-        ;;
-    list)
-        init_dirs
-        list_entities
-        ;;
-    init)
-        init_dirs
-        log_info "Entity system initialized"
-        ;;
-    *)
-        echo "NexHelper Entity Management"
-        echo ""
-        echo "Usage: nexhelper-entity <command> [args]"
-        echo ""
-        echo "Commands:"
-        echo "  detect <text>      Detect entity from text"
-        echo "  tag <doc_id> <entity>  Tag document with entity"
-        echo "  budget [entity]    Get budget status"
-        echo "  spend <entity> <amount>  Add expense"
-        echo "  check              Check all budgets for alerts"
-        echo "  list               List all entities"
-        echo "  init               Initialize directories"
-        ;;
+check_budgets() {
+  local entities
+  entities="$(list_entities_json)"
+  local alerts="[]"
+  local entity_id
+  for entity_id in $(echo "$entities" | jq -r '.[]'); do
+    local notify
+    notify="$(entity_notify_from_config "$entity_id")"
+    if [ "$notify" != "true" ]; then
+      continue
+    fi
+    local stats
+    stats="$(get_budget "$entity_id")"
+    local spent budget
+    spent="$(echo "$stats" | jq -r '.spent')"
+    budget="$(echo "$stats" | jq -r '.budget')"
+    if [ "$budget" = "null" ] || [ "$budget" = "0" ]; then
+      continue
+    fi
+    local percent
+    percent="$(LC_ALL=C awk -v s="$spent" -v b="$budget" 'BEGIN {printf "%.2f", (s/b)*100}')"
+    local threshold=""
+    if LC_ALL=C awk -v p="$percent" 'BEGIN {exit !(p >= 100)}'; then
+      threshold="100"
+    elif LC_ALL=C awk -v p="$percent" 'BEGIN {exit !(p >= 90)}'; then
+      threshold="90"
+    elif LC_ALL=C awk -v p="$percent" 'BEGIN {exit !(p >= 75)}'; then
+      threshold="75"
+    fi
+    if [ -n "$threshold" ]; then
+      local exists
+      exists="$(echo "$stats" | jq -r --arg t "$threshold" '.thresholdsNotified | index($t) != null')"
+      if [ "$exists" != "true" ]; then
+        alerts="$(echo "$alerts" | jq -c --arg entity "$entity_id" --arg threshold "$threshold" --argjson spent "$spent" --argjson budget "$budget" '. + [{entity:$entity,threshold:$threshold,spent:$spent,budget:$budget}]')"
+        local updated
+        updated="$(echo "$stats" | jq -c --arg t "$threshold" --arg now "$(nx_now_iso)" '.thresholdsNotified += [$t] | .lastUpdated=$now')"
+        printf "%s\n" "$updated" > "$(stats_file_for "$entity_id")"
+      fi
+    fi
+  done
+  echo "$alerts"
+}
+
+list_entities_text() {
+  local id
+  for id in $(list_entities_json | jq -r '.[]'); do
+    local budget
+    budget="$(entity_budget_from_config "$id")"
+    echo "$id (budget: $budget)"
+  done
+}
+
+usage() {
+  echo "NexHelper Entity Management"
+  echo "Commands:"
+  echo "  detect <text>"
+  echo "  tag <doc_id> <entity>"
+  echo "  budget [entity]"
+  echo "  spend <entity> <amount>"
+  echo "  check"
+  echo "  list"
+  echo "  list-json"
+}
+
+CMD="${1:-}"
+shift || true
+init_dirs
+
+case "$CMD" in
+  detect) detect_entity "${1:-}" ;;
+  tag) tag_document "${1:-}" "${2:-}" ;;
+  budget) get_budget "${1:-default}" ;;
+  spend) spend "${1:-default}" "${2:-0}" ;;
+  check) check_budgets ;;
+  list) list_entities_text ;;
+  list-json) list_entities_json ;;
+  *) usage; exit 1 ;;
 esac

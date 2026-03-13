@@ -1,0 +1,71 @@
+#!/bin/bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/nexhelper-core.sh"
+
+DOC_SCRIPT="$SCRIPT_DIR/../document-handler/nexhelper-doc"
+
+RETENTION_DAYS="${RETENTION_DAYS:-365}"
+PURGE_DELETED_AFTER_DAYS="${PURGE_DELETED_AFTER_DAYS:-30}"
+OPS_REPORT_DAYS="${OPS_REPORT_DAYS:-30}"
+
+cleanup_ops_reports() {
+  local now_ts="$1"
+  local cleaned=0
+  local dir
+  for dir in "$NX_OPS_DIR/smoke" "$NX_OPS_DIR/migration"; do
+    [ -d "$dir" ] || continue
+    local f
+    for f in "$dir"/*; do
+      [ -f "$f" ] || continue
+      local mtime
+      mtime="$(date -r "$f" +%s 2>/dev/null || echo 0)"
+      local age_days
+      age_days="$(((now_ts - mtime) / 86400))"
+      if [ "$age_days" -ge "$OPS_REPORT_DAYS" ]; then
+        nx_require_tenant_path "$f"
+        rm -f "$f"
+        cleaned=$((cleaned + 1))
+      fi
+    done
+  done
+  echo "$cleaned"
+}
+
+run_retention() {
+  nx_init_dirs
+  local now_ts
+  now_ts="$(date +%s)"
+  local archive_count=0
+  local path
+  for path in $(nx_list_doc_files); do
+    local doc
+    doc="$(cat "$path")"
+    local status
+    status="$(echo "$doc" | jq -r '.status')"
+    local created_at
+    created_at="$(echo "$doc" | jq -r '.createdAt // ""')"
+    [ -n "$created_at" ] || continue
+    local created_ts
+    created_ts="$(date -d "$created_at" +%s 2>/dev/null || echo 0)"
+    local age_days
+    age_days="$(((now_ts - created_ts) / 86400))"
+    if [ "$status" = "active" ] && [ "$age_days" -ge "$RETENTION_DAYS" ]; then
+      local updated
+      updated="$(echo "$doc" | jq -c --arg now "$(nx_now_iso)" '.status="archived" | .updatedAt=$now')"
+      printf "%s\n" "$updated" > "$path"
+      archive_count=$((archive_count + 1))
+    fi
+  done
+  local purge
+  purge="$("$DOC_SCRIPT" purge-deleted --days "$PURGE_DELETED_AFTER_DAYS")"
+  local cleaned_ops
+  cleaned_ops="$(cleanup_ops_reports "$now_ts")"
+  jq -c -n --arg status "ok" --argjson archived "$archive_count" --argjson purge "$purge" \
+    --argjson cleanedOps "$cleaned_ops" \
+    '{status:$status,archived:$archived,purge:$purge,cleanedOpsReports:$cleanedOps}'
+}
+
+run_retention

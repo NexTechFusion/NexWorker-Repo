@@ -1,0 +1,56 @@
+#!/bin/bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/nexhelper-core.sh"
+
+WORKFLOW_SCRIPT="$SCRIPT_DIR/nexhelper-workflow"
+REMINDER_SCRIPT="$SCRIPT_DIR/../reminder-system/nexhelper-reminder"
+DOC_SCRIPT="$SCRIPT_DIR/../document-handler/nexhelper-doc"
+HEALTH_SCRIPT="$SCRIPT_DIR/nexhelper-healthcheck"
+
+main() {
+  nx_init_dirs
+
+  local checks="[]"
+  mkdir -p "$NX_OPS_DIR/smoke"
+  local report_file
+  report_file="$NX_OPS_DIR/smoke/report-$(date +%Y%m%d_%H%M%S).json"
+
+  local health
+  health="$("$HEALTH_SCRIPT")"
+  checks="$(echo "$checks" | jq -c --arg name "healthcheck" --arg status "$(echo "$health" | jq -r '.status')" '. + [{name:$name,status:$status}]')"
+
+  "$REMINDER_SCRIPT" create --user smoke --text "Smoke reminder" --datetime "2000-01-01T00:00:00Z" --channel telegram --idempotency-key smoke_rem_1 >/dev/null
+  local ev1
+  ev1="$("$WORKFLOW_SCRIPT" run --event-json '{"id":"smoke_evt_1","kind":"systemEvent","text":"Check due reminders and send notifications (idempotent)"}')"
+  local ev1_second
+  ev1_second="$("$WORKFLOW_SCRIPT" run --event-json '{"id":"smoke_evt_1","kind":"systemEvent","text":"Check due reminders and send notifications (idempotent)"}')"
+  local same_idempotent
+  same_idempotent="$(jq -n --arg a "$ev1" --arg b "$ev1_second" '$a == $b')"
+  checks="$(echo "$checks" | jq -c --arg name "workflow_idempotency" --arg status "$( [ "$same_idempotent" = "true" ] && echo pass || echo fail)" '. + [{name:$name,status:$status}]')"
+
+  local doc
+  doc="$("$DOC_SCRIPT" store --type rechnung --amount 50 --supplier "Smoke GmbH" --number RE-SMOKE --date 2026-03-12 --entity default --source-text "Smoke invoice" --idempotency-key smoke_doc_1)"
+  local doc_id
+  doc_id="$(echo "$doc" | jq -r '.document.id // empty')"
+  checks="$(echo "$checks" | jq -c --arg name "document_store" --arg status "$( [ -n "$doc_id" ] && echo pass || echo fail)" '. + [{name:$name,status:$status}]')"
+
+  local search
+  search="$("$WORKFLOW_SCRIPT" run --event-json '{"id":"smoke_evt_2","kind":"message","text":"Suche Smoke GmbH Rechnung"}')"
+  local has_result
+  has_result="$(echo "$search" | jq -r '.result | type')"
+  checks="$(echo "$checks" | jq -c --arg name "message_route_search" --arg status "$( [ "$has_result" = "array" ] && echo pass || echo fail)" '. + [{name:$name,status:$status}]')"
+
+  local pass_count fail_count
+  pass_count="$(echo "$checks" | jq '[.[] | select(.status=="pass" or .status=="ok")] | length')"
+  fail_count="$(echo "$checks" | jq '[.[] | select(.status=="fail" or .status=="degraded")] | length')"
+  local output
+  output="$(jq -c -n --arg timestamp "$(nx_now_iso)" --argjson checks "$checks" --argjson pass "$pass_count" --argjson fail "$fail_count" --arg reportFile "$report_file" \
+    '{timestamp:$timestamp,pass:$pass,fail:$fail,checks:$checks,reportFile:$reportFile}')"
+  printf "%s\n" "$output" > "$report_file"
+  echo "$output"
+}
+
+main

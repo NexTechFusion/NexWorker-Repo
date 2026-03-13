@@ -322,7 +322,7 @@ Datei zu groß? Versuche:
 
 ## Next Steps
 
-1. Add critical fixes to SOUL.md
-2. Add `/edit` and `/delete` commands
-3. Test forwarded messages
-4. Test large files
+1. Convert all simulations to executable regression cases in `tests/regression/run.sh`
+2. Enforce canonical storage checks before each scenario assertion
+3. Validate idempotency for reminder/export cron-style replay
+4. Track pass/fail in structured JSON output

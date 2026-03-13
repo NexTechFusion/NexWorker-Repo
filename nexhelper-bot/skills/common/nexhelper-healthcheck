@@ -1,0 +1,43 @@
+#!/bin/bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/nexhelper-core.sh"
+
+checks="[]"
+status="ok"
+
+check_cmd() {
+  local name="$1"
+  local cmd="$2"
+  if command -v "$cmd" >/dev/null 2>&1; then
+    checks="$(echo "$checks" | jq -c --arg n "$name" '. + [{name:$n,status:"ok"}]')"
+  else
+    checks="$(echo "$checks" | jq -c --arg n "$name" '. + [{name:$n,status:"missing"}]')"
+    status="degraded"
+  fi
+}
+
+check_path() {
+  local name="$1"
+  local path="$2"
+  if [ -e "$path" ]; then
+    checks="$(echo "$checks" | jq -c --arg n "$name" --arg p "$path" '. + [{name:$n,status:"ok",path:$p}]')"
+  else
+    checks="$(echo "$checks" | jq -c --arg n "$name" --arg p "$path" '. + [{name:$n,status:"missing",path:$p}]')"
+    status="degraded"
+  fi
+}
+
+nx_init_dirs
+check_cmd "jq" "jq"
+check_cmd "curl" "curl"
+check_cmd "tesseract" "tesseract"
+check_cmd "pdftoppm" "pdftoppm"
+check_path "canonical_documents_dir" "$NX_DOCS_DIR"
+check_path "canonical_reminders_dir" "$NX_REMINDERS_DIR"
+check_path "audit_dir" "$NX_AUDIT_DIR"
+
+jq -c -n --arg timestamp "$(nx_now_iso)" --arg status "$status" --argjson checks "$checks" \
+  '{timestamp:$timestamp,status:$status,checks:$checks}'

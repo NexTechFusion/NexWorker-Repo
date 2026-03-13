@@ -1,0 +1,269 @@
+#!/bin/bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/nexhelper-core.sh"
+
+DOC_SCRIPT="$SCRIPT_DIR/../document-handler/nexhelper-doc"
+
+LEGACY_DOCS_DIR="$NX_STORAGE_DIR/documents"
+LEGACY_MEMORY_DIR="$NX_STORAGE_DIR/memory"
+CANONICAL_DOCS_DIR="$NX_DOCS_DIR"
+REPORT_FILE=""
+SUMMARY_CSV=""
+
+init_report() {
+  mkdir -p "$NX_OPS_DIR/migration"
+  REPORT_FILE="$NX_OPS_DIR/migration/report-$(date +%Y%m%d_%H%M%S).ndjson"
+  SUMMARY_CSV="$NX_OPS_DIR/migration/summary-$(date +%Y%m%d_%H%M%S).csv"
+}
+
+report_line() {
+  local payload="$1"
+  if [ -n "$REPORT_FILE" ]; then
+    printf "%s\n" "$payload" >> "$REPORT_FILE"
+  fi
+}
+
+write_csv_summary() {
+  if [ -z "$REPORT_FILE" ] || [ ! -f "$REPORT_FILE" ]; then
+    return
+  fi
+  {
+    echo "source,status,reason,count"
+    jq -r '
+      . as $row
+      | [$row.source, $row.status, ($row.reason // "none")]
+      | @tsv
+    ' "$REPORT_FILE" \
+    | sort \
+    | uniq -c \
+    | awk '{
+        c=$1;
+        $1="";
+        sub(/^[ \t]+/, "", $0);
+        split($0, a, "\t");
+        printf "%s,%s,%s,%s\n", a[1], a[2], a[3], c;
+      }'
+  } > "$SUMMARY_CSV"
+}
+
+ensure_date_from_path() {
+  local path="$1"
+  local maybe_date
+  maybe_date="$(echo "$path" | sed -n 's|.*documents/\([0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}\)/.*|\1|p')"
+  if [ -n "$maybe_date" ]; then
+    echo "$maybe_date"
+  else
+    date +%Y-%m-%d
+  fi
+}
+
+migrate_legacy_json_docs() {
+  local migrated=0
+  local skipped=0
+  local path
+  if [ ! -d "$LEGACY_DOCS_DIR" ]; then
+    jq -c -n --argjson migrated "$migrated" --argjson skipped "$skipped" '{migrated:$migrated,skipped:$skipped}'
+    return
+  fi
+
+  for path in "$LEGACY_DOCS_DIR"/*/*.json; do
+    [ -f "$path" ] || continue
+    local legacy
+    legacy="$(cat "$path" 2>/dev/null || echo "{}")"
+    local id
+    id="$(echo "$legacy" | jq -r '.id // empty')"
+    if [ -n "$id" ] && [ -f "$CANONICAL_DOCS_DIR/$id.json" ]; then
+      skipped=$((skipped + 1))
+      report_line "$(jq -c -n --arg type "legacy_json" --arg path "$path" --arg reason "already_migrated" '{source:$type,path:$path,status:"skipped",reason:$reason}')"
+      continue
+    fi
+    local ltype
+    local lamount
+    local lsupplier
+    local lnumber
+    local ldate
+    local lentity
+    local lcategory
+    ltype="$(echo "$legacy" | jq -r '.type // "rechnung"')"
+    lamount="$(echo "$legacy" | jq -r '.amount // 0')"
+    lsupplier="$(echo "$legacy" | jq -r '.supplier // .vendor // ""')"
+    lnumber="$(echo "$legacy" | jq -r '.number // .invoiceNumber // ""')"
+    ldate="$(echo "$legacy" | jq -r '.date // empty')"
+    lentity="$(echo "$legacy" | jq -r '.entity // "default"')"
+    lcategory="$(echo "$legacy" | jq -r '.category // ""')"
+    if [ -z "$ldate" ]; then
+      ldate="$(ensure_date_from_path "$path")"
+    fi
+    local result
+    result="$("$DOC_SCRIPT" store \
+      --type "$ltype" \
+      --amount "$lamount" \
+      --supplier "$lsupplier" \
+      --number "$lnumber" \
+      --date "$ldate" \
+      --entity "$lentity" \
+      --category "$lcategory" \
+      --file "$path" \
+      --source "migration" \
+      --source-text "legacy-json-migration" \
+      --idempotency-key "migrate_$(basename "$path")" 2>/dev/null || true)"
+    local status
+    status="$(echo "$result" | jq -r '.status // "invalid"')"
+    if [ "$status" = "stored" ]; then
+      migrated=$((migrated + 1))
+      report_line "$(jq -c -n --arg type "legacy_json" --arg path "$path" --arg status "$status" --arg result "$result" '{source:$type,path:$path,status:$status,result:$result}')"
+    else
+      skipped=$((skipped + 1))
+      report_line "$(jq -c -n --arg type "legacy_json" --arg path "$path" --arg status "$status" --arg result "$result" '{source:$type,path:$path,status:"skipped",reason:$status,result:$result}')"
+    fi
+  done
+
+  jq -c -n --argjson migrated "$migrated" --argjson skipped "$skipped" '{migrated:$migrated,skipped:$skipped}'
+}
+
+migrate_memory_markdown_docs() {
+  local migrated=0
+  local skipped=0
+  local path
+  if [ ! -d "$LEGACY_MEMORY_DIR" ]; then
+    jq -c -n --argjson migrated "$migrated" --argjson skipped "$skipped" '{migrated:$migrated,skipped:$skipped}'
+    return
+  fi
+
+  for path in "$LEGACY_MEMORY_DIR"/*.md; do
+    [ -f "$path" ] || continue
+    local file_date
+    file_date="$(basename "$path" .md)"
+    local current_type=""
+    local current_number=""
+    local current_supplier=""
+    local current_amount="0"
+    local current_doc_date="$file_date"
+    local current_category=""
+    local current_file=""
+    local current_time=""
+
+    finalize_current() {
+      if [ -z "$current_number" ] && [ -z "$current_supplier" ]; then
+        report_line "$(jq -c -n --arg type "memory_md" --arg path "$path" --arg reason "empty_entry" '{source:$type,path:$path,status:"skipped",reason:$reason}')"
+        return
+      fi
+      local id_key
+      id_key="$(echo "${path}_${current_time}_${current_number}" | tr ' /\\:[]' '_' | tr -cd '[:alnum:]_-.')"
+      local result
+      result="$("$DOC_SCRIPT" store \
+        --type "${current_type:-rechnung}" \
+        --amount "${current_amount:-0}" \
+        --supplier "$current_supplier" \
+        --number "$current_number" \
+        --date "${current_doc_date:-$file_date}" \
+        --entity "default" \
+        --category "$current_category" \
+        --file "$current_file" \
+        --source "migration" \
+        --source-text "legacy-memory-migration" \
+        --idempotency-key "md_$id_key" 2>/dev/null || true)"
+      local status
+      status="$(echo "$result" | jq -r '.status // empty' 2>/dev/null || echo "")"
+      if [ "$status" = "stored" ]; then
+        migrated=$((migrated + 1))
+        report_line "$(jq -c -n --arg type "memory_md" --arg path "$path" --arg status "$status" --arg result "$result" '{source:$type,path:$path,status:$status,result:$result}')"
+      else
+        skipped=$((skipped + 1))
+        report_line "$(jq -c -n --arg type "memory_md" --arg path "$path" --arg status "$status" --arg result "$result" '{source:$type,path:$path,status:"skipped",reason:$status,result:$result}')"
+      fi
+    }
+
+    while IFS= read -r line || [ -n "$line" ]; do
+      if [[ "$line" == "### "* ]]; then
+        finalize_current
+        current_type=""
+        current_number=""
+        current_supplier=""
+        current_amount="0"
+        current_doc_date="$file_date"
+        current_category=""
+        current_file=""
+        current_time=""
+        local header
+        header="${line#\#\#\# }"
+        current_time="$(echo "$header" | sed -n 's/^\[\([^]]*\)\].*$/\1/p')"
+        local rest
+        rest="$(echo "$header" | sed 's/^\[[^]]*\] *//')"
+        current_type="$(echo "$rest" | awk -F' - ' '{print tolower($1)}' | awk '{print $1}')"
+        current_number="$(echo "$rest" | awk -F' - ' '{print $2}' | xargs)"
+        continue
+      fi
+      case "$line" in
+        "- **Lieferant:** "*)
+          current_supplier="${line#- **Lieferant:** }"
+          ;;
+        "- **Betrag:** "*)
+          local raw_amount
+          raw_amount="${line#- **Betrag:** }"
+          raw_amount="$(echo "$raw_amount" | tr -d '€ ' | sed 's/\./ /g' | sed 's/,/./g' | tr -d ' ')"
+          if [ -n "$raw_amount" ]; then
+            current_amount="$raw_amount"
+          fi
+          ;;
+        "- **Datum:** "*)
+          local raw_date
+          raw_date="${line#- **Datum:** }"
+          if [[ "$raw_date" =~ ^([0-9]{2})\.([0-9]{2})\.([0-9]{4})$ ]]; then
+            current_doc_date="${BASH_REMATCH[3]}-${BASH_REMATCH[2]}-${BASH_REMATCH[1]}"
+          elif [[ "$raw_date" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+            current_doc_date="$raw_date"
+          fi
+          ;;
+        "- **Kategorie:** "*)
+          current_category="${line#- **Kategorie:** }"
+          ;;
+        "- **Datei:** "*)
+          current_file="${line#- **Datei:** }"
+          ;;
+      esac
+    done < "$path"
+    finalize_current
+  done
+
+  jq -c -n --argjson migrated "$migrated" --argjson skipped "$skipped" '{migrated:$migrated,skipped:$skipped}'
+}
+
+main() {
+  nx_init_dirs
+  init_report
+  local op_id
+  op_id="$(nx_op_id migrate)"
+  local json_result
+  json_result="$(migrate_legacy_json_docs)"
+  local memory_result
+  memory_result="$(migrate_memory_markdown_docs)"
+  local result
+  result="$(jq -c -n \
+    --arg opId "$op_id" \
+    --arg timestamp "$(nx_now_iso)" \
+    --argjson migrated "$(echo "$json_result" | jq '.migrated')" \
+    --argjson skipped "$(echo "$json_result" | jq '.skipped')" \
+    --argjson memoryMigrated "$(echo "$memory_result" | jq '.migrated')" \
+    --argjson memorySkipped "$(echo "$memory_result" | jq '.skipped')" \
+    --arg reportFile "$REPORT_FILE" \
+    --arg summaryCsv "$SUMMARY_CSV" \
+    '{
+      opId:$opId,
+      timestamp:$timestamp,
+      migrated:$migrated,
+      skipped:$skipped,
+      memoryMigrated:$memoryMigrated,
+      memorySkipped:$memorySkipped,
+      reportFile:$reportFile,
+      summaryCsv:$summaryCsv
+    }')"
+  write_csv_summary
+  nx_log_event "migration.legacy_to_canonical" "$op_id" "success" "$result"
+  echo "$result"
+}
+
+main

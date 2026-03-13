@@ -5,24 +5,24 @@ Handles document receipt, entity detection, and budget updates.
 ## Description
 
 Processes incoming documents:
-1. Extract entity from message text
-2. Analyze document (image/PDF)
-3. Extract key data (amount, date, supplier)
-4. Tag with entity
+1. Normalize and validate extracted metadata
+2. Resolve entity through AI classifier
+3. Deduplicate via canonical fingerprint and file hash
+4. Persist canonical JSON as source of truth
 5. Update entity budget
-6. Store in memory
+6. Mirror summary to memory if needed
 
 ## Usage
 
 ```bash
 # Process a document
-nexhelper-doc handle --file /path/to/doc.pdf --message "Rechnung für Marketing"
+nexhelper-doc store --type rechnung --amount 1234.56 --supplier "Müller GmbH" --number RE-2026-0342 --date 2026-03-12 --file /path/to/doc.pdf --source-text "Rechnung für Marketing" --idempotency-key evt_123
 
 # Query with entity filter
-nexhelper-doc search "Rechnung" --entity marketing
+nexhelper-doc search --query "Rechnung" --entity marketing --semantic true
 
 # List recent documents
-nexhelper-doc list --entity marketing --limit 10
+nexhelper-doc list --limit 10
 ```
 
 ## Integration
@@ -34,8 +34,8 @@ User sends: [Invoice PDF] + "Rechnung für Marketing"
 
 Agent calls:
 1. image/pdf tool → extract data
-2. nexhelper-entity detect "Rechnung für Marketing" → "marketing"  
-3. nexhelper-doc store --type rechnung --amount 1234.56 --entity marketing
+2. nexhelper-entity detect "Rechnung für Marketing" → {"entity":"marketing","confidence":...}
+3. nexhelper-doc store --type rechnung --amount 1234.56 --entity marketing --idempotency-key <event-id>
 4. nexhelper-entity spend marketing 1234.56
 ```
 

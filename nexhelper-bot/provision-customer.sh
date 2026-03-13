@@ -201,7 +201,7 @@ fi
 # 1. Create Directory Structure
 # ============================================
 echo "📁 Creating directory structure..."
-mkdir -p "$CUSTOMER_DIR"/{config,logs,storage/{memory,consent,audit,documents,reminders,entities}}
+mkdir -p "$CUSTOMER_DIR"/{config,logs,storage/{memory,consent,audit,documents,reminders,entities,idempotency,ops,canonical/{documents,reminders,indices}}}
 mkdir -p "$CUSTOMER_DIR/storage/.openclaw"
 
 # ============================================
@@ -494,6 +494,9 @@ services:
       - CUSTOMER_NAME=$CUSTOMER_NAME
       - CUSTOMER_SLUG=$SLUG
       - CONSENT_VERSION=$CONSENT_VERSION
+      - RUN_SMOKE_ON_START=\${RUN_SMOKE_ON_START:-true}
+      - SMOKE_REQUIRED_ON_START=\${SMOKE_REQUIRED_ON_START:-false}
+      - OPS_REPORT_DAYS=\${OPS_REPORT_DAYS:-30}
       - TZ=Europe/Berlin
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:$PORT/health"]
@@ -535,6 +538,9 @@ CUSTOMER_ID=$CUSTOMER_ID
 CUSTOMER_NAME=$CUSTOMER_NAME
 CUSTOMER_SLUG=$SLUG
 CONSENT_VERSION=$CONSENT_VERSION
+RUN_SMOKE_ON_START=true
+SMOKE_REQUIRED_ON_START=false
+OPS_REPORT_DAYS=30
 TZ=Europe/Berlin
 EOF
 
@@ -563,6 +569,8 @@ Du bist NexHelper für $CUSTOMER_NAME.
 
 | Datei | Zweck |
 |-------|-------|
+| \`canonical/documents/*.json\` | Verbindliche Dokumentdaten |
+| \`canonical/reminders/*.json\` | Verbindliche Erinnerungsdaten |
 | \`memory/YYYY-MM-DD.md\` | Tagesnotizen |
 | \`MEMORY.md\` | Langzeitgedächtnis |
 
@@ -570,6 +578,7 @@ Dokumentiere hier:
 - Erhaltene Dokumente
 - Erinnerungen
 - Wichtige Events
+- Workflow-Ausgaben mit Operation-IDs
 
 ---
 
@@ -582,6 +591,8 @@ Du hast folgende Skills verfügbar:
 | document-export | \`/export\` |
 | document-ocr | Automatisch bei Bildern |
 | reminder-system | \`/remind\` |
+| classifier | Intent/Entity Klassifikation |
+| workflow | Event-Pipeline mit Idempotenz |
 
 ---
 
@@ -632,6 +643,10 @@ Du bist **NexHelper** - ein digitaler Dokumenten-Assistent für $CUSTOMER_NAME.
 
 \`\`\`
 storage/
+├── canonical/           # Source-of-truth JSON records
+│   ├── documents/
+│   └── reminders/
+│
 ├── documents/           # Original-Dateien
 │   └── YYYY-MM-DD/     # Nach Datum sortiert
 │       ├── RE-123.pdf  # Rechnungen
@@ -645,8 +660,9 @@ storage/
 \`\`\`
 
 **Wichtig:**
+- Canonical JSON in \`canonical/\` ist Source-of-Truth
 - Originaldateien in \`documents/\`
-- Metadaten in \`memory/\` (für Suche)
+- Metadaten in \`memory/\` sind lesbare Spiegelung
 - Verlinke von Memory auf Document
 
 ---
@@ -684,7 +700,12 @@ memory_search "[RECHNUNGSNUMMER]"
    [Überschreiben] [Behalten] [Abbrechen]"
 \`\`\`
 
-**Schritt 3: In Memory speichern**
+**Schritt 3: Canonical speichern**
+\`\`\`
+exec command="nexhelper-doc store --type [typ] --amount [betrag] --supplier [lieferant] --number [nummer] --date [yyyy-mm-dd] --entity [entity] --file [datei] --source-text '[nachricht]' --idempotency-key [event-id]"
+\`\`\`
+
+**Schritt 4: In Memory spiegeln**
 \`\`\`
 ### 14:30 Rechnung - RE-2026-0342
 - **Typ:** Rechnung
@@ -696,7 +717,7 @@ memory_search "[RECHNUNGSNUMMER]"
 - **Datei:** storage/documents/2026-03-12/RE-2026-0342.pdf
 \`\`\`
 
-**Schritt 4: Bestätigen**
+**Schritt 5: Bestätigen**
 \`\`\`
 ✅ Dokument erfasst
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -816,6 +837,11 @@ User: "Erinnerung für Freitag: Angebot einholen"
 Verwende das exec tool mit genau diesem Befehl:
 
 openclaw cron add --at 'YYYY-MM-DDTHH:MM:SS' --message '⏰ ERINNERUNG: [TEXT]' --channel telegram --to [SENDER_ID] --announce
+\`\`\`
+
+\`\`\`
+Danach canonical speichern:
+exec command="nexhelper-reminder create --user [SENDER_ID] --text '[TEXT]' --datetime 'YYYY-MM-DDTHH:MM:SSZ' --channel telegram --idempotency-key [event-id]"
 \`\`\`
 
 **BEISPIEL - So sieht der Tool-Aufruf aus:**
@@ -1354,9 +1380,42 @@ echo "🛠️  Creating utility scripts..."
 # start.sh
 cat <<'SCRIPT' > "$CUSTOMER_DIR/start.sh"
 #!/bin/bash
+set -e
 cd "$(dirname "$0")"
 docker-compose up -d
 echo "✅ Started $(basename $(pwd))"
+
+if [ "${RUN_SMOKE_ON_START:-true}" = "true" ]; then
+  echo "🧪 Running startup smoke check..."
+  READY=false
+  for i in {1..30}; do
+    if docker-compose exec -T nexhelper nexhelper-healthcheck >/dev/null 2>&1; then
+      READY=true
+      break
+    fi
+    sleep 2
+  done
+
+  if [ "$READY" = true ]; then
+    if docker-compose exec -T nexhelper nexhelper-smoke >/dev/null 2>&1; then
+      echo "✅ Startup smoke check passed"
+    else
+      echo "⚠️ Startup smoke check failed (inspect with ./smoke.sh)"
+      if [ "${SMOKE_REQUIRED_ON_START:-false}" = "true" ]; then
+        echo "🛑 SMOKE_REQUIRED_ON_START=true, stopping instance"
+        docker-compose down
+        exit 1
+      fi
+    fi
+  else
+    echo "⚠️ Container not ready in time for smoke check"
+    if [ "${SMOKE_REQUIRED_ON_START:-false}" = "true" ]; then
+      echo "🛑 SMOKE_REQUIRED_ON_START=true, stopping instance"
+      docker-compose down
+      exit 1
+    fi
+  fi
+fi
 SCRIPT
 chmod +x "$CUSTOMER_DIR/start.sh"
 
@@ -1389,10 +1448,61 @@ echo ""
 echo "📁 Storage:"
 du -sh storage/* 2>/dev/null || echo "   No data yet"
 echo ""
+echo "🧪 Latest Smoke:"
+SMOKE_FILE=$(ls -t storage/ops/smoke/report-*.json 2>/dev/null | head -1)
+if [ -n "$SMOKE_FILE" ] && [ -f "$SMOKE_FILE" ]; then
+    echo "   File: $SMOKE_FILE"
+    jq -r '"   Pass: \(.pass) | Fail: \(.fail)"' "$SMOKE_FILE" 2>/dev/null || echo "   (unreadable)"
+else
+    echo "   No smoke report yet"
+fi
+echo ""
+echo "🛠️ Latest Migration:"
+MIG_FILE=$(ls -t storage/ops/migration/report-*.ndjson 2>/dev/null | head -1)
+MIG_SUMMARY=$(ls -t storage/ops/migration/summary-*.csv 2>/dev/null | head -1)
+if [ -n "$MIG_FILE" ] && [ -f "$MIG_FILE" ]; then
+    echo "   Report:  $MIG_FILE"
+    echo "   Summary: ${MIG_SUMMARY:-none}"
+else
+    echo "   No migration report yet"
+fi
+echo ""
 echo "📝 Recent Logs (last 5 lines):"
 docker-compose logs --tail=5
 SCRIPT
 chmod +x "$CUSTOMER_DIR/status.sh"
+
+# health.sh
+cat <<'SCRIPT' > "$CUSTOMER_DIR/health.sh"
+#!/bin/bash
+cd "$(dirname "$0")"
+docker-compose exec -T nexhelper nexhelper-healthcheck
+SCRIPT
+chmod +x "$CUSTOMER_DIR/health.sh"
+
+# migrate.sh
+cat <<'SCRIPT' > "$CUSTOMER_DIR/migrate.sh"
+#!/bin/bash
+cd "$(dirname "$0")"
+docker-compose exec -T nexhelper nexhelper-migrate
+SCRIPT
+chmod +x "$CUSTOMER_DIR/migrate.sh"
+
+# retention.sh
+cat <<'SCRIPT' > "$CUSTOMER_DIR/retention.sh"
+#!/bin/bash
+cd "$(dirname "$0")"
+docker-compose exec -T nexhelper nexhelper-retention
+SCRIPT
+chmod +x "$CUSTOMER_DIR/retention.sh"
+
+# smoke.sh
+cat <<'SCRIPT' > "$CUSTOMER_DIR/smoke.sh"
+#!/bin/bash
+cd "$(dirname "$0")"
+docker-compose exec -T nexhelper nexhelper-smoke
+SCRIPT
+chmod +x "$CUSTOMER_DIR/smoke.sh"
 
 # remove.sh
 cat <<SCRIPT > "$CUSTOMER_DIR/remove.sh"
@@ -1604,6 +1714,10 @@ echo "   Start:   $CUSTOMER_DIR/start.sh"
 echo "   Stop:    $CUSTOMER_DIR/stop.sh"
 echo "   Status:  $CUSTOMER_DIR/status.sh"
 echo "   Logs:    $CUSTOMER_DIR/logs.sh"
+echo "   Health:  $CUSTOMER_DIR/health.sh"
+echo "   Migrate: $CUSTOMER_DIR/migrate.sh"
+echo "   Retain:  $CUSTOMER_DIR/retention.sh"
+echo "   Smoke:   $CUSTOMER_DIR/smoke.sh"
 echo "   Consent: $CUSTOMER_DIR/consent.sh"
 echo "   Onboard: $CUSTOMER_DIR/onboard.sh"
 echo "   Remove:  $CUSTOMER_DIR/remove.sh"

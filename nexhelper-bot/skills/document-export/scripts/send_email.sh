@@ -1,10 +1,9 @@
 #!/bin/bash
-# Email Sender Script
-# Sends documents as email attachments via SMTP
-#
-# Usage: ./send_email.sh <to> <subject> <body> [attachment]
 
-set -e
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../../common/nexhelper-core.sh"
 
 TO="${1}"
 SUBJECT="${2}"
@@ -17,6 +16,9 @@ SMTP_PORT="${SMTP_PORT:-587}"
 SMTP_USER="${SMTP_USER:-}"
 SMTP_PASS="${SMTP_PASS:-}"
 FROM="${SMTP_FROM:-${SMTP_USER}}"
+SMTP_MAX_ATTACHMENT_MB="${SMTP_MAX_ATTACHMENT_MB:-10}"
+EMAIL_ALLOWED_DOMAINS="${EMAIL_ALLOWED_DOMAINS:-}"
+OP_ID="email_$(date +%s)_$RANDOM"
 
 if [ -z "$TO" ] || [ -z "$SUBJECT" ]; then
     echo "Usage: ./send_email.sh <to> <subject> <body> [attachment]"
@@ -29,6 +31,28 @@ if [ -z "$SMTP_USER" ] || [ -z "$SMTP_PASS" ]; then
     exit 1
 fi
 
+if ! echo "$TO" | grep -Eq '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'; then
+    echo "❌ Invalid recipient email address"
+    exit 1
+fi
+
+if [ -n "$EMAIL_ALLOWED_DOMAINS" ]; then
+    TO_DOMAIN="${TO##*@}"
+    DOMAIN_OK="false"
+    IFS=',' read -ra ALLOWED <<< "$EMAIL_ALLOWED_DOMAINS"
+    for D in "${ALLOWED[@]}"; do
+      CLEAN="$(echo "$D" | xargs)"
+      if [ "$TO_DOMAIN" = "$CLEAN" ]; then
+        DOMAIN_OK="true"
+        break
+      fi
+    done
+    if [ "$DOMAIN_OK" != "true" ]; then
+      echo "❌ Recipient domain not allowed: $TO_DOMAIN"
+      exit 1
+    fi
+fi
+
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "📧 Sending Email"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -36,6 +60,22 @@ echo "From:    ${FROM}"
 echo "To:      ${TO}"
 echo "Subject: ${SUBJECT}"
 if [ -n "$ATTACHMENT" ] && [ -f "$ATTACHMENT" ]; then
+    ATTACH_REAL="$(realpath -m "$ATTACHMENT")"
+    STORAGE_REAL="$(realpath -m "${STORAGE_DIR:-/root/.openclaw/workspace/storage}")"
+    EXPORTS_REAL="$(realpath -m "${CUSTOMER_DIR:-.}/exports")"
+    case "$ATTACH_REAL" in
+      "$STORAGE_REAL"/*|"$EXPORTS_REAL"/*) ;;
+      *)
+        echo "❌ Attachment path outside tenant scope"
+        exit 1
+        ;;
+    esac
+    SIZE_BYTES=$(wc -c < "$ATTACHMENT")
+    MAX_BYTES=$((SMTP_MAX_ATTACHMENT_MB * 1024 * 1024))
+    if [ "$SIZE_BYTES" -gt "$MAX_BYTES" ]; then
+      echo "❌ Attachment exceeds ${SMTP_MAX_ATTACHMENT_MB}MB limit"
+      exit 1
+    fi
     echo "Attach:  ${ATTACHMENT}"
 fi
 echo ""
@@ -139,6 +179,15 @@ else
     echo "❌ No email client available (sendmail or curl required)"
     exit 1
 fi
+
+mkdir -p "$NX_AUDIT_DIR"
+jq -c -n \
+  --arg timestamp "$(date -Iseconds)" \
+  --arg opId "$OP_ID" \
+  --arg to "$TO" \
+  --arg subject "$SUBJECT" \
+  --arg attachment "${ATTACHMENT:-}" \
+  '{timestamp:$timestamp,event:"email_send",opId:$opId,to:$to,subject:$subject,attachment:$attachment,status:"sent"}' >> "$NX_AUDIT_DIR/email.ndjson"
 
 echo "✅ Email sent successfully!"
 echo ""

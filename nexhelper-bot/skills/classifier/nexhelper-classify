@@ -1,0 +1,207 @@
+#!/bin/bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../common/nexhelper-core.sh"
+
+MODEL="${CLASSIFIER_MODEL:-openrouter/google/gemini-2.5-flash}"
+API_BASE="${OPENAI_BASE_URL:-https://openrouter.ai/api/v1}"
+API_KEY="${OPENAI_API_KEY:-}"
+
+usage() {
+  echo "Usage:"
+  echo "  nexhelper-classify intent --text <message>"
+  echo "  nexhelper-classify entity --text <message> --entities-json <json-array>"
+  echo "  nexhelper-classify rerank --query <query> --candidates-json <json-array>"
+}
+
+extract_content_json() {
+  local response="$1"
+  local content
+  content="$(echo "$response" | jq -r '.choices[0].message.content // empty')"
+  if [ -z "$content" ]; then
+    echo "{}"
+    return
+  fi
+  echo "$content" | jq -c . 2>/dev/null || echo "{}"
+}
+
+call_model() {
+  local prompt="$1"
+  if [ -z "$API_KEY" ]; then
+    echo ""
+    return
+  fi
+  curl -sS "$API_BASE/chat/completions" \
+    -H "Authorization: Bearer $API_KEY" \
+    -H "Content-Type: application/json" \
+    -d "$(jq -c -n \
+      --arg model "$MODEL" \
+      --arg prompt "$prompt" \
+      '{
+        model: $model,
+        temperature: 0,
+        response_format: {type: "json_object"},
+        messages: [
+          {role: "system", content: "You are a strict JSON classifier. Return only valid JSON."},
+          {role: "user", content: $prompt}
+        ]
+      }')" || true
+}
+
+fallback_intent() {
+  jq -c -n --arg text "${1:-}" \
+    '{intent:"unknown",confidence:0.0,action:"clarify",entity:null,normalizedTime:null,reason:"classifier_unavailable",input:$text}'
+}
+
+fallback_entity() {
+  jq -c -n --arg text "${1:-}" \
+    '{entity:"default",confidence:0.0,action:"clarify",reason:"classifier_unavailable",input:$text}'
+}
+
+fallback_rerank() {
+  jq -c -n --arg query "${1:-}" \
+    '{orderedIds:[],confidence:0.0,action:"fallback",reason:"classifier_unavailable",query:$query}'
+}
+
+classify_intent() {
+  local text="$1"
+  local prompt
+  prompt="$(cat <<EOF
+Classify this user message for a business document assistant.
+
+Message: $text
+
+Return JSON object:
+{
+  "intent": "document_store|document_search|document_edit|document_delete|reminder_create|reminder_list|reminder_delete|export|email_send|consent|status|unknown",
+  "confidence": 0.0,
+  "action": "execute|confirm|clarify",
+  "entity": "string-or-null",
+  "normalizedTime": "ISO-8601-or-null"
+}
+EOF
+)"
+  local response
+  response="$(call_model "$prompt")"
+  if [ -z "$response" ]; then
+    fallback_intent "$text"
+    return
+  fi
+  extract_content_json "$response" | jq -c '{
+    intent:(.intent // "unknown"),
+    confidence:(.confidence // 0),
+    action:(.action // "clarify"),
+    entity:(.entity // null),
+    normalizedTime:(.normalizedTime // null)
+  }'
+}
+
+classify_entity() {
+  local text="$1"
+  local entities_json="$2"
+  local prompt
+  prompt="$(cat <<EOF
+Select the best matching entity for this message.
+
+Message: $text
+Entities: $entities_json
+
+Return JSON:
+{
+  "entity": "one_of_entities_or_default",
+  "confidence": 0.0,
+  "action": "execute|confirm|clarify"
+}
+EOF
+)"
+  local response
+  response="$(call_model "$prompt")"
+  if [ -z "$response" ]; then
+    fallback_entity "$text"
+    return
+  fi
+  extract_content_json "$response" | jq -c --argjson entities "$entities_json" '
+    .entity = (if (.entity|type) == "string" and (.entity as $e | $entities | index($e)) != null then .entity else "default" end) |
+    {
+      entity:(.entity // "default"),
+      confidence:(.confidence // 0),
+      action:(.action // "clarify")
+    }'
+}
+
+classify_rerank() {
+  local query="$1"
+  local candidates_json="$2"
+  local prompt
+  prompt="$(cat <<EOF
+Rank candidate document snippets by relevance to query.
+
+Query: $query
+Candidates: $candidates_json
+
+Return JSON:
+{
+  "orderedIds": ["doc_id_1","doc_id_2"],
+  "confidence": 0.0,
+  "action": "execute|fallback"
+}
+EOF
+)"
+  local response
+  response="$(call_model "$prompt")"
+  if [ -z "$response" ]; then
+    fallback_rerank "$query"
+    return
+  fi
+  extract_content_json "$response" | jq -c '{
+    orderedIds:(.orderedIds // []),
+    confidence:(.confidence // 0),
+    action:(.action // "fallback")
+  }'
+}
+
+CMD="${1:-}"
+shift || true
+
+case "$CMD" in
+  intent)
+    TEXT=""
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --text) TEXT="$2"; shift 2 ;;
+        *) shift ;;
+      esac
+    done
+    classify_intent "$TEXT"
+    ;;
+  entity)
+    TEXT=""
+    ENTITIES_JSON='["default"]'
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --text) TEXT="$2"; shift 2 ;;
+        --entities-json) ENTITIES_JSON="$2"; shift 2 ;;
+        *) shift ;;
+      esac
+    done
+    classify_entity "$TEXT" "$ENTITIES_JSON"
+    ;;
+  rerank)
+    QUERY=""
+    CANDIDATES_JSON="[]"
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --query) QUERY="$2"; shift 2 ;;
+        --candidates-json) CANDIDATES_JSON="$2"; shift 2 ;;
+        *) shift ;;
+      esac
+    done
+    classify_rerank "$QUERY" "$CANDIDATES_JSON"
+    ;;
+  *)
+    usage
+    exit 1
+    ;;
+esac

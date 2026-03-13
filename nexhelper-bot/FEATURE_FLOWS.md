@@ -77,7 +77,9 @@ User sends an image or PDF via Telegram/WhatsApp
                       ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  5. STORAGE                                                  │
-│     Write to memory:                                         │
+│     Write canonical JSON first:                              │
+│     storage/canonical/documents/<doc_id>.json                │
+│     Then mirror to:                                          │
 │     storage/memory/YYYY-MM-DD.md                             │
 │                                                              │
 │     Structure:                                               │
@@ -312,7 +314,8 @@ User asks for a reminder in natural language
                       ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  4. STORAGE                                                  │
-│     Store in memory/reminders.json:                         │
+│     Store in canonical reminders:                            │
+│     storage/canonical/reminders/<id>.json                    │
 │     {                                                        │
 │       "id": "rem_abc123",                                    │
 │       "text": "Meeting mit Müller",                          │

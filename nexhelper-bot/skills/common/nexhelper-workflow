@@ -1,0 +1,120 @@
+#!/bin/bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/nexhelper-core.sh"
+
+DOC_SCRIPT="$SCRIPT_DIR/../document-handler/nexhelper-doc"
+CLASSIFIER_SCRIPT="$SCRIPT_DIR/../classifier/nexhelper-classify"
+
+normalize_event() {
+  local input="$1"
+  echo "$input" | jq -c '
+    {
+      id: (.id // .messageId // .eventId // ""),
+      kind: (.kind // (if .systemEvent then "systemEvent" else "message" end)),
+      channel: (.channel // "telegram"),
+      senderId: (.senderId // .from // ""),
+      text: (.text // .message // ""),
+      timestamp: (.timestamp // now | tostring),
+      payload: (.payload // {})
+    }'
+}
+
+route_message() {
+  local event_json="$1"
+  local text
+  text="$(echo "$event_json" | jq -r '.text')"
+  local classification
+  classification="$("$CLASSIFIER_SCRIPT" intent --text "$text")"
+  local intent
+  intent="$(echo "$classification" | jq -r '.intent')"
+  case "$intent" in
+    document_search)
+      "$DOC_SCRIPT" search --query "$text" --semantic true
+      ;;
+    status)
+      "$DOC_SCRIPT" stats
+      ;;
+    *)
+      jq -c -n --arg status "noop" --arg intent "$intent" --arg text "$text" \
+        '{status:$status,intent:$intent,text:$text}'
+      ;;
+  esac
+}
+
+route_system_event() {
+  local event_json="$1"
+  local text
+  text="$(echo "$event_json" | jq -r '.text')"
+  if [[ "$text" == *"reminder"* ]]; then
+    local due
+    due="$("$SCRIPT_DIR/../reminder-system/nexhelper-reminder" due)"
+    jq -c -n --arg status "processed" --arg handler "reminder_due" --argjson due "$due" \
+      '{status:$status,handler:$handler,due:$due}'
+  elif [[ "$text" == *"budget"* ]]; then
+    local alerts
+    alerts="$("$SCRIPT_DIR/../entity-system/nexhelper-entity" check)"
+    jq -c -n --arg status "processed" --arg handler "budget_check" --argjson alerts "$alerts" \
+      '{status:$status,handler:$handler,alerts:$alerts}'
+  elif [[ "$text" == *"retention"* ]]; then
+    local retention
+    retention="$("$SCRIPT_DIR/nexhelper-retention")"
+    jq -c -n --arg status "processed" --arg handler "retention" --argjson retention "$retention" \
+      '{status:$status,handler:$handler,retention:$retention}'
+  else
+    jq -c -n --arg status "ignored" --arg text "$text" '{status:$status,text:$text}'
+  fi
+}
+
+run_event() {
+  local raw_event="$1"
+  nx_init_dirs
+  local event_json
+  event_json="$(normalize_event "$raw_event")"
+  local event_id
+  event_id="$(echo "$event_json" | jq -r '.id')"
+  local key
+  key="event_${event_id}"
+  if [ -n "$event_id" ] && nx_idempotency_has "$key"; then
+    nx_idempotency_get "$key"
+    return
+  fi
+  local op_id
+  op_id="$(nx_op_id flow)"
+  nx_log_event "workflow.received" "$op_id" "started" "$event_json"
+  local kind
+  kind="$(echo "$event_json" | jq -r '.kind')"
+  local result
+  if [ "$kind" = "systemEvent" ]; then
+    result="$(route_system_event "$event_json")"
+  else
+    result="$(route_message "$event_json")"
+  fi
+  local output
+  output="$(jq -c -n --arg opId "$op_id" --argjson event "$event_json" --argjson result "$result" \
+    '{opId:$opId,event:$event,result:$result}')"
+  if [ -n "$event_id" ]; then
+    nx_idempotency_put "$key" "$output"
+  fi
+  nx_log_event "workflow.completed" "$op_id" "success" "$result"
+  echo "$output"
+}
+
+case "${1:-}" in
+  run)
+    shift
+    if [ "${1:-}" = "--event-json" ]; then
+      shift
+      run_event "${1:-{}}"
+    else
+      echo "Usage: nexhelper-workflow run --event-json '<json>'" >&2
+      exit 1
+    fi
+    ;;
+  *)
+    echo "Usage: nexhelper-workflow run --event-json '<json>'" >&2
+    exit 1
+    ;;
+esac

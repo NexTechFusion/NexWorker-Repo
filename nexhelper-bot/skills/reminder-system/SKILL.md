@@ -45,10 +45,10 @@ Bot:  "🗑️ Erinnerung gelöscht: Meeting mit Müller"
 
 ## Storage
 
-Reminders are stored in customer's memory:
+Reminders are stored in canonical storage:
 
 ```
-storage/memory/reminders.json
+storage/canonical/reminders/<id>.json
 ```
 
 ## Cron Integration
@@ -85,7 +85,7 @@ cron:
 
 ### Cron Job
 
-Checks every minute for due reminders and sends notifications.
+Checks every minute for due reminders, marks delivery state, and avoids duplicate sends via idempotency keys.
 
 ## Commands
 

@@ -5,7 +5,7 @@ Entity management for multi-department document tracking.
 ## Description
 
 Manages entities (departments, cost centers) with budgets and aliases. Enables:
-- Entity detection from message text
+- AI-based entity detection from message text
 - Document tagging by entity
 - Budget tracking and alerts
 - Entity-aware queries and exports
@@ -46,12 +46,12 @@ storage/
 ### 1. Detect Entity
 
 Input: message text
-Output: entity_id or null
+Output: JSON with entity, confidence, action
 
 ```bash
 # Detect entity from text
 nexhelper-entity detect "Rechnung für Marketing"
-# Returns: marketing
+# Returns: {"entity":"marketing","confidence":0.94,"action":"execute"}
 ```
 
 ### 2. Tag Document
@@ -108,9 +108,9 @@ nexhelper-entity list
 # Returns: [{"id": "default", "name": "Default", ...}, ...]
 ```
 
-## Natural Language Patterns
+## Classification Context
 
-Agent should detect entities from:
+Aliases are context signals for the classifier, not hard routing rules:
 
 ```
 "Rechnung für [entity]" → entity = entity

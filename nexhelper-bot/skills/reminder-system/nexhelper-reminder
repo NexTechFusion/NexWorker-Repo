@@ -1,0 +1,161 @@
+#!/bin/bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../common/nexhelper-core.sh"
+
+create_reminder() {
+  local user_id="$1"
+  local text="$2"
+  local datetime="$3"
+  local channel="$4"
+  local idempotency_key="$5"
+  nx_init_dirs
+  if [ -n "$idempotency_key" ] && nx_idempotency_has "$idempotency_key"; then
+    nx_idempotency_get "$idempotency_key"
+    return
+  fi
+  local reminder_id
+  reminder_id="$(nx_op_id rem)"
+  local op_id
+  op_id="$(nx_op_id remop)"
+  local payload
+  payload="$(jq -c -n \
+    --arg id "$reminder_id" \
+    --arg userId "$user_id" \
+    --arg text "$text" \
+    --arg datetime "$datetime" \
+    --arg channel "$channel" \
+    --arg now "$(nx_now_iso)" \
+    '{
+      id:$id,
+      userId:$userId,
+      text:$text,
+      datetime:$datetime,
+      channel:$channel,
+      status:"scheduled",
+      delivered:false,
+      cancelled:false,
+      retries:0,
+      createdAt:$now,
+      updatedAt:$now,
+      deliveredAt:null
+    }')"
+  nx_write_reminder_json "$reminder_id" "$payload"
+  local result
+  result="$(jq -c -n --arg status "created" --arg opId "$op_id" --argjson reminder "$payload" \
+    '{status:$status,opId:$opId,reminder:$reminder}')"
+  if [ -n "$idempotency_key" ]; then
+    nx_idempotency_put "$idempotency_key" "$result"
+  fi
+  nx_log_event "reminder.create" "$op_id" "success" "$result"
+  echo "$result"
+}
+
+list_reminders() {
+  local user_id="$1"
+  nx_init_dirs
+  local arr="[]"
+  local f
+  for f in $(nx_list_reminder_files); do
+    local r
+    r="$(cat "$f")"
+    if [ "$(echo "$r" | jq -r --arg u "$user_id" '.userId == $u')" = "true" ]; then
+      arr="$(echo "$arr" | jq -c --argjson r "$r" '. + [$r]')"
+    fi
+  done
+  echo "$arr" | jq -c 'sort_by(.datetime)'
+}
+
+delete_reminder() {
+  local reminder_id="$1"
+  nx_init_dirs
+  local rem
+  rem="$(nx_load_reminder_json "$reminder_id")"
+  if [ "$(echo "$rem" | jq -r '.id // empty')" = "" ]; then
+    jq -c -n --arg status "not_found" --arg id "$reminder_id" '{status:$status,id:$id}'
+    return
+  fi
+  local updated
+  updated="$(echo "$rem" | jq -c --arg now "$(nx_now_iso)" '.cancelled=true | .status="cancelled" | .updatedAt=$now')"
+  nx_write_reminder_json "$reminder_id" "$updated"
+  jq -c -n --arg status "deleted" --arg id "$reminder_id" '{status:$status,id:$id}'
+}
+
+mark_due() {
+  nx_init_dirs
+  local now
+  now="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  local due="[]"
+  local f
+  for f in $(nx_list_reminder_files); do
+    local r
+    r="$(cat "$f")"
+    local status
+    status="$(echo "$r" | jq -r '.status')"
+    if [ "$status" != "scheduled" ]; then
+      continue
+    fi
+    local dt
+    dt="$(echo "$r" | jq -r '.datetime')"
+    if [ "$dt" \< "$now" ] || [ "$dt" = "$now" ]; then
+      local updated
+      updated="$(echo "$r" | jq -c --arg now "$(nx_now_iso)" '.status="delivered" | .delivered=true | .deliveredAt=$now | .updatedAt=$now')"
+      local id
+      id="$(echo "$r" | jq -r '.id')"
+      nx_write_reminder_json "$id" "$updated"
+      due="$(echo "$due" | jq -c --argjson u "$updated" '. + [$u]')"
+    fi
+  done
+  echo "$due"
+}
+
+usage() {
+  echo "NexHelper Reminder CLI"
+  echo "  create --user <id> --text <text> --datetime <iso> [--channel telegram] [--idempotency-key <key>]"
+  echo "  list --user <id>"
+  echo "  delete <reminder_id>"
+  echo "  due"
+}
+
+CMD="${1:-}"
+shift || true
+case "$CMD" in
+  create)
+    USER_ID=""
+    TEXT=""
+    DATETIME=""
+    CHANNEL="telegram"
+    IDEMPOTENCY_KEY=""
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --user) USER_ID="$2"; shift 2 ;;
+        --text) TEXT="$2"; shift 2 ;;
+        --datetime) DATETIME="$2"; shift 2 ;;
+        --channel) CHANNEL="$2"; shift 2 ;;
+        --idempotency-key) IDEMPOTENCY_KEY="$2"; shift 2 ;;
+        *) shift ;;
+      esac
+    done
+    create_reminder "$USER_ID" "$TEXT" "$DATETIME" "$CHANNEL" "$IDEMPOTENCY_KEY"
+    ;;
+  list)
+    if [ "${1:-}" = "--user" ]; then
+      list_reminders "${2:-}"
+    else
+      usage
+      exit 1
+    fi
+    ;;
+  delete)
+    delete_reminder "${1:-}"
+    ;;
+  due)
+    mark_due
+    ;;
+  *)
+    usage
+    exit 1
+    ;;
+esac
