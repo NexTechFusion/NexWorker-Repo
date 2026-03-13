@@ -18,6 +18,8 @@ SMTP_PASS="${SMTP_PASS:-}"
 FROM="${SMTP_FROM:-${SMTP_USER}}"
 SMTP_MAX_ATTACHMENT_MB="${SMTP_MAX_ATTACHMENT_MB:-10}"
 EMAIL_ALLOWED_DOMAINS="${EMAIL_ALLOWED_DOMAINS:-}"
+SMTP_REQUIRE_TLS="${SMTP_REQUIRE_TLS:-true}"
+SMTP_AUTH_REQUIRED="${SMTP_AUTH_REQUIRED:-true}"
 OP_ID="email_$(date +%s)_$RANDOM"
 
 if [ -z "$TO" ] || [ -z "$SUBJECT" ]; then
@@ -25,10 +27,12 @@ if [ -z "$TO" ] || [ -z "$SUBJECT" ]; then
     exit 1
 fi
 
-if [ -z "$SMTP_USER" ] || [ -z "$SMTP_PASS" ]; then
-    echo "❌ SMTP credentials not configured"
-    echo "   Set SMTP_HOST, SMTP_USER, SMTP_PASS"
-    exit 1
+if [ "$SMTP_AUTH_REQUIRED" = "true" ]; then
+    if [ -z "$SMTP_USER" ] || [ -z "$SMTP_PASS" ]; then
+        echo "❌ SMTP credentials not configured"
+        echo "   Set SMTP_HOST, SMTP_USER, SMTP_PASS"
+        exit 1
+    fi
 fi
 
 if ! echo "$TO" | grep -Eq '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'; then
@@ -147,12 +151,14 @@ elif command -v curl &> /dev/null; then
         ) > "$TEMP_EMAIL"
         
         # Send via curl
-        curl -s --url "smtp://${SMTP_HOST}:${SMTP_PORT}" \
-             --mail-from "${FROM}" \
-             --mail-rcpt "${TO}" \
-             --upload-file "$TEMP_EMAIL" \
-             --user "${SMTP_USER}:${SMTP_PASS}" \
-             --ssl-reqd
+        CURL_ARGS=( -s --url "smtp://${SMTP_HOST}:${SMTP_PORT}" --mail-from "${FROM}" --mail-rcpt "${TO}" --upload-file "$TEMP_EMAIL" )
+        if [ "$SMTP_AUTH_REQUIRED" = "true" ]; then
+            CURL_ARGS+=( --user "${SMTP_USER}:${SMTP_PASS}" )
+        fi
+        if [ "$SMTP_REQUIRE_TLS" = "true" ]; then
+            CURL_ARGS+=( --ssl-reqd )
+        fi
+        curl "${CURL_ARGS[@]}"
         
         rm -f "$TEMP_EMAIL"
     else
@@ -166,12 +172,14 @@ elif command -v curl &> /dev/null; then
             echo "${BODY}"
         ) > "$TEMP_EMAIL"
         
-        curl -s --url "smtp://${SMTP_HOST}:${SMTP_PORT}" \
-             --mail-from "${FROM}" \
-             --mail-rcpt "${TO}" \
-             --upload-file "$TEMP_EMAIL" \
-             --user "${SMTP_USER}:${SMTP_PASS}" \
-             --ssl-reqd
+        CURL_ARGS=( -s --url "smtp://${SMTP_HOST}:${SMTP_PORT}" --mail-from "${FROM}" --mail-rcpt "${TO}" --upload-file "$TEMP_EMAIL" )
+        if [ "$SMTP_AUTH_REQUIRED" = "true" ]; then
+            CURL_ARGS+=( --user "${SMTP_USER}:${SMTP_PASS}" )
+        fi
+        if [ "$SMTP_REQUIRE_TLS" = "true" ]; then
+            CURL_ARGS+=( --ssl-reqd )
+        fi
+        curl "${CURL_ARGS[@]}"
         
         rm -f "$TEMP_EMAIL"
     fi

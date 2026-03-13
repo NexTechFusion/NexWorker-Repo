@@ -1,0 +1,91 @@
+#!/bin/bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+TEXT=""
+TIME_ARG=""
+USER_ID=""
+CHANNEL="last"
+IDEMPOTENCY_KEY=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --text) TEXT="$2"; shift 2 ;;
+    --time) TIME_ARG="$2"; shift 2 ;;
+    --user) USER_ID="$2"; shift 2 ;;
+    --channel) CHANNEL="${2:-last}"; shift 2 ;;
+    --idempotency-key) IDEMPOTENCY_KEY="$2"; shift 2 ;;
+    -h|--help)
+      echo "nexhelper-set-reminder - Schedule a reminder via OpenClaw cron + canonical store"
+      echo ""
+      echo "Usage:"
+      echo "  nexhelper-set-reminder --text 'Meeting' --time '2026-03-14T09:00:00' --user 579539601"
+      echo ""
+      echo "Options:"
+      echo "  --text <text>        Reminder text (required)"
+      echo "  --time <iso|dur>     ISO timestamp or duration like 5m, 1h, 30m (required)"
+      echo "  --user <id>          Recipient user/chat ID (required)"
+      echo "  --channel <ch>       Delivery channel (default: last)"
+      echo "  --idempotency-key <k> Idempotency key"
+      exit 0
+      ;;
+    *) shift ;;
+  esac
+done
+
+if [ -z "$TEXT" ] || [ -z "$TIME_ARG" ] || [ -z "$USER_ID" ]; then
+  echo '{"status":"error","message":"Missing required args: --text, --time, --user"}' >&2
+  exit 1
+fi
+
+cron_name="reminder-$(date +%s)-$$"
+message_text="⏰ ERINNERUNG: $TEXT"
+
+cron_result="$(openclaw cron add \
+  --name "$cron_name" \
+  --at "$TIME_ARG" \
+  --message "$message_text" \
+  --to "$USER_ID" \
+  --channel "$CHANNEL" \
+  --announce \
+  --json 2>&1 || true)"
+
+cron_id="$(echo "$cron_result" | jq -r '.id // empty' 2>/dev/null || echo "")"
+
+if [ -z "$cron_id" ]; then
+  jq -c -n \
+    --arg status "error" \
+    --arg phase "cron_add" \
+    --arg raw "$cron_result" \
+    '{status:$status, phase:$phase, raw:$raw}'
+  exit 1
+fi
+
+canonical_result=""
+if command -v nexhelper-reminder >/dev/null 2>&1; then
+  canonical_args=(create --user "$USER_ID" --text "$TEXT" --datetime "$TIME_ARG" --channel "$CHANNEL")
+  if [ -n "$IDEMPOTENCY_KEY" ]; then
+    canonical_args+=(--idempotency-key "$IDEMPOTENCY_KEY")
+  fi
+  canonical_result="$(nexhelper-reminder "${canonical_args[@]}" 2>/dev/null || echo "{}")"
+elif [ -x "$SCRIPT_DIR/nexhelper-reminder" ]; then
+  canonical_args=(create --user "$USER_ID" --text "$TEXT" --datetime "$TIME_ARG" --channel "$CHANNEL")
+  if [ -n "$IDEMPOTENCY_KEY" ]; then
+    canonical_args+=(--idempotency-key "$IDEMPOTENCY_KEY")
+  fi
+  canonical_result="$("$SCRIPT_DIR/nexhelper-reminder" "${canonical_args[@]}" 2>/dev/null || echo "{}")"
+fi
+
+canonical_id="$(echo "$canonical_result" | jq -r '.reminder.id // empty' 2>/dev/null || echo "")"
+
+jq -c -n \
+  --arg status "ok" \
+  --arg cronId "$cron_id" \
+  --arg cronName "$cron_name" \
+  --arg canonicalId "$canonical_id" \
+  --arg text "$TEXT" \
+  --arg time "$TIME_ARG" \
+  --arg user "$USER_ID" \
+  '{status:$status, cronId:$cronId, cronName:$cronName, canonicalId:$canonicalId, text:$text, time:$time, user:$user}'

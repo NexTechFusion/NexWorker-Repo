@@ -1,0 +1,80 @@
+#!/bin/bash
+
+set -euo pipefail
+
+SESSIONS_DIR="${OPENCLAW_SESSIONS_DIR:-/root/.openclaw/agents/main/sessions}"
+AUDIT_STATE="/tmp/nexhelper-reminder-audit-cursor"
+
+if [ ! -d "$SESSIONS_DIR" ]; then
+  echo '{"status":"ok","audited":0,"created":0,"reason":"no sessions dir"}'
+  exit 0
+fi
+
+last_cursor=""
+if [ -f "$AUDIT_STATE" ]; then
+  last_cursor="$(cat "$AUDIT_STATE")"
+fi
+
+audited=0
+created=0
+
+for session_file in "$SESSIONS_DIR"/*.jsonl; do
+  [ -f "$session_file" ] || continue
+
+  while IFS= read -r line; do
+    entry_type="$(echo "$line" | jq -r '.type // empty' 2>/dev/null)" || continue
+    [ "$entry_type" = "message" ] || continue
+
+    role="$(echo "$line" | jq -r '.message.role // empty' 2>/dev/null)" || continue
+    [ "$role" = "assistant" ] || continue
+
+    entry_id="$(echo "$line" | jq -r '.id // empty' 2>/dev/null)" || continue
+    ts="$(echo "$line" | jq -r '.timestamp // empty' 2>/dev/null)" || continue
+
+    if [ -n "$last_cursor" ] && [ "$ts" \< "$last_cursor" ]; then
+      continue
+    fi
+
+    text="$(echo "$line" | jq -r '
+      .message.content |
+      if type == "string" then .
+      elif type == "array" then [.[] | select(.type == "text") | .text] | join("\n")
+      else ""
+      end
+    ' 2>/dev/null)" || continue
+
+    if ! echo "$text" | grep -qi 'nexhelper-set-reminder'; then
+      continue
+    fi
+
+    audited=$((audited + 1))
+
+    cmd="$(echo "$text" | grep -oP '```exec\s*\n\K[^\n`]+' 2>/dev/null | head -1)" || true
+    [ -n "$cmd" ] || cmd="$(echo "$text" | grep -oP 'nexhelper-set-reminder[^\n"]+' 2>/dev/null | head -1)" || true
+    [ -n "$cmd" ] || continue
+
+    reminder_text="$(echo "$cmd" | grep -oP -- "--text\s+'([^']+)'" | sed "s/--text '//;s/'$//" 2>/dev/null)" || true
+    reminder_time="$(echo "$cmd" | grep -oP -- "--time\s+'([^']+)'" | sed "s/--time '//;s/'$//" 2>/dev/null)" || true
+    reminder_user="$(echo "$cmd" | grep -oP -- "--user\s+(\S+)" | sed "s/--user //" 2>/dev/null)" || true
+
+    [ -n "$reminder_text" ] && [ -n "$reminder_time" ] && [ -n "$reminder_user" ] || continue
+
+    existing="$(openclaw cron list --json 2>/dev/null || echo '{"jobs":[]}')"
+    if echo "$existing" | jq -e --arg t "$reminder_text" '.jobs[] | select(.payload.message | contains($t))' >/dev/null 2>&1; then
+      continue
+    fi
+
+    set_result="$(nexhelper-set-reminder --text "$reminder_text" --time "$reminder_time" --user "$reminder_user" 2>/dev/null || echo "{}")"
+    cron_id="$(echo "$set_result" | jq -r '.cronId // empty' 2>/dev/null || echo "")"
+    if [ -n "$cron_id" ]; then
+      created=$((created + 1))
+    fi
+  done < "$session_file"
+done
+
+date -u +"%Y-%m-%dT%H:%M:%SZ" > "$AUDIT_STATE"
+
+jq -c -n \
+  --argjson audited "$audited" \
+  --argjson created "$created" \
+  '{status:"ok", audited:$audited, created:$created}'

@@ -5,9 +5,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../common/nexhelper-core.sh"
 
-MODEL="${CLASSIFIER_MODEL:-openrouter/google/gemini-2.5-flash}"
-API_BASE="${OPENAI_BASE_URL:-https://openrouter.ai/api/v1}"
-API_KEY="${OPENAI_API_KEY:-}"
+MODEL="${CLASSIFIER_MODEL:-openai/gpt-4o-mini}"
+API_BASE="${OPENROUTER_BASE_URL:-${OPENAI_BASE_URL:-https://openrouter.ai/api/v1}}"
+API_KEY="${OPENROUTER_API_KEY:-${OPENAI_API_KEY:-}}"
 
 usage() {
   echo "Usage:"
@@ -18,13 +18,44 @@ usage() {
 
 extract_content_json() {
   local response="$1"
+  local has_error
+  has_error="$(echo "$response" | jq -r '.error.message // empty' 2>/dev/null || true)"
+  if [ -n "$has_error" ]; then
+    echo "{}"
+    return
+  fi
+  local content_type
+  content_type="$(echo "$response" | jq -r '(.choices[0].message.content | type) // "null"' 2>/dev/null || echo "null")"
   local content
-  content="$(echo "$response" | jq -r '.choices[0].message.content // empty')"
+  case "$content_type" in
+    string)
+      content="$(echo "$response" | jq -r '.choices[0].message.content // empty')"
+      ;;
+    array)
+      content="$(echo "$response" | jq -r '[.choices[0].message.content[] | (.text // .content // "")] | join("\n")' 2>/dev/null || echo "")"
+      ;;
+    object)
+      content="$(echo "$response" | jq -r '.choices[0].message.content.text // (.choices[0].message.content | tostring)' 2>/dev/null || echo "")"
+      ;;
+    *)
+      content=""
+      ;;
+  esac
   if [ -z "$content" ]; then
     echo "{}"
     return
   fi
-  echo "$content" | jq -c . 2>/dev/null || echo "{}"
+  if echo "$content" | jq -c . >/dev/null 2>&1; then
+    echo "$content" | jq -c .
+    return
+  fi
+  local cleaned
+  cleaned="$(printf "%s" "$content" | sed '/^```/d')"
+  if echo "$cleaned" | jq -c . >/dev/null 2>&1; then
+    echo "$cleaned" | jq -c .
+    return
+  fi
+  echo "{}"
 }
 
 call_model() {
@@ -33,21 +64,34 @@ call_model() {
     echo ""
     return
   fi
-  curl -sS "$API_BASE/chat/completions" \
-    -H "Authorization: Bearer $API_KEY" \
-    -H "Content-Type: application/json" \
-    -d "$(jq -c -n \
-      --arg model "$MODEL" \
-      --arg prompt "$prompt" \
-      '{
-        model: $model,
-        temperature: 0,
-        response_format: {type: "json_object"},
-        messages: [
-          {role: "system", content: "You are a strict JSON classifier. Return only valid JSON."},
-          {role: "user", content: $prompt}
-        ]
-      }')" || true
+  local models="${CLASSIFIER_MODELS:-$MODEL,google/gemini-2.0-flash-001,meta-llama/llama-3.3-70b-instruct}"
+  local selected
+  IFS=',' read -ra MODEL_LIST <<< "$models"
+  for selected in "${MODEL_LIST[@]}"; do
+    selected="$(echo "$selected" | xargs)"
+    [ -n "$selected" ] || continue
+    local resp
+    resp="$(curl -sS "$API_BASE/chat/completions" \
+      -H "Authorization: Bearer $API_KEY" \
+      -H "Content-Type: application/json" \
+      -d "$(jq -c -n \
+        --arg model "$selected" \
+        --arg prompt "$prompt" \
+        '{
+          model: $model,
+          temperature: 0,
+          response_format: {type: "json_object"},
+          messages: [
+            {role: "system", content: "You are a strict JSON classifier. Return only valid JSON."},
+            {role: "user", content: $prompt}
+          ]
+        }')")" || true
+    if [ -n "$resp" ] && [ "$(echo "$resp" | jq -r '.choices[0].message.content // empty' 2>/dev/null || true)" != "" ]; then
+      echo "$resp"
+      return
+    fi
+  done
+  echo ""
 }
 
 fallback_intent() {
@@ -89,7 +133,7 @@ EOF
     fallback_intent "$text"
     return
   fi
-  extract_content_json "$response" | jq -c '{
+  extract_content_json "$response" | jq -c '(if type=="array" then (.[0] // {}) elif type=="object" then . else {} end) | {
     intent:(.intent // "unknown"),
     confidence:(.confidence // 0),
     action:(.action // "clarify"),
@@ -123,6 +167,7 @@ EOF
     return
   fi
   extract_content_json "$response" | jq -c --argjson entities "$entities_json" '
+    if type=="array" then (.[0] // {}) elif type=="object" then . else {} end |
     .entity = (if (.entity|type) == "string" and (.entity as $e | $entities | index($e)) != null then .entity else "default" end) |
     {
       entity:(.entity // "default"),
@@ -155,7 +200,7 @@ EOF
     fallback_rerank "$query"
     return
   fi
-  extract_content_json "$response" | jq -c '{
+  extract_content_json "$response" | jq -c '(if type=="array" then (.[0] // {}) elif type=="object" then . else {} end) | {
     orderedIds:(.orderedIds // []),
     confidence:(.confidence // 0),
     action:(.action // "fallback")

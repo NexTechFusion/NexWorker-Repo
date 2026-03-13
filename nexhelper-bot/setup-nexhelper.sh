@@ -24,13 +24,14 @@ if ! docker compose version &> /dev/null && ! docker-compose version &> /dev/nul
 fi
 echo "✅ Docker Compose installed"
 
-# Check for OpenAI API key
-if [ -z "$OPENAI_API_KEY" ]; then
+# Check for API key
+ACTIVE_API_KEY="${OPENROUTER_API_KEY:-${OPENAI_API_KEY:-}}"
+if [ -z "$ACTIVE_API_KEY" ]; then
     echo ""
-    echo "⚠️  OPENAI_API_KEY not set"
+    echo "⚠️  OPENROUTER_API_KEY (or OPENAI_API_KEY) not set"
     echo "   You'll need this to provision customers."
-    echo "   Set it: export OPENAI_API_KEY=your-key"
-    echo "   Or use OpenRouter: export OPENAI_API_KEY=sk-or-..."
+    echo "   Set it: export OPENROUTER_API_KEY=your-key"
+    echo "   Legacy fallback: export OPENAI_API_KEY=your-key"
 fi
 
 # Create base directory
@@ -68,7 +69,7 @@ echo ""
 echo "📱 To provision a customer:"
 echo ""
 echo "   # Telegram bot"
-echo "   export OPENAI_API_KEY=your-key"
+echo "   export OPENROUTER_API_KEY=your-key"
 echo "   ./provision-customer.sh 001 'Acme GmbH' --telegram '123:ABC'"
 echo ""
 echo "   # WhatsApp"

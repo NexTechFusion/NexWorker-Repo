@@ -326,7 +326,17 @@ collect_results() {
       local needle
       needle="$(echo "$query" | tr '[:upper:]' '[:lower:]')"
       if [[ "$hay" != *"$needle"* ]]; then
-        continue
+        local matched_all="true"
+        local token
+        for token in $needle; do
+          if [[ "$hay" != *"$token"* ]]; then
+            matched_all="false"
+            break
+          fi
+        done
+        if [ "$matched_all" != "true" ]; then
+          continue
+        fi
       fi
     fi
     arr="$(echo "$arr" | jq -c --argjson d "$doc" '. + [$d]')"

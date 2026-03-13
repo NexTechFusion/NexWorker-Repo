@@ -44,9 +44,12 @@ RUN mkdir -p /app/config /app/skills /app/exports /app/storage/{memory,consent,a
 # Copy skills
 COPY skills/ /app/skills/
 
-# Make scripts executable
-RUN find /app/skills -name "*.sh" -exec chmod +x {} \; \
- && find /app/skills -name "nexhelper-*" -exec chmod +x {} \;
+# Fix CRLF line endings, make executable, and symlink to PATH
+RUN find /app/skills -type f \( -name "*.sh" -o -name "nexhelper-*" \) -exec sed -i 's/\r$//' {} \; \
+ && find /app/skills -name "*.sh" -exec chmod +x {} \; \
+ && find /app/skills -name "nexhelper-*" -exec chmod +x {} \; \
+ && for f in /app/skills/*/nexhelper-*; do [ -x "$f" ] && ln -sf "$f" /usr/local/bin/"$(basename "$f")" || true; done \
+ && for f in /app/skills/*/scripts/*.sh; do [ -x "$f" ] && ln -sf "$f" /usr/local/bin/"$(basename "$f")" || true; done
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \

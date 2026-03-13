@@ -1,0 +1,15 @@
+entities:
+  - id: default
+    name: "Default"
+    budget: null
+    budgetPeriod: null
+    aliases: []
+    active: true
+    notifyOnOverBudget: false
+  - id: marketing
+    name: "Marketing Dept"
+    budget: 5000
+    budgetPeriod: monthly
+    aliases: ["@marketing","marketing"]
+    active: true
+    notifyOnOverBudget: true

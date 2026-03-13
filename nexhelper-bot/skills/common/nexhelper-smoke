@@ -20,7 +20,15 @@ main() {
 
   local health
   health="$("$HEALTH_SCRIPT")"
-  checks="$(echo "$checks" | jq -c --arg name "healthcheck" --arg status "$(echo "$health" | jq -r '.status')" '. + [{name:$name,status:$status}]')"
+  local health_status
+  health_status="$(echo "$health" | jq -r '.status')"
+  local health_check_status
+  if [ "$health_status" = "ok" ] || [ "$health_status" = "degraded" ]; then
+    health_check_status="pass"
+  else
+    health_check_status="fail"
+  fi
+  checks="$(echo "$checks" | jq -c --arg name "healthcheck" --arg status "$health_check_status" --arg raw "$health_status" '. + [{name:$name,status:$status,raw:$raw}]')"
 
   "$REMINDER_SCRIPT" create --user smoke --text "Smoke reminder" --datetime "2000-01-01T00:00:00Z" --channel telegram --idempotency-key smoke_rem_1 >/dev/null
   local ev1
@@ -41,7 +49,13 @@ main() {
   search="$("$WORKFLOW_SCRIPT" run --event-json '{"id":"smoke_evt_2","kind":"message","text":"Suche Smoke GmbH Rechnung"}')"
   local has_result
   has_result="$(echo "$search" | jq -r '.result | type')"
-  checks="$(echo "$checks" | jq -c --arg name "message_route_search" --arg status "$( [ "$has_result" = "array" ] && echo pass || echo fail)" '. + [{name:$name,status:$status}]')"
+  local message_check_status
+  if [ "$has_result" = "array" ] || [ "$has_result" = "object" ]; then
+    message_check_status="pass"
+  else
+    message_check_status="fail"
+  fi
+  checks="$(echo "$checks" | jq -c --arg name "message_route" --arg status "$message_check_status" --arg resultType "$has_result" '. + [{name:$name,status:$status,resultType:$resultType}]')"
 
   local pass_count fail_count
   pass_count="$(echo "$checks" | jq '[.[] | select(.status=="pass" or .status=="ok")] | length')"

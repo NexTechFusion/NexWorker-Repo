@@ -152,7 +152,7 @@ migrate_memory_markdown_docs() {
         return
       fi
       local id_key
-      id_key="$(echo "${path}_${current_time}_${current_number}" | tr ' /\\:[]' '_' | tr -cd '[:alnum:]_-.')"
+      id_key="$(echo "${path}_${current_time}_${current_number}" | tr ' /\\:[]' '_' | tr -cd '[:alnum:]_.-')"
       local result
       result="$("$DOC_SCRIPT" store \
         --type "${current_type:-rechnung}" \

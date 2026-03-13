@@ -49,10 +49,18 @@ route_system_event() {
   local text
   text="$(echo "$event_json" | jq -r '.text')"
   if [[ "$text" == *"reminder"* ]]; then
+    local sync_result="{}"
+    if [ -x "$SCRIPT_DIR/../reminder-system/nexhelper-reminder-sync" ]; then
+      sync_result="$("$SCRIPT_DIR/../reminder-system/nexhelper-reminder-sync" 2>/dev/null || echo '{}')"
+    fi
+    local audit_result="{}"
+    if [ -x "$SCRIPT_DIR/../reminder-system/nexhelper-reminder-auditor" ]; then
+      audit_result="$("$SCRIPT_DIR/../reminder-system/nexhelper-reminder-auditor" 2>/dev/null || echo '{}')"
+    fi
     local due
     due="$("$SCRIPT_DIR/../reminder-system/nexhelper-reminder" due)"
-    jq -c -n --arg status "processed" --arg handler "reminder_due" --argjson due "$due" \
-      '{status:$status,handler:$handler,due:$due}'
+    jq -c -n --arg status "processed" --arg handler "reminder_due" --argjson due "$due" --argjson sync "$sync_result" --argjson audit "$audit_result" \
+      '{status:$status,handler:$handler,due:$due,sync:$sync,audit:$audit}'
   elif [[ "$text" == *"budget"* ]]; then
     local alerts
     alerts="$("$SCRIPT_DIR/../entity-system/nexhelper-entity" check)"
@@ -107,7 +115,11 @@ case "${1:-}" in
     shift
     if [ "${1:-}" = "--event-json" ]; then
       shift
-      run_event "${1:-{}}"
+      event_json_arg="${1-}"
+      if [ -z "$event_json_arg" ]; then
+        event_json_arg="{}"
+      fi
+      run_event "$event_json_arg"
     else
       echo "Usage: nexhelper-workflow run --event-json '<json>'" >&2
       exit 1

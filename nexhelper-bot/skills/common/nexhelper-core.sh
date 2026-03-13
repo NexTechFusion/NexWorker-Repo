@@ -61,14 +61,23 @@ nx_log_event() {
   local event_name="$1"
   local op_id="$2"
   local status="$3"
-  local detail_json="${4:-{}}"
+  local detail_json="${4-}"
+  if [ -z "$detail_json" ]; then
+    detail_json="{}"
+  fi
+  local safe_details
+  if safe_details="$(printf "%s" "$detail_json" | jq -c . 2>/dev/null)"; then
+    :
+  else
+    safe_details="{}"
+  fi
   local payload
   payload="$(jq -c -n \
     --arg ts "$(nx_now_iso)" \
     --arg event "$event_name" \
     --arg opId "$op_id" \
     --arg status "$status" \
-    --argjson details "$detail_json" \
+    --argjson details "$safe_details" \
     '{timestamp:$ts,event:$event,opId:$opId,status:$status,details:$details}')"
   nx_append_json_line "$NX_AUDIT_DIR/events.ndjson" "$payload"
 }

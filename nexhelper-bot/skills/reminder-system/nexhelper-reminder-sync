@@ -1,0 +1,53 @@
+#!/bin/bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../common/nexhelper-core.sh"
+
+nx_init_dirs
+
+synced=0
+skipped=0
+errors=0
+
+cron_jobs="$(openclaw cron list --json 2>/dev/null || echo '{"jobs":[]}')"
+cron_messages="$(echo "$cron_jobs" | jq -r '[.jobs[].payload.message // empty] | join("\n")')"
+
+for f in $(nx_list_reminder_files); do
+  rem="$(cat "$f")"
+  status="$(echo "$rem" | jq -r '.status')"
+  [ "$status" = "scheduled" ] || continue
+
+  text="$(echo "$rem" | jq -r '.text')"
+  datetime="$(echo "$rem" | jq -r '.datetime')"
+  user_id="$(echo "$rem" | jq -r '.userId')"
+  rem_id="$(echo "$rem" | jq -r '.id')"
+
+  marker="ERINNERUNG: $text"
+  if echo "$cron_messages" | grep -qF "$marker"; then
+    skipped=$((skipped + 1))
+    continue
+  fi
+
+  cron_result="$(openclaw cron add \
+    --name "sync-$rem_id" \
+    --at "$datetime" \
+    --message "⏰ ERINNERUNG: $text" \
+    --to "$user_id" \
+    --announce \
+    --json 2>/dev/null || echo "{}")"
+
+  cron_id="$(echo "$cron_result" | jq -r '.id // empty' 2>/dev/null || echo "")"
+  if [ -n "$cron_id" ]; then
+    synced=$((synced + 1))
+  else
+    errors=$((errors + 1))
+  fi
+done
+
+jq -c -n \
+  --argjson synced "$synced" \
+  --argjson skipped "$skipped" \
+  --argjson errors "$errors" \
+  '{status:"ok", synced:$synced, skipped:$skipped, errors:$errors}'
