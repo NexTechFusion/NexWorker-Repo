@@ -474,11 +474,17 @@ services:
         mkdir -p /root/.openclaw
         cp /app/config/openclaw.json /root/.openclaw/openclaw.json
         cp /app/config/auth-profiles.json /root/.openclaw/auth-profiles.json 2>/dev/null || true
+        tmp_cfg=\$(mktemp)
+        jq 'if .tools and .tools.allow then .tools.allow |= map(select(. != "apply_patch" and . != "cron")) else . end' /root/.openclaw/openclaw.json > "\$tmp_cfg" 2>/dev/null && mv "\$tmp_cfg" /root/.openclaw/openclaw.json || rm -f "\$tmp_cfg"
         mkdir -p /root/.openclaw/agents/main/agent
         cp /app/config/auth-profiles.json /root/.openclaw/agents/main/agent/auth-profiles.json 2>/dev/null || true
         rm -f /root/.openclaw/workspace/BOOTSTRAP.md
-        for f in /app/skills/*/nexhelper-*; do [ -x "\$f" ] && ln -sf "\$f" /usr/local/bin/"\$(basename "\$f")" 2>/dev/null || true; done
-        for f in /app/skills/*/scripts/*.sh; do [ -x "\$f" ] && ln -sf "\$f" /usr/local/bin/"\$(basename "\$f")" 2>/dev/null || true; done
+        for f in /app/skills/*/nexhelper-* /app/skills/*/scripts/*.sh; do
+          [ -f "\$f" ] || continue
+          sed -i 's/\r$//' "\$f" 2>/dev/null || true
+          chmod +x "\$f" 2>/dev/null || true
+          ln -sf "\$f" /usr/local/bin/"\$(basename "\$f")" 2>/dev/null || true
+        done
         openclaw gateway run --port $PORT --bind lan &
         GW_PID=\$!
         sleep 8

@@ -131,6 +131,31 @@ try {
   }
   Add-Result "gateway_health" "pass"
 
+  # --- Runtime guard: unknown tools in allowlist ---
+  $ErrorActionPreference = "Continue"
+  $toolsRaw = docker exec $instanceName sh -lc "jq -r '.tools.allow[]? // empty' /root/.openclaw/openclaw.json 2>/dev/null" 2>&1
+  $toolsText = ($toolsRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
+  $toolsList = @($toolsText -split "`r?`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+  $ErrorActionPreference = "Stop"
+  $unknownEntries = @($toolsList | Where-Object { $_ -in @("apply_patch", "cron") })
+  if ($unknownEntries.Count -eq 0) {
+    Add-Result "runtime_tools_allowlist_clean" "pass"
+  } else {
+    Add-Result "runtime_tools_allowlist_clean" "fail" "unknown entries present: $($unknownEntries -join ', ')"
+  }
+
+  # --- Runtime guard: reminder command exists on PATH ---
+  $ErrorActionPreference = "Continue"
+  $setReminderRaw = docker exec $instanceName sh -lc 'command -v nexhelper-set-reminder >/dev/null 2>&1 && nexhelper-set-reminder --help >/dev/null 2>&1 && echo __OK__ || echo __FAIL__' 2>&1
+  $setReminderText = ($setReminderRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
+  $setReminderText = $setReminderText.Trim()
+  $ErrorActionPreference = "Stop"
+  if ($setReminderText -match "__OK__") {
+    Add-Result "runtime_set_reminder_available" "pass"
+  } else {
+    Add-Result "runtime_set_reminder_available" "fail" "nexhelper-set-reminder missing or not executable"
+  }
+
   $messages = @(
     "Hallo, antworte nur mit OK und einem kurzen Satz.",
     "Wir testen die Session-Stabilitaet. Bitte bestaetige Test Schritt 2.",
@@ -552,6 +577,22 @@ try {
     Add-Result "agent_reset_isolation" "pass"
   } else {
     Add-Result "agent_reset_isolation" "warn" "session isolation not clearly enforced"
+  }
+
+  # --- Mandatory log lookup ---
+  $ErrorActionPreference = "Continue"
+  $logRaw = docker logs $instanceName --tail 400 2>&1
+  $logText = ($logRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
+  $ErrorActionPreference = "Stop"
+  $hasUnknownToolsWarn = $logText -match "unknown entries \(apply_patch, cron\)"
+  $hasSetReminderNotFound = $logText -match "nexhelper-set-reminder: not found"
+  if ($hasUnknownToolsWarn -or $hasSetReminderNotFound) {
+    $issues = @()
+    if ($hasUnknownToolsWarn) { $issues += "unknown_tool_entries" }
+    if ($hasSetReminderNotFound) { $issues += "set_reminder_not_found" }
+    Add-Result "runtime_log_lookup" "fail" ($issues -join ",")
+  } else {
+    Add-Result "runtime_log_lookup" "pass" "checked_tail=400"
   }
 
   $pass = @($results | Where-Object { $_.status -eq "pass" }).Count
