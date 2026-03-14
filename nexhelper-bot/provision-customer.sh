@@ -500,6 +500,8 @@ services:
       - nexhelper-data-${SLUG}:/root/.openclaw
     environment:
       - OPENAI_API_KEY=\${OPENAI_API_KEY}
+      - OPENROUTER_API_KEY=\${OPENROUTER_API_KEY:-}
+      - USE_OPENROUTER=\${USE_OPENROUTER:-0}
       - TELEGRAM_BOT_TOKEN=\${TELEGRAM_BOT_TOKEN:-}
       - PORT=$PORT
       - NODE_ENV=production
