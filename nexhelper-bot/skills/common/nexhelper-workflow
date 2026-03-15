@@ -6,16 +6,11 @@ SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")" 2>/dev/null || 
 source "$SCRIPT_DIR/nexhelper-core.sh"
 # nexhelper-core.sh sets -euo pipefail; override to keep workflow resilient
 set +e
-source "$SCRIPT_DIR/nexhelper-locale"
 
 DOC_SCRIPT="$SCRIPT_DIR/../document-handler/nexhelper-doc"
 CLASSIFIER_SCRIPT="$SCRIPT_DIR/../classifier/nexhelper-classify"
 NOTIFY_SCRIPT="$SCRIPT_DIR/nexhelper-notify"
 HEALTH_SCRIPT="$SCRIPT_DIR/nexhelper-healthcheck"
-
-# Language from policy — exported so sourced scripts inherit it
-NX_LANG="$(nx_policy_get_language 2>/dev/null || echo 'de')"
-export NX_LANG
 
 normalize_event() {
   local input="$1"
@@ -56,9 +51,6 @@ _register_and_check_welcome() {
   is_new="$(nx_user_seen "$sender_id" "$username" "$display_name" 2>/dev/null || echo 'false')"
 
   if [ "$is_new" = "true" ]; then
-    local welcome_msg
-    welcome_msg="$(nx_msg welcome "${username:-}" "$sender_id")"
-    _send_msg "${channel}:${sender_id}" "$welcome_msg"
     nx_log_event "user.first_contact" "$(nx_op_id welcome)" "success" \
       "$(jq -c -n --arg u "$sender_id" --arg name "$username" '{userId:$u,username:$name}')" 2>/dev/null || true
   fi
@@ -66,53 +58,34 @@ _register_and_check_welcome() {
 
 route_message() {
   local event_json="$1"
-  local text sender_id channel
+  local text sender_id
   text="$(echo "$event_json" | jq -r '.text')"
   sender_id="$(echo "$event_json" | jq -r '.senderId')"
-  channel="$(echo "$event_json" | jq -r '.channel // "telegram"')"
 
-  # /start — user status overview (always responds, includes user ID and role)
+  # /start — return structured data; agent formats user reply in user's language
   if [[ "$text" =~ ^/start ]] || [[ "$text" =~ ^[Ss]tart$ ]]; then
-    local role role_label _start_msg
+    local role
     role="$(nx_role_get "$sender_id" 2>/dev/null || echo 'member')"
-    case "${NX_LANG:-de}:$role" in
-      de:admin) role_label="Admin" ;;
-      en:admin) role_label="Admin" ;;
-      de:*) role_label="Mitglied" ;;
-      en:*) role_label="member" ;;
-      *) role_label="$role" ;;
-    esac
-    _start_msg="$(nx_msg start "$sender_id" "$role_label" 2>/dev/null || true)"
     jq -c -n \
       --arg status "start" \
       --arg userId "$sender_id" \
       --arg role "$role" \
-      --arg userMessage "$_start_msg" \
-      '{status:$status,userId:$userId,role:$role,userMessage:$userMessage}'
+      '{status:$status,userId:$userId,role:$role}'
     return
   fi
 
   # /whois @username — admin user-ID lookup
   if [[ "$text" =~ ^/whois[[:space:]] ]] || [[ "$text" =~ ^whois[[:space:]] ]]; then
     local query="${text#*whois }"
-    local found _whois_msg
+    local found
     found="$(nx_user_find_by_username "$query" 2>/dev/null || echo '')"
     if [ -z "$found" ] || [ "$found" = "{}" ]; then
-      _whois_msg="$(nx_msg whois_not_found "${query#@}" 2>/dev/null || true)"
       jq -c -n \
         --arg status "not_found" \
         --arg query "$query" \
-        --arg userMessage "$_whois_msg" \
-        '{status:$status,query:$query,userMessage:$userMessage}'
+        '{status:$status,query:$query}'
     else
-      local uid uname uname_display
-      uid="$(echo "$found" | jq -r '.userId // ""')"
-      uname="$(echo "$found" | jq -r '.username // ""')"
-      uname_display="$(echo "$found" | jq -r '.displayName // ""')"
-      _whois_msg="$(nx_msg whois_found "$uid" "$uname" "$uname_display" 2>/dev/null || true)"
-      echo "$found" | jq -c \
-        --arg userMessage "$_whois_msg" \
-        '{status:"found",user:.,userMessage:$userMessage}'
+      echo "$found" | jq -c '{status:"found",user:.}'
     fi
     return
   fi
@@ -148,22 +121,13 @@ route_message() {
           [ -n "$resolved" ] && target="$resolved"
         fi
         if [ -n "$target" ]; then
-          local promote_result
-          promote_result="$(nx_policy_add_admin "$target" "$sender_id" 2>/dev/null || echo '{}')"
-          echo "$promote_result" | jq -c \
-            --arg userMessage "$(nx_msg admin_promoted "$target")" \
-            '. + {userMessage:$userMessage}'
+          nx_policy_add_admin "$target" "$sender_id" 2>/dev/null || echo '{}'
         else
-          jq -c -n \
-            --arg userMessage "$([ "${NX_LANG:-de}" = "de" ] && echo "Bitte eine User-ID oder @Benutzername zum Befördern angeben." || echo "Please provide a user ID or @username to promote.")" \
-            '{status:"error",userMessage:$userMessage}'
+          jq -c -n --arg status "error" --arg reason "missing_target" \
+            '{status:$status,reason:$reason}'
         fi
       else
-        local forbidden_json
-        forbidden_json="$(nx_require_admin "$sender_id" "admin_promote" 2>/dev/null || echo '{}')"
-        echo "$forbidden_json" | jq -c \
-          --arg userMessage "$(nx_msg forbidden "$sender_id")" \
-          '. + {userMessage:$userMessage}'
+        nx_require_admin "$sender_id" "admin_promote" 2>/dev/null || echo '{}'
       fi
       ;;
     admin_demote)
@@ -176,22 +140,13 @@ route_message() {
           [ -n "$resolved" ] && target="$resolved"
         fi
         if [ -n "$target" ]; then
-          local demote_result
-          demote_result="$(nx_policy_remove_admin "$target" "$sender_id" 2>/dev/null || echo '{}')"
-          echo "$demote_result" | jq -c \
-            --arg userMessage "$(nx_msg admin_demoted "$target")" \
-            '. + {userMessage:$userMessage}'
+          nx_policy_remove_admin "$target" "$sender_id" 2>/dev/null || echo '{}'
         else
-          jq -c -n \
-            --arg userMessage "$([ "${NX_LANG:-de}" = "de" ] && echo "Bitte eine User-ID oder @Benutzername zum Entfernen angeben." || echo "Please provide a user ID or @username to demote.")" \
-            '{status:"error",userMessage:$userMessage}'
+          jq -c -n --arg status "error" --arg reason "missing_target" \
+            '{status:$status,reason:$reason}'
         fi
       else
-        local forbidden_json
-        forbidden_json="$(nx_require_admin "$sender_id" "admin_demote" 2>/dev/null || echo '{}')"
-        echo "$forbidden_json" | jq -c \
-          --arg userMessage "$(nx_msg forbidden "$sender_id")" \
-          '. + {userMessage:$userMessage}'
+        nx_require_admin "$sender_id" "admin_demote" 2>/dev/null || echo '{}'
       fi
       ;;
     *)
@@ -199,8 +154,7 @@ route_message() {
         --arg status "noop" \
         --arg intent "$intent" \
         --arg text "$text" \
-        --arg userMessage "$(nx_msg noop)" \
-        '{status:$status,intent:$intent,text:$text,userMessage:$userMessage}'
+        '{status:$status,intent:$intent,text:$text}'
       ;;
   esac
 }
@@ -243,7 +197,6 @@ route_system_event() {
     if [ -x "$HEALTH_SCRIPT" ]; then
       health="$("$HEALTH_SCRIPT" 2>/dev/null || echo '{}')"
     fi
-    # Validate health is JSON
     if ! echo "$health" | jq -e . >/dev/null 2>&1; then
       health="{}"
     fi
@@ -253,7 +206,7 @@ route_system_event() {
       local degraded_checks
       degraded_checks="$(echo "$health" | jq -r '[.checks[]? | select(.status != "ok") | .name] | join(", ")' 2>/dev/null || echo 'unknown')"
       "$NOTIFY_SCRIPT" send --audience broadcast \
-        --message "$(nx_msg health_degraded "$health_status" "$degraded_checks")" \
+        --message "⚠️ NexHelper health alert: $health_status | Issues: $degraded_checks" \
         2>/dev/null || true
     fi
     jq -c -n \
@@ -277,7 +230,7 @@ route_system_event() {
     health_icon="$([ "$health_status" = "ok" ] && echo "✅" || echo "⚠️")"
     if [ -x "$NOTIFY_SCRIPT" ]; then
       "$NOTIFY_SCRIPT" send --audience broadcast \
-        --message "$(nx_msg daily_summary "$health_icon" "$doc_count" "$total_amount" "$health_status")" \
+        --message "${health_icon} Daily report: ${doc_count} doc(s), €${total_amount} total | System: ${health_status}" \
         2>/dev/null || true
     fi
     jq -c -n \

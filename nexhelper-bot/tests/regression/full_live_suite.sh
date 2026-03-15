@@ -29,12 +29,9 @@ export STORAGE_DIR
 export CONFIG_DIR
 export OPS_REPORT_DAYS=0
 
-if [ -n "${OPENROUTER_API_KEY:-}" ] && [ -z "${OPENAI_API_KEY:-}" ]; then
-  export OPENAI_API_KEY="$OPENROUTER_API_KEY"
-fi
-if [ -n "${OPENROUTER_BASE_URL:-}" ] && [ -z "${OPENAI_BASE_URL:-}" ]; then
-  export OPENAI_BASE_URL="$OPENROUTER_BASE_URL"
-fi
+# Resolve canonical AI_API_KEY from any supported provider key
+export AI_API_KEY="${AI_API_KEY:-${GEMINI_API_KEY:-${OPENROUTER_API_KEY:-${OPENAI_API_KEY:-}}}}"
+export AI_BASE_URL="${AI_BASE_URL:-${OPENAI_BASE_URL:-${OPENROUTER_BASE_URL:-}}}"
 
 mkdir -p "$STORAGE_DIR" "$CONFIG_DIR" "$REPORT_DIR" "$SUITE_DIR/exports"
 rm -rf "$STORAGE_DIR"/*
@@ -143,7 +140,7 @@ else
 fi
 
 # F02 and F03 AI classifier (require key)
-if [ -n "${OPENROUTER_API_KEY:-${OPENAI_API_KEY:-}}" ]; then
+if [ -n "${AI_API_KEY:-}" ]; then
   intent_json="$("$CLASSIFIER_SCRIPT" intent --text "Erinnere mich morgen um 14 Uhr an Meeting mit Mueller")"
   intent_name="$(echo "$intent_json" | jq -r '.intent // ""')"
   run_check "F02" "intent_classification" "[ -n '$intent_name' ] && [ '$intent_name' != 'unknown' ]"
@@ -152,8 +149,8 @@ if [ -n "${OPENROUTER_API_KEY:-${OPENAI_API_KEY:-}}" ]; then
   entity_id="$(echo "$entity_json" | jq -r '.entity // ""')"
   run_check "F03" "entity_classification" "[ '$entity_id' = 'marketing' ] || [ '$entity_id' = 'default' ]"
 else
-  run_skip "F02" "intent_classification" "OPENROUTER_API_KEY/OPENAI_API_KEY missing"
-  run_skip "F03" "entity_classification" "OPENROUTER_API_KEY/OPENAI_API_KEY missing"
+  run_skip "F02" "intent_classification" "No API key set (AI_API_KEY/GEMINI_API_KEY missing)"
+  run_skip "F03" "entity_classification" "No API key set (AI_API_KEY/GEMINI_API_KEY missing)"
 fi
 
 # F04, F05, F06 document lifecycle

@@ -38,7 +38,7 @@ This document defines the full live-coverage test suite for NexHelper and maps e
 | Flow ID | Current Script | Command | Notes |
 | --- | --- | --- | --- |
 | F01 | `skills/common/nexhelper-smoke` | `bash skills/common/nexhelper-smoke` | Includes health and workflow checks |
-| F02 | `skills/classifier/nexhelper-classify` | `bash skills/classifier/nexhelper-classify intent --text "<msg>"` | Requires `OPENROUTER_API_KEY` (or `OPENAI_API_KEY`) |
+| F02 | `skills/classifier/nexhelper-classify` | `bash skills/classifier/nexhelper-classify intent --text "<msg>"` | Requires `GEMINI_API_KEY` (or `AI_API_KEY`/`OPENROUTER_API_KEY`) |
 | F03 | `skills/classifier/nexhelper-classify` | `bash skills/classifier/nexhelper-classify entity --text "<msg>" --entities-json "[...]"` | Requires configured entities |
 | F04-F09 | `tests/regression/run.sh` | `bash tests/regression/run.sh` | Core regression suite |
 | F10 | `skills/document-export/scripts/export_datev.sh` | `bash skills/document-export/scripts/export_datev.sh <customer_dir> <from> <to>` | Reads canonical docs |
@@ -74,13 +74,21 @@ pwsh tests/regression/smoke.ps1 -CustomerDir "C:\opt\nexhelper\customers\<slug>"
 ### Live AI Flow (Classifier + Workflow + Canonical Store)
 
 ```bash
-OPENROUTER_API_KEY=... bash tests/regression/live_flow.sh
+# Gemini (default provider):
+GEMINI_API_KEY=AIza... bash tests/regression/live_flow.sh
+
+# OpenRouter:
+AI_PROVIDER=openrouter OPENROUTER_API_KEY=sk-or-... bash tests/regression/live_flow.sh
 ```
 
 ### Consolidated F01-F16 Suite
 
 ```bash
-OPENROUTER_API_KEY=... bash tests/regression/full_live_suite.sh
+# Gemini (default provider):
+GEMINI_API_KEY=AIza... bash tests/regression/full_live_suite.sh
+
+# OpenRouter:
+AI_PROVIDER=openrouter OPENROUTER_API_KEY=sk-or-... bash tests/regression/full_live_suite.sh
 ```
 
 This suite includes deterministic checks for:

@@ -42,18 +42,27 @@ cd nexhelper-bot
 ./setup-nexhelper.sh
 ```
 
-### 2) Set API key (OpenRouter-first)
+### 2) Set API key
+
+**Gemini (default):**
 
 ```bash
-export OPENROUTER_API_KEY="sk-or-..."
-export OPENROUTER_BASE_URL="https://openrouter.ai/api/v1"
+export GEMINI_API_KEY="AIza..."
 ```
 
-Compatibility fallback still works:
+**OpenRouter (alternative):**
 
 ```bash
-export OPENAI_API_KEY="$OPENROUTER_API_KEY"
-export OPENAI_BASE_URL="$OPENROUTER_BASE_URL"
+export AI_PROVIDER=openrouter
+export OPENROUTER_API_KEY="sk-or-..."
+```
+
+**Custom / OpenAI-compatible:**
+
+```bash
+export AI_PROVIDER=custom
+export AI_API_KEY="your-key"
+export AI_BASE_URL="https://your-endpoint/v1"
 ```
 
 ### 3) Provision customer
@@ -154,10 +163,10 @@ docker exec -it <container> openclaw cron edit --id <JOB_ID> --to telegram:57953
 docker exec -it <container> openclaw cron runs --id <JOB_ID> --limit 5
 ```
 
-1. Verify OpenRouter-compatible API routing (avoid OpenAI 401 with `sk-or-v1-*`):
+1. Verify AI provider routing:
 
 ```bash
-docker exec -it <container> sh -lc 'env | grep -E "OPENAI_BASE_URL|OPENROUTER_API_KEY|USE_OPENROUTER|EMBEDDING_MODEL"'
+docker exec -it <container> sh -lc 'env | grep -E "AI_PROVIDER|AI_BASE_URL|OPENAI_BASE_URL|GEMINI_API_KEY|EMBEDDING_MODEL"'
 ```
 
 1. Verify dashboard/network reachability:

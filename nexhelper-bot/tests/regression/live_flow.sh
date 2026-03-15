@@ -5,15 +5,12 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT_DIR"
 
-if [ -n "${OPENROUTER_API_KEY:-}" ] && [ -z "${OPENAI_API_KEY:-}" ]; then
-  export OPENAI_API_KEY="$OPENROUTER_API_KEY"
-fi
-if [ -n "${OPENROUTER_BASE_URL:-}" ] && [ -z "${OPENAI_BASE_URL:-}" ]; then
-  export OPENAI_BASE_URL="$OPENROUTER_BASE_URL"
-fi
+# Resolve canonical AI_API_KEY from any supported provider key
+export AI_API_KEY="${AI_API_KEY:-${GEMINI_API_KEY:-${OPENROUTER_API_KEY:-${OPENAI_API_KEY:-}}}}"
+export AI_BASE_URL="${AI_BASE_URL:-${OPENAI_BASE_URL:-${OPENROUTER_BASE_URL:-}}}"
 
-if [ -z "${OPENROUTER_API_KEY:-${OPENAI_API_KEY:-}}" ]; then
-  echo '{"error":"OPENROUTER_API_KEY/OPENAI_API_KEY missing"}'
+if [ -z "$AI_API_KEY" ]; then
+  echo '{"error":"No API key set. Export GEMINI_API_KEY, AI_API_KEY, OPENROUTER_API_KEY, or OPENAI_API_KEY"}'
   exit 1
 fi
 

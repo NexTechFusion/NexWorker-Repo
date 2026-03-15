@@ -43,6 +43,9 @@ nx_notify_send() {
       local admin_id
       while IFS= read -r admin_id; do
         [ -n "$admin_id" ] || continue
+        # skip group/supergroup targets (negative Telegram chat IDs)
+        local _chat_id="${admin_id#*:}"
+        [[ "$_chat_id" =~ ^-[0-9] ]] && continue
         openclaw send --to "$admin_id" --message "$message" 2>/dev/null || true
         sent=$((sent + 1))
       done < <(nx_policy_get_admin_ids)
@@ -51,9 +54,14 @@ nx_notify_send() {
       ;;
     broadcast)
       if [ -n "$admin_channel" ]; then
-        openclaw send --to "$admin_channel" --message "$message" 2>/dev/null || true
-        jq -c -n --arg status "sent" --arg audience "$audience" --arg to "$admin_channel" \
-          '{status:$status,audience:$audience,to:$to}'
+        local _bc_chat_id="${admin_channel#*:}"
+        if [[ "$_bc_chat_id" =~ ^-[0-9] ]]; then
+          echo '{"status":"skipped","reason":"adminNotificationChannel is a group/supergroup — personal chat required"}' >&2
+        else
+          openclaw send --to "$admin_channel" --message "$message" 2>/dev/null || true
+          jq -c -n --arg status "sent" --arg audience "$audience" --arg to "$admin_channel" \
+            '{status:$status,audience:$audience,to:$to}'
+        fi
       else
         echo '{"status":"skipped","reason":"adminNotificationChannel not configured in policy"}' >&2
       fi

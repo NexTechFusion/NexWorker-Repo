@@ -24,15 +24,24 @@ if ! docker compose version &> /dev/null && ! docker-compose version &> /dev/nul
 fi
 echo "✅ Docker Compose installed"
 
-# Check for API key
-ACTIVE_API_KEY="${OPENROUTER_API_KEY:-${OPENAI_API_KEY:-}}"
+# Check for API key (accept any provider key)
+ACTIVE_API_KEY="${GEMINI_API_KEY:-${AI_API_KEY:-${OPENROUTER_API_KEY:-${OPENAI_API_KEY:-}}}}"
 if [ -z "$ACTIVE_API_KEY" ]; then
     echo ""
-    echo "⚠️  OPENROUTER_API_KEY (or OPENAI_API_KEY) not set"
-    echo "   You'll need this to provision customers."
-    echo "   Set it: export OPENROUTER_API_KEY=your-key"
-    echo "   Legacy fallback: export OPENAI_API_KEY=your-key"
-    echo "   Optional for OpenAI-compatible clients: export OPENAI_BASE_URL=https://openrouter.ai/api/v1"
+    echo "⚠️  No LLM API key detected."
+    echo "   You'll need one to provision customers."
+    echo ""
+    echo "   Gemini (default provider):"
+    echo "     export GEMINI_API_KEY=AIza..."
+    echo ""
+    echo "   OpenRouter (alternative):"
+    echo "     export AI_PROVIDER=openrouter"
+    echo "     export OPENROUTER_API_KEY=sk-or-..."
+    echo ""
+    echo "   Custom / OpenAI-compatible:"
+    echo "     export AI_PROVIDER=custom"
+    echo "     export AI_API_KEY=your-key"
+    echo "     export AI_BASE_URL=https://your-endpoint/v1"
 fi
 
 # Create base directory
@@ -69,10 +78,13 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 echo "📱 To provision a customer:"
 echo ""
-echo "   # Telegram bot"
-echo "   export OPENROUTER_API_KEY=your-key"
-echo "   export OPENAI_BASE_URL=https://openrouter.ai/api/v1"
-echo "   export USE_OPENROUTER=1"
+echo "   # Telegram bot — Gemini (default)"
+echo "   export GEMINI_API_KEY=AIza..."
+echo "   ./provision-customer.sh 001 'Acme GmbH' --telegram '123:ABC'"
+echo ""
+echo "   # Telegram bot — OpenRouter"
+echo "   export AI_PROVIDER=openrouter"
+echo "   export OPENROUTER_API_KEY=sk-or-..."
 echo "   ./provision-customer.sh 001 'Acme GmbH' --telegram '123:ABC'"
 echo ""
 echo "   # WhatsApp"

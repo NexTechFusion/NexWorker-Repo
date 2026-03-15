@@ -5,9 +5,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")" 2>/dev/null || dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../common/nexhelper-core.sh"
 
-MODEL="${CLASSIFIER_MODEL:-openai/gpt-4o-mini}"
-API_BASE="${OPENROUTER_BASE_URL:-${OPENAI_BASE_URL:-https://openrouter.ai/api/v1}}"
-API_KEY="${OPENROUTER_API_KEY:-${OPENAI_API_KEY:-}}"
+MODEL="${CLASSIFIER_MODEL:-${AI_MODEL:-gemini-2.0-flash}}"
+API_BASE="${AI_BASE_URL:-${OPENROUTER_BASE_URL:-${OPENAI_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai}}}"
+API_KEY="${AI_API_KEY:-${GEMINI_API_KEY:-${OPENROUTER_API_KEY:-${OPENAI_API_KEY:-}}}}"
 
 usage() {
   echo "Usage:"
@@ -64,7 +64,7 @@ call_model() {
     echo ""
     return
   fi
-  local models="${CLASSIFIER_MODELS:-$MODEL,google/gemini-2.0-flash-001,meta-llama/llama-3.3-70b-instruct}"
+  local models="${CLASSIFIER_MODELS:-$MODEL,gemini-2.0-flash,gemini-1.5-flash}"
   local selected
   IFS=',' read -ra MODEL_LIST <<< "$models"
   for selected in "${MODEL_LIST[@]}"; do

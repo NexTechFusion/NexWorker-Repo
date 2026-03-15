@@ -4,13 +4,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")" 2>/dev/null || dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../common/nexhelper-core.sh"
-# nexhelper-core.sh enables -e; keep doc handler resilient for userMessage generation
 set +e
-source "$SCRIPT_DIR/../common/nexhelper-locale"
-set -e
-
-# Language from policy; set NX_LANG for nx_msg()
-NX_LANG="$(nx_policy_get_language 2>/dev/null || echo 'de')"
 
 # Actor performing the operation. Pass --actor <user_id> to enforce RBAC on protected commands.
 NX_ACTOR="${NX_ACTOR:-}"
@@ -114,7 +108,11 @@ store_document() {
   local safe_entity
   safe_entity="$(resolve_entity "$entity" "$source_text")"
   if [ -n "$file_ref" ] && [ -f "$file_ref" ]; then
-    nx_require_tenant_path "$file_ref"
+    if ! nx_require_tenant_path "$file_ref" 2>/dev/null; then
+      jq -c -n --arg status "invalid" --arg opId "$op_id" --argjson errors '["path_not_allowed"]' \
+        '{status:$status,opId:$opId,errors:$errors}' >&2
+      exit 1
+    fi
     local file_size
     file_size="$(wc -c < "$file_ref")"
     if [ "$file_size" -gt $((20 * 1024 * 1024)) ]; then
@@ -202,16 +200,16 @@ store_document() {
     "$ENTITIES_SCRIPT" spend "$safe_entity" "$amount" >/dev/null 2>&1 || true
   fi
 
-  local _label="${supplier:-Dokument}${amount:+ (€$amount)}"
-  local _store_msg
-  _store_msg="$(nx_msg doc_stored "$_label" "$doc_id" 2>/dev/null || true)"
+  local suggest_project="false"
+  [ -z "$project" ] && suggest_project="true"
+
   local result
   result="$(jq -c -n \
     --arg status "stored" \
     --arg opId "$op_id" \
     --argjson document "$payload" \
-    --arg userMessage "$_store_msg" \
-    '{status:$status,opId:$opId,document:$document,userMessage:$userMessage}')"
+    --argjson suggestProject "$suggest_project" \
+    '{status:$status,opId:$opId,document:$document,suggestProject:$suggestProject}')"
   if [ -n "$idempotency_key" ]; then
     nx_idempotency_put "$idempotency_key" "$result"
   fi
@@ -417,17 +415,10 @@ search_documents() {
   paged="$(echo "$results" | jq -c --argjson limit "$limit" '.[:$limit]')"
   local count
   count="$(echo "$paged" | jq 'length')"
-  local _search_label="${query:-}${project:+ [Projekt: $project]}"
-  local _user_msg
-  if [ "$count" -gt 0 ]; then
-    _user_msg="$(nx_msg doc_found "$count" "$_search_label" 2>/dev/null || true)"
-  else
-    _user_msg="$(nx_msg doc_not_found "$_search_label" 2>/dev/null || true)"
-  fi
   jq -c -n --argjson results "$paged" --argjson count "$count" \
-    --arg userMessage "$_user_msg" \
+    --arg query "$query" \
     --arg project "$project" \
-    '{results:$results,count:$count,userMessage:$userMessage,project:$project}'
+    '{results:$results,count:$count,query:$query,project:$project}'
 }
 
 _search_documents_raw() {
@@ -481,21 +472,55 @@ stats_documents() {
   nx_init_dirs
   local results
   results="$(collect_results "" "all" "all" "" "" "false")"
-  local doc_count total_amount _stats_msg
-  doc_count="$(echo "$results" | jq 'length')"
-  total_amount="$(echo "$results" | jq '[.[].amount // 0] | add // 0')"
-  _stats_msg="$(nx_msg doc_stats "$doc_count" "$total_amount" 2>/dev/null || true)"
   jq -c -n \
     --argjson docs "$results" \
-    --arg userMessage "$_stats_msg" \
     '{
       documents: ($docs | length),
       totalAmount: ($docs | map(.amount // 0) | add // 0),
       byType: ($docs | group_by(.type) | map({type:.[0].type,count:length,total:(map(.amount // 0) | add // 0)})),
       byEntity: ($docs | group_by(.entity) | map({entity:.[0].entity,count:length,total:(map(.amount // 0) | add // 0)})),
-      byProject: ($docs | group_by(.project) | map(select(.[0].project != "" and .[0].project != null) | {project:.[0].project,count:length,total:(map(.amount // 0) | add // 0)})),
-      userMessage: $userMessage
+      byProject: ($docs | group_by(.project) | map(select(.[0].project != "" and .[0].project != null) | {project:.[0].project,count:length,total:(map(.amount // 0) | add // 0)}))
     }'
+}
+
+append_document() {
+  local doc_id="$1"
+  local file_ref="$2"
+  local source_text="${3:-}"
+  nx_init_dirs
+  if ! nx_doc_exists "$doc_id"; then
+    jq -c -n --arg status "not_found" --arg id "$doc_id" '{status:$status,id:$id}'
+    return
+  fi
+  local original
+  original="$(nx_load_doc_json "$doc_id")"
+  local rev
+  rev="$(echo "$original" | jq '.revision + 1')"
+  local now
+  now="$(nx_now_iso)"
+  local updated
+  updated="$(echo "$original" | jq -c \
+    --arg fileRef "$file_ref" \
+    --arg srcText "$source_text" \
+    --arg now "$now" \
+    --argjson rev "$rev" \
+    '.additionalFiles = ((.additionalFiles // []) + [$fileRef])
+    | .revision = $rev
+    | .updatedAt = $now
+    | if $srcText != "" then .sourceText = (.sourceText + " " + $srcText) else . end')"
+  nx_write_doc_json "$doc_id" "$updated"
+  local total_files
+  total_files="$(echo "$updated" | jq '1 + ((.additionalFiles // []) | length)')"
+  local op_id
+  op_id="$(nx_op_id docapp)"
+  nx_log_event "document.append" "$op_id" "success" \
+    "$(jq -c -n --arg id "$doc_id" --arg f "$file_ref" '{id:$id,fileRef:$f}')"
+  jq -c -n \
+    --arg status "appended" \
+    --arg docId "$doc_id" \
+    --argjson revision "$rev" \
+    --argjson totalFiles "$total_files" \
+    '{status:$status,docId:$docId,revision:$revision,totalFiles:$totalFiles}'
 }
 
 purge_deleted() {
@@ -540,6 +565,7 @@ usage() {
   echo "  store --type <type> --amount <value> --supplier <name> --number <nr> --date <YYYY-MM-DD> [--entity <id>] [--project <name>] [--due-date <YYYY-MM-DD>] [--category <name>] [--file <path>] [--source <telegram|whatsapp|system>] [--source-text <text>] [--ocr-text <text>] [--idempotency-key <key>]"
   echo "  get <doc_id>"
   echo "  retrieve <doc_id>          # returns filePath for sending original document back to user"
+  echo "  append --id <doc_id> --file <path> [--source-text <text>]  # add extra page/photo to existing doc"
   echo "  search --query <text> [--entity <id>] [--project <name>] [--type <type>] [--date-from <YYYY-MM-DD>] [--date-to <YYYY-MM-DD>] [--limit <n>] [--semantic true|false] [--include-deleted true|false]"
   echo "  list [--limit <n>] [--include-deleted true|false]"
   echo "  update <doc_id> --field <field> --value <value> [--reason <text>]"
@@ -617,6 +643,20 @@ case "$CMD" in
     ;;
   retrieve)
     retrieve_document "${1:-}"
+    ;;
+  append)
+    APP_DOC_ID=""
+    APP_FILE=""
+    APP_SOURCE_TEXT=""
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --id) APP_DOC_ID="$2"; shift 2 ;;
+        --file) APP_FILE="$2"; shift 2 ;;
+        --source-text) APP_SOURCE_TEXT="$2"; shift 2 ;;
+        *) shift ;;
+      esac
+    done
+    append_document "$APP_DOC_ID" "$APP_FILE" "$APP_SOURCE_TEXT"
     ;;
   search)
     QUERY=""

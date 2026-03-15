@@ -10,7 +10,6 @@ HEALTH_SCRIPT="$ROOT_DIR/skills/common/nexhelper-healthcheck"
 POLICY_SCRIPT="$ROOT_DIR/skills/common/nexhelper-policy"
 ADMIN_REPORT_SCRIPT="$ROOT_DIR/skills/common/nexhelper-admin-report"
 NOTIFY_SCRIPT="$ROOT_DIR/skills/common/nexhelper-notify"
-LOCALE_SCRIPT="$ROOT_DIR/skills/common/nexhelper-locale"
 WORKFLOW_SCRIPT="$ROOT_DIR/skills/common/nexhelper-workflow"
 TMP_DIR="${TMP_DIR:-$ROOT_DIR/.tmp/regression}"
 STORAGE_DIR="$TMP_DIR/storage"
@@ -22,7 +21,7 @@ mkdir -p "$STORAGE_DIR/canonical/documents" "$STORAGE_DIR/canonical/reminders" \
          "$STORAGE_DIR/audit" "$STORAGE_DIR/idempotency" "$STORAGE_DIR/ops/smoke" \
          "$STORAGE_DIR/canonical/indices"
 
-printf '%s\n' '{"admins":[],"memberPermissions":{"store":true,"search":true,"list":true,"get":true,"stats":true,"reminder_create":true,"reminder_list":true,"reminder_delete_own":true},"adminNotificationChannel":"","language":"de","createdAt":"2026-01-01T00:00:00Z","tenantId":"test","tenantName":"Test Suite"}' \
+printf '%s\n' '{"admins":[],"memberPermissions":{"store":true,"search":true,"list":true,"get":true,"stats":true,"reminder_create":true,"reminder_list":true,"reminder_delete_own":true},"adminNotificationChannel":"","createdAt":"2026-01-01T00:00:00Z","tenantId":"test","tenantName":"Test Suite"}' \
   > "$STORAGE_DIR/policy.json"
 
 pass=0
@@ -86,7 +85,6 @@ assert_json_field "retrieve_nonexistent_returns_not_found" "$retrieve_nf" ".stat
 # ── RBAC: soft-delete blocked for member ────────────────────────────────────
 
 member_del="$(NX_ACTOR="member_no_admin" "$DOC_SCRIPT" delete "$doc_id" --reason test 2>&1 || true)"
-member_del_status="$(echo "$member_del" | jq -r '.status // empty' 2>/dev/null || echo '')"
 assert_json_field "rbac_member_delete_blocked" "$member_del" ".status" "forbidden"
 
 # ── RBAC: promote to admin, then delete succeeds ────────────────────────────
@@ -179,22 +177,6 @@ else
   results="$(echo "$results" | jq -c '. + [{name:"notify_script_executable",status:"fail"}]')"
 fi
 
-# ── nexhelper-locale — multilingual messages ──────────────────────────────────
-
-if [ -x "$LOCALE_SCRIPT" ]; then
-  locale_welcome="$(NX_LANG=de "$LOCALE_SCRIPT" welcome TestSupplier user123 2>/dev/null || true)"
-  assert_true "locale_de_welcome_has_id" "echo '$locale_welcome' | grep -q 'user123'"
-  locale_en="$(NX_LANG=en "$LOCALE_SCRIPT" start uid42 member 2>/dev/null || true)"
-  assert_true "locale_en_start_has_uid" "echo '$locale_en' | grep -q 'uid42'"
-  assert_true "locale_de_forbidden_has_user_id" \
-    "NX_LANG=de '$LOCALE_SCRIPT' forbidden testuid | grep -q 'testuid'"
-  assert_true "locale_noop_de_not_empty" \
-    "[ -n \"\$(NX_LANG=de '$LOCALE_SCRIPT' noop)\" ]"
-else
-  fail=$((fail+1))
-  results="$(echo "$results" | jq -c '. + [{name:"locale_script_executable",status:"fail"}]')"
-fi
-
 # ── nexhelper-doc --project store + search ───────────────────────────────────
 
 proj_store="$(STORAGE_DIR="$STORAGE_DIR" "$DOC_SCRIPT" store \
@@ -203,27 +185,55 @@ proj_store="$(STORAGE_DIR="$STORAGE_DIR" "$DOC_SCRIPT" store \
   --project "BaustelleMusterstr" 2>/dev/null || true)"
 assert_true "doc_store_project_field_set" \
   "echo '$proj_store' | jq -e '.document.project == \"BaustelleMusterstr\"' >/dev/null"
-assert_true "doc_store_has_user_message" \
-  "echo '$proj_store' | jq -e '.userMessage' >/dev/null"
+assert_true "doc_store_with_project_suggest_false" \
+  "echo '$proj_store' | jq -e '.suggestProject == false' >/dev/null"
 
 proj_search="$(STORAGE_DIR="$STORAGE_DIR" "$DOC_SCRIPT" search \
   --project "BaustelleMusterstr" --semantic false 2>/dev/null || true)"
 assert_true "doc_search_project_returns_results" \
   "echo '$proj_search' | jq -e '.count > 0' >/dev/null"
-assert_true "doc_search_has_user_message" \
-  "echo '$proj_search' | jq -e '.userMessage' >/dev/null"
 
 proj_search_miss="$(STORAGE_DIR="$STORAGE_DIR" "$DOC_SCRIPT" search \
   --project "NichtVorhandenerProjekt" --semantic false 2>/dev/null || true)"
 assert_true "doc_search_project_miss_zero_count" \
   "echo '$proj_search_miss' | jq -e '.count == 0' >/dev/null"
 
-# stats should include byProject field
+# stats should include byProject field (no userMessage)
 proj_stats="$(STORAGE_DIR="$STORAGE_DIR" "$DOC_SCRIPT" stats 2>/dev/null || true)"
-assert_true "doc_stats_has_user_message" \
-  "echo '$proj_stats' | jq -e '.userMessage' >/dev/null"
 assert_true "doc_stats_has_by_project" \
   "echo '$proj_stats' | jq -e '.byProject | type == \"array\"' >/dev/null"
+assert_true "doc_stats_no_user_message" \
+  "echo '$proj_stats' | jq -e '.userMessage == null' >/dev/null"
+
+# ── suggestProject: true when no --project given ──────────────────────────────
+
+no_proj_store="$(STORAGE_DIR="$STORAGE_DIR" "$DOC_SCRIPT" store \
+  --type rechnung --amount 99 --supplier "NoProj GmbH" \
+  --number "NP-2026-001" --date 2026-03-10 2>/dev/null || true)"
+assert_true "doc_store_no_project_suggest_true" \
+  "echo '$no_proj_store' | jq -e '.suggestProject == true' >/dev/null"
+assert_true "doc_store_no_user_message" \
+  "echo '$no_proj_store' | jq -e '.userMessage == null' >/dev/null"
+
+# ── nexhelper-doc append — multi-page document ───────────────────────────────
+
+append_base="$(STORAGE_DIR="$STORAGE_DIR" "$DOC_SCRIPT" store \
+  --type rechnung --amount 300 --supplier "AppendTest GmbH" \
+  --number "APP-2026-001" --date 2026-03-15 2>/dev/null || true)"
+append_id="$(echo "$append_base" | jq -r '.document.id // empty')"
+assert_true "doc_append_base_stored" "[ -n '$append_id' ]"
+
+if [ -n "$append_id" ]; then
+  append_result="$(STORAGE_DIR="$STORAGE_DIR" "$DOC_SCRIPT" append \
+    --id "$append_id" --file "/tmp/page2_test.jpg" --source-text "Seite 2" 2>/dev/null || true)"
+  assert_json_field "doc_append_status" "$append_result" ".status" "appended"
+  assert_true "doc_append_returns_doc_id" \
+    "echo '$append_result' | jq -e --arg id '$append_id' '.docId == \$id' >/dev/null"
+  assert_true "doc_append_revision_incremented" \
+    "echo '$append_result' | jq -e '.revision == 2' >/dev/null"
+  assert_true "doc_append_total_files" \
+    "echo '$append_result' | jq -e '.totalFiles >= 1' >/dev/null"
+fi
 
 # ── workflow /start command ───────────────────────────────────────────────────
 
@@ -233,8 +243,8 @@ if [ -x "$WORKFLOW_SCRIPT" ]; then
     2>/dev/null || true)"
   assert_true "workflow_start_status" \
     "echo '$start_result' | jq -e '.result.status == \"start\"' >/dev/null"
-  assert_true "workflow_start_has_user_message" \
-    "echo '$start_result' | jq -e '.result.userMessage' >/dev/null"
+  assert_true "workflow_start_no_user_message" \
+    "echo '$start_result' | jq -e '.result.userMessage == null' >/dev/null"
   assert_true "workflow_start_has_user_id" \
     "echo '$start_result' | jq -e '.result.userId == \"unit_test_user\"' >/dev/null"
 fi

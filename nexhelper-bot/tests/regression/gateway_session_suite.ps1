@@ -1,14 +1,25 @@
 param(
+  # Generic provider params (preferred)
+  [string]$ApiKey       = $env:AI_API_KEY,
+  [string]$Provider     = $env:AI_PROVIDER,
+  [string]$BaseUrl      = $env:AI_BASE_URL,
+  # Legacy OpenRouter aliases (still accepted for backward compat)
   [string]$OpenRouterApiKey = $env:OPENROUTER_API_KEY,
-  [string]$OpenRouterBaseUrl = "https://openrouter.ai/api/v1",
+  [string]$OpenRouterBaseUrl,
+  [string]$GeminiApiKey = $env:GEMINI_API_KEY,
   [string]$TelegramBotToken = $env:TELEGRAM_BOT_TOKEN,
   [switch]$KeepCustomer
 )
 
 $ErrorActionPreference = "Stop"
 
-if (-not $OpenRouterApiKey) {
-  throw "Missing OpenRouter key. Set OPENROUTER_API_KEY or pass -OpenRouterApiKey."
+# Resolve backward-compat aliases into canonical vars
+if (-not $ApiKey -and $GeminiApiKey)     { $ApiKey = $GeminiApiKey; if (-not $Provider) { $Provider = "gemini" } }
+if (-not $ApiKey -and $OpenRouterApiKey) { $ApiKey = $OpenRouterApiKey; if (-not $Provider) { $Provider = "openrouter" } }
+if (-not $Provider) { $Provider = "gemini" }
+
+if (-not $ApiKey) {
+  throw "Missing API key. Set GEMINI_API_KEY (or -GeminiApiKey) for Gemini, OPENROUTER_API_KEY (or -OpenRouterApiKey) for OpenRouter, or AI_API_KEY (or -ApiKey) for any provider."
 }
 
 $root = (Resolve-Path (Join-Path $PSScriptRoot "../..")).Path
@@ -117,7 +128,8 @@ try {
   $rootBash = To-GitBashPath -WindowsPath $root
   $baseDirBash = To-GitBashPath -WindowsPath $baseDir
   $channelArgs = if ($TelegramBotToken) { "--telegram '$TelegramBotToken'" } else { "--whatsapp" }
-  $provisionCmd = "cd '$rootBash' && OPENROUTER_API_KEY='$OpenRouterApiKey' OPENROUTER_BASE_URL='$OpenRouterBaseUrl' DEFAULT_DELIVERY_TO='$defaultDeliveryTo' ./provision-customer.sh $customerId '$customerName' $channelArgs --base-dir '$baseDirBash' --no-start"
+  $baseUrlArg = if ($BaseUrl) { "AI_BASE_URL='$BaseUrl'" } else { "" }
+  $provisionCmd = "cd '$rootBash' && AI_PROVIDER='$Provider' AI_API_KEY='$ApiKey' $baseUrlArg DEFAULT_DELIVERY_TO='$defaultDeliveryTo' ./provision-customer.sh $customerId '$customerName' $channelArgs --base-dir '$baseDirBash' --no-start"
   & $bashPath -lc $provisionCmd | Out-Null
   Add-Result "provision_customer" "pass"
 
@@ -130,12 +142,14 @@ try {
   Add-Result "container_start" "pass"
 
   $healthy = $false
+  $lastHealthStr = ""
   $ErrorActionPreference = "Continue"
-  for ($i = 0; $i -lt 45; $i++) {
+  for ($i = 0; $i -lt 60; $i++) {
     try {
       $healthRaw = docker exec $instanceName openclaw health --json 2>&1
       $healthStr = ($healthRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
       $healthStr = $healthStr.Trim()
+      $lastHealthStr = $healthStr
       if ($healthStr -match '^\{') {
         $health = $healthStr | ConvertFrom-Json
         if ($health.ok -eq $true) {
@@ -148,7 +162,11 @@ try {
   }
   $ErrorActionPreference = "Stop"
   if (-not $healthy) {
-    throw "Gateway did not become healthy in time."
+    $containerLogs = docker logs --tail 20 $instanceName 2>&1
+    $logsText = ($containerLogs | Where-Object { $_ -is [string] } ) -join "`n"
+    $detail = if ($lastHealthStr) { "last_response=[$lastHealthStr]" } else { "no_response_from_openclaw_health" }
+    if ($logsText) { $detail += " container_tail=[$logsText]" }
+    throw "Gateway did not become healthy in time. $detail"
   }
   Add-Result "gateway_health" "pass"
 
@@ -757,15 +775,22 @@ try {
     Add-Result "healthcheck_liveness_checks" "warn" "could not parse healthcheck output: $_"
   }
 
-  # --- nexhelper-locale script available ---
+  # --- Audio config: tools.media.audio enabled + auth profile ---
   $ErrorActionPreference = "Continue"
-  $localeRaw = docker exec $instanceName sh -lc "nexhelper-locale welcome Lieferant testuser123 2>&1" 2>&1
-  $localeText = ($localeRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
+  $audioCfgRaw = docker exec $instanceName sh -lc "jq '.tools.media.audio // empty' /root/.openclaw/openclaw.json 2>/dev/null" 2>&1
+  $audioCfgText = ($audioCfgRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
+  $authProfRaw = docker exec $instanceName sh -lc "jq '.profiles | keys' /root/.openclaw/auth-profiles.json 2>/dev/null" 2>&1
+  $authProfText = ($authProfRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
   $ErrorActionPreference = "Stop"
-  if ($localeText -match "NexHelper|Welcome" -and $localeText -match "testuser123") {
-    Add-Result "locale_script_available" "pass" "nexhelper-locale outputs multilingual welcome"
+  $audioEnabled = $audioCfgText -match '"enabled":\s*true'
+  $audioHasModel = $audioCfgText -match '"model"'
+  $whisperProfile = $authProfText -match 'openai:whisper'
+  if ($audioEnabled -and $audioHasModel -and $whisperProfile) {
+    Add-Result "audio_config" "pass" "tools.media.audio enabled with model + openai:whisper auth profile"
+  } elseif ($audioEnabled) {
+    Add-Result "audio_config" "warn" "audio enabled but missing model=$audioHasModel or whisper-profile=$whisperProfile"
   } else {
-    Add-Result "locale_script_available" "fail" "nexhelper-locale not available or wrong output"
+    Add-Result "audio_config" "fail" "tools.media.audio not configured (audioCfg=[$audioCfgText])"
   }
 
   # --- /start command returns user ID ---
@@ -779,21 +804,21 @@ try {
     Add-Result "start_command_handler" "fail" "/start not handled: $($startText.Substring(0,[Math]::Min(120,$startText.Length)))"
   }
 
-  # --- userMessage field present in doc responses (multilingual) ---
+  # --- store without --project returns suggestProject:true ---
   $ErrorActionPreference = "Continue"
-  $docSearchRaw = docker exec $instanceName sh -lc "nexhelper-doc search --query 'TestQuery2026' --semantic false 2>&1" 2>&1
-  $docSearchText = ($docSearchRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
+  $noProjStoreRaw = docker exec $instanceName sh -lc "nexhelper-doc store --type rechnung --amount 111 --supplier SuggestProjGmbH --number SP-2026-001 --date 2026-01-15 2>&1" 2>&1
+  $noProjStoreText = ($noProjStoreRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
   $ErrorActionPreference = "Stop"
   try {
-    $docSearchLine = ($docSearchText -split "`n" | Where-Object { $_.TrimStart().StartsWith('{') } | Select-Object -First 1)
-    $docSearchJson = $docSearchLine.Trim() | ConvertFrom-Json -ErrorAction Stop
-    if ($docSearchJson.userMessage -and $docSearchJson.userMessage.Length -gt 0) {
-      Add-Result "doc_user_message_field" "pass" "search result has userMessage: $($docSearchJson.userMessage.Substring(0,60))..."
+    $noProjLine = ($noProjStoreText -split "`n" | Where-Object { $_.TrimStart().StartsWith('{') } | Select-Object -First 1)
+    $noProjJson = $noProjLine.Trim() | ConvertFrom-Json -ErrorAction Stop
+    if ($noProjJson.status -eq "stored" -and $noProjJson.suggestProject -eq $true) {
+      Add-Result "doc_suggest_project" "pass" "store without --project sets suggestProject=true"
     } else {
-      Add-Result "doc_user_message_field" "fail" "search result missing userMessage field"
+      Add-Result "doc_suggest_project" "fail" "suggestProject not set: status=$($noProjJson.status) suggestProject=$($noProjJson.suggestProject)"
     }
   } catch {
-    Add-Result "doc_user_message_field" "warn" "could not parse doc search output"
+    Add-Result "doc_suggest_project" "warn" "could not parse store output: $_"
   }
 
   # --- Project tag store + search ---
@@ -862,20 +887,32 @@ try {
     Add-Result "health_monitor_event" "fail" "health-monitor event not handled: $($hmText.Substring(0,[Math]::Min(100,$hmText.Length)))"
   }
 
-  # --- policy.json contains language field ---
+  # --- nexhelper-doc append adds extra page to existing doc ---
   $ErrorActionPreference = "Continue"
-  $policyRaw = docker exec $instanceName sh -lc "cat /root/.openclaw/workspace/policy.json 2>/dev/null || echo '{}'" 2>&1
-  $policyText = ($policyRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
+  $appendBaseRaw = docker exec $instanceName sh -lc "nexhelper-doc store --type rechnung --amount 200 --supplier AppendTestGmbH --number APP-2026-001 --date 2026-02-01 2>&1" 2>&1
+  $appendBaseText = ($appendBaseRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
   $ErrorActionPreference = "Stop"
   try {
-    $policyJson = ($policyText -split "`n" | Where-Object { $_.TrimStart().StartsWith('{') } | Select-Object -First 1).Trim() | ConvertFrom-Json -ErrorAction Stop
-    if ($policyJson.language -and $policyJson.language -in @("de","en")) {
-      Add-Result "policy_language_field" "pass" "policy has language=$($policyJson.language)"
+    $appendBaseLine = ($appendBaseText -split "`n" | Where-Object { $_.TrimStart().StartsWith('{') } | Select-Object -First 1)
+    $appendBaseJson = $appendBaseLine.Trim() | ConvertFrom-Json -ErrorAction Stop
+    if ($appendBaseJson.status -eq "stored") {
+      $appendDocId = $appendBaseJson.document.id
+      $ErrorActionPreference = "Continue"
+      $appendRaw = docker exec $instanceName sh -lc "nexhelper-doc append --id '$appendDocId' --file '/tmp/page2.jpg' 2>&1" 2>&1
+      $appendText = ($appendRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
+      $ErrorActionPreference = "Stop"
+      $appendLine = ($appendText -split "`n" | Where-Object { $_.TrimStart().StartsWith('{') } | Select-Object -First 1)
+      $appendJson = $appendLine.Trim() | ConvertFrom-Json -ErrorAction Stop
+      if ($appendJson.status -eq "appended" -and $appendJson.docId -eq $appendDocId) {
+        Add-Result "doc_append_command" "pass" "append added page to doc $appendDocId revision=$($appendJson.revision)"
+      } else {
+        Add-Result "doc_append_command" "fail" "append unexpected result: status=$($appendJson.status)"
+      }
     } else {
-      Add-Result "policy_language_field" "fail" "policy missing language field or invalid value"
+      Add-Result "doc_append_command" "warn" "base store failed, skipping append test"
     }
   } catch {
-    Add-Result "policy_language_field" "warn" "could not parse policy.json"
+    Add-Result "doc_append_command" "warn" "could not run append test: $_"
   }
 
   # --- Mandatory log lookup ---

@@ -73,7 +73,7 @@ check_path "canonical_reminders_dir" "$NX_REMINDERS_DIR"
 check_path "audit_dir" "$NX_AUDIT_DIR"
 
 # API key presence
-_API_KEY="${OPENROUTER_API_KEY:-${OPENAI_API_KEY:-}}"
+_API_KEY="${AI_API_KEY:-${GEMINI_API_KEY:-${OPENROUTER_API_KEY:-${OPENAI_API_KEY:-}}}}"
 if [ -n "$_API_KEY" ]; then
   checks="$(echo "$checks" | jq -c '. + [{name:"api_key_configured",status:"ok"}]')"
 else
@@ -82,7 +82,7 @@ else
 fi
 
 # AI provider reachability (cheap HTTP check — no actual AI call)
-_BASE_URL="${OPENAI_BASE_URL:-${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}}"
+_BASE_URL="${AI_BASE_URL:-${OPENAI_BASE_URL:-${OPENROUTER_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai}}}"
 _PROVIDER_HOST="$(echo "$_BASE_URL" | sed 's|https\?://||' | cut -d'/' -f1)"
 if [ -n "$_PROVIDER_HOST" ] && command -v curl >/dev/null 2>&1; then
   check_http "ai_provider_reachable" "https://${_PROVIDER_HOST}" 5

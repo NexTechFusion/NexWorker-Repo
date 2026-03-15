@@ -165,8 +165,9 @@
     }
   },
   "environment": {
-    "required": ["OPENROUTER_API_KEY"],
-    "optional": ["CLASSIFIER_MODEL", "CLASSIFIER_MODELS", "OPENROUTER_BASE_URL"]
+    "required": ["AI_API_KEY"],
+    "optional": ["CLASSIFIER_MODEL", "CLASSIFIER_MODELS", "AI_BASE_URL", "GEMINI_API_KEY"],
+    "deprecated": ["OPENROUTER_API_KEY", "OPENROUTER_BASE_URL", "OPENAI_API_KEY", "OPENAI_BASE_URL"]
   },
   "errors": {
     "classifier_unavailable": "All classifier models failed",

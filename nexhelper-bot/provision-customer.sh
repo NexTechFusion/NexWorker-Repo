@@ -10,8 +10,9 @@
 #   ./provision-customer.sh <customer-id> <customer-name> --whatsapp
 #
 # Examples:
-#   OPENROUTER_API_KEY=sk-or-xxx ./provision-customer.sh 001 "Acme GmbH" --telegram "123:ABC"
-#   OPENROUTER_API_KEY=sk-or-xxx ./provision-customer.sh 002 "Müller Bau" --whatsapp
+#   GEMINI_API_KEY=AIza... ./provision-customer.sh 001 "Acme GmbH" --telegram "123:ABC"
+#   AI_PROVIDER=openrouter OPENROUTER_API_KEY=sk-or-... ./provision-customer.sh 001 "Acme GmbH" --telegram "123:ABC"
+#   AI_PROVIDER=openrouter OPENROUTER_API_KEY=sk-or-... ./provision-customer.sh 002 "Müller Bau" --whatsapp
 
 set -e
 
@@ -25,19 +26,61 @@ CUSTOMER_NAME=""
 BASE_DIR="${BASE_DIR:-/opt/nexhelper/customers}"
 TELEGRAM_TOKEN=""
 WHATSAPP_MODE=false
-API_KEY="${OPENROUTER_API_KEY:-${OPENAI_API_KEY:-}}"
 ENABLE_WHATSAPP=false
 AUTO_START=true
 CONSENT_VERSION="1.0"
-DEFAULT_MODEL="openrouter/google/gemini-3-flash-preview"
 ENTITIES="${ENTITIES:-default}"
 BUDGETS="${BUDGETS:-}"
 DELIVERY_TO="${DEFAULT_DELIVERY_TO:-}"
 INITIAL_ADMIN_ID="${INITIAL_ADMIN_ID:-}"
-OPENROUTER_BASE_URL="${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}"
 EMBEDDING_MODEL="${EMBEDDING_MODEL:-openai/text-embedding-3-small}"
-IMAGE_MODEL="${IMAGE_MODEL:-openrouter/google/gemini-3-flash-preview}"
-PDF_MODEL="${PDF_MODEL:-openrouter/google/gemini-2.0-flash-001}"
+
+# ============================================
+# Provider Selection
+# ============================================
+# AI_PROVIDER selects the LLM backend preset.
+# Supported: gemini (default) | openrouter | openai | custom
+# For custom, set AI_API_KEY, AI_BASE_URL, and DEFAULT_MODEL manually.
+AI_PROVIDER="${AI_PROVIDER:-gemini}"
+
+case "$AI_PROVIDER" in
+  gemini)
+    AI_API_KEY="${GEMINI_API_KEY:-${AI_API_KEY:-}}"
+    AI_BASE_URL="${AI_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai}"
+    DEFAULT_MODEL="${DEFAULT_MODEL:-gemini-2.0-flash}"
+    IMAGE_MODEL="${IMAGE_MODEL:-gemini-2.0-flash}"
+    PDF_MODEL="${PDF_MODEL:-gemini-2.0-flash}"
+    MODEL_FALLBACKS="${MODEL_FALLBACKS:-[\"gemini-2.5-flash-preview-05-20\",\"gemini-1.5-flash\"]}"
+    ;;
+  openrouter)
+    AI_API_KEY="${OPENROUTER_API_KEY:-${AI_API_KEY:-}}"
+    AI_BASE_URL="${AI_BASE_URL:-https://openrouter.ai/api/v1}"
+    DEFAULT_MODEL="${DEFAULT_MODEL:-openrouter/google/gemini-3-flash-preview}"
+    IMAGE_MODEL="${IMAGE_MODEL:-openrouter/google/gemini-3-flash-preview}"
+    PDF_MODEL="${PDF_MODEL:-openrouter/google/gemini-2.0-flash-001}"
+    MODEL_FALLBACKS="${MODEL_FALLBACKS:-[\"openrouter/google/gemini-2.5-flash\",\"openrouter/google/gemini-2.0-flash-001\"]}"
+    ;;
+  openai)
+    AI_API_KEY="${OPENAI_API_KEY:-${AI_API_KEY:-}}"
+    AI_BASE_URL="${AI_BASE_URL:-https://api.openai.com/v1}"
+    DEFAULT_MODEL="${DEFAULT_MODEL:-gpt-4o-mini}"
+    IMAGE_MODEL="${IMAGE_MODEL:-gpt-4o-mini}"
+    PDF_MODEL="${PDF_MODEL:-gpt-4o-mini}"
+    MODEL_FALLBACKS="${MODEL_FALLBACKS:-[\"gpt-4o\"]}"
+    ;;
+  custom)
+    : # AI_API_KEY, AI_BASE_URL, DEFAULT_MODEL, IMAGE_MODEL, PDF_MODEL, MODEL_FALLBACKS must be set externally
+    ;;
+  *)
+    echo "❌ Error: Unknown AI_PROVIDER='$AI_PROVIDER'. Valid: gemini | openrouter | openai | custom" >&2
+    exit 1
+    ;;
+esac
+
+# Whisper uses a separate provider (Gemini has no /audio/transcriptions compat endpoint).
+# Defaults to OpenRouter; override with WHISPER_PROVIDER=openai or custom WHISPER_* vars.
+WHISPER_API_KEY="${WHISPER_API_KEY:-${OPENROUTER_API_KEY:-${AI_API_KEY:-}}}"
+WHISPER_BASE_URL="${WHISPER_BASE_URL:-https://openrouter.ai/api/v1}"
 WHISPER_MODEL="${WHISPER_MODEL:-openai/whisper-large-v3-turbo}"
 
 # ============================================
@@ -54,7 +97,7 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --api-key)
-            API_KEY="$2"
+            AI_API_KEY="$2"
             shift 2
             ;;
         --model)
@@ -113,24 +156,29 @@ if [ -z "$CUSTOMER_ID" ] || [ -z "$CUSTOMER_NAME" ]; then
     echo "Options:"
     echo "  --telegram <token>    Telegram bot token (REQUIRED unless --whatsapp)"
     echo "  --whatsapp            Enable WhatsApp channel (will show QR on first start)"
-    echo "  --api-key <key>       OpenRouter API key (or set OPENROUTER_API_KEY)"
-    echo "  --model <model>       Default model (default: openrouter/stepfun/step-3.5-flash)"
+    echo "  --api-key <key>       LLM API key (or set GEMINI_API_KEY / AI_API_KEY)"
+    echo "  --model <model>       Default model (default depends on AI_PROVIDER)"
     echo "  --no-start            Don't auto-start container"
     echo "  --consent-version <v> Consent text version (default: 1.0)"
     echo "  --base-dir <path>     Base directory (default: /opt/nexhelper/customers)"
     echo "  --delivery-to <to>    Delivery target for announce cron jobs (e.g. telegram:579539601)"
     echo ""
-    echo "Examples:"
-    echo "  OPENROUTER_API_KEY=sk-or-xxx ./provision-customer.sh 001 'Acme GmbH' --telegram '123:ABC'"
-    echo "  OPENROUTER_API_KEY=sk-or-xxx ./provision-customer.sh 002 'Müller Bau' --whatsapp"
+    echo "Provider selection (AI_PROVIDER=gemini | openrouter | openai | custom):"
+    echo "  GEMINI_API_KEY=AIza... ./provision-customer.sh 001 'Acme GmbH' --telegram '123:ABC'"
+    echo "  AI_PROVIDER=openrouter OPENROUTER_API_KEY=sk-or-... ./provision-customer.sh 001 'Acme GmbH' --telegram '123:ABC'"
     exit 1
 fi
 
 # Check API key
-if [ -z "$API_KEY" ]; then
-    echo "❌ Error: OPENROUTER_API_KEY (or OPENAI_API_KEY) not set"
-    echo "   Set it via: export OPENROUTER_API_KEY=your-api-key"
-    echo "   Or use: --api-key your-api-key"
+if [ -z "$AI_API_KEY" ]; then
+    echo "❌ Error: No API key set for AI_PROVIDER='$AI_PROVIDER'"
+    case "$AI_PROVIDER" in
+      gemini)     echo "   Set: export GEMINI_API_KEY=AIza..." ;;
+      openrouter) echo "   Set: export OPENROUTER_API_KEY=sk-or-..." ;;
+      openai)     echo "   Set: export OPENAI_API_KEY=sk-..." ;;
+      custom)     echo "   Set: export AI_API_KEY=your-key" ;;
+    esac
+    echo "   Or pass: --api-key <key>"
     exit 1
 fi
 
@@ -264,7 +312,6 @@ cat <<POLICYEOF > "$CUSTOMER_DIR/storage/policy.json"
     "reminder_delete_own": true
   },
   "adminNotificationChannel": "${DELIVERY_TO:-}",
-  "language": "${NEXHELPER_LANG:-de}",
   "createdAt": "$(date -Iseconds)",
   "tenantId": "$CUSTOMER_ID",
   "tenantName": "$CUSTOMER_NAME"
@@ -426,10 +473,15 @@ cat <<EOF > "$CUSTOMER_DIR/config/openclaw.json"
     "defaults": {
       "model": {
         "primary": "$DEFAULT_MODEL",
-        "fallbacks": ["openrouter/google/gemini-2.5-flash", "openrouter/google/gemini-2.0-flash-001"],
+        "fallbacks": $MODEL_FALLBACKS,
       },
-      "imageModel": { "primary": "$IMAGE_MODEL" },
-      "pdfModel":   { "primary": "$PDF_MODEL" },
+      "imageModel":   { "primary": "$IMAGE_MODEL" },
+      "pdfModel":     { "primary": "$PDF_MODEL" },
+      "memorySearch": {
+        "provider": "local",
+        "local": { "modelPath": "/tmp/no-vector-model" },
+        "fallback": "none",
+      },
       "workspace": "/root/.openclaw/workspace",
       "thinkingDefault": "medium",
       "timeoutSeconds": 120,
@@ -484,7 +536,27 @@ cat <<EOF > "$CUSTOMER_DIR/config/openclaw.json"
       "subagents",
       "agents_list",
     ],
+    "media": {
+      "audio": {
+        "enabled": true,
+        // Transcription is done before the agent sees the message — no exec needed.
+        // Echo the transcript back so the user knows it was understood.
+        "echoTranscript": true,
+        "echoFormat": "📝 \"{transcript}\"",
+        "models": [
+          {
+            // Uses openai:whisper auth profile (baked into auth-profiles.json).
+            // For Gemini provider, this routes to OpenRouter's Whisper endpoint.
+            // For OpenRouter provider, it uses the same key as the main provider.
+            "provider": "openai",
+            "model": "$WHISPER_MODEL",
+            "baseUrl": "$WHISPER_BASE_URL",
+          },
+        ],
+      },
+    },
   },
+
 
   "commands": {
     "native": false,
@@ -512,14 +584,20 @@ cat <<EOF > "$CUSTOMER_DIR/config/auth-profiles.json"
 {
   "version": 1,
   "profiles": {
-    "openrouter:default": {
+    "$AI_PROVIDER:default": {
       "type": "api_key",
-      "provider": "openrouter",
-      "key": "$API_KEY"
+      "provider": "$AI_PROVIDER",
+      "key": "$AI_API_KEY"
+    },
+    "openai:whisper": {
+      "type": "api_key",
+      "provider": "openai",
+      "key": "$WHISPER_API_KEY"
     }
   },
   "lastGood": {
-    "openrouter": "openrouter:default"
+    "$AI_PROVIDER": "$AI_PROVIDER:default",
+    "openai": "openai:whisper"
   }
 }
 EOF
@@ -555,9 +633,10 @@ services:
           printf '#!/bin/bash\nexec bash "%s" "\$@"\n' "\$\$f" > "/usr/local/bin/\$\$bn"
           chmod +x "/usr/local/bin/\$\$bn"
         done < <(find /app/skills -type f \\( -name "nexhelper-*" -o -path "*/scripts/*.sh" \\) -print0)
+        ln -sf /usr/local/bin/nexhelper-reminder /usr/local/bin/nexhelper-remind 2>/dev/null || true
         command -v nexhelper-doc >/dev/null 2>&1 || echo "⚠️ nexhelper-doc missing on PATH"
         nexhelper-set-reminder --help >/dev/null 2>&1 || echo "⚠️ nexhelper-set-reminder missing or not executable"
-        [ -n "\${OPENAI_BASE_URL:-}" ] || echo "⚠️ OPENAI_BASE_URL is unset; OpenRouter API keys can fail for memory_search/image/pdf/whisper clients"
+        [ -n "\${OPENAI_BASE_URL:-}" ] || echo "⚠️ OPENAI_BASE_URL is unset; LLM API calls may fail"
         openclaw doctor --fix >/dev/null 2>&1 || true
         openclaw gateway run --port $PORT --bind lan &
         GW_PID=\$\$!
@@ -574,7 +653,7 @@ services:
         openclaw cron add --name health-monitor --cron "0 */6 * * *" --message "Background: run nexhelper-healthcheck. If any checks are degraded, notify admin via nexhelper-notify. Stay silent if all ok." --no-deliver --session isolated 2>/dev/null || true
         openclaw cron add --name check-reminders --every 5m --message "Background: run nexhelper-reminder check. If any reminders are due, send each one to the respective user with nexhelper-notify. If nothing is due, stay completely silent — do NOT send any message." --no-deliver --session isolated 2>/dev/null || true
         _nx_cron_add --name budget-check --cron "0 * * * *" --message "Check entity budgets and send alerts if thresholds exceeded. Use exec: nexhelper-entity check" --announce --channel telegram --session isolated
-        _nx_cron_add --name daily-summary --cron "0 18 * * *" --message "Generate daily summary of documents processed today including health status" --announce --channel telegram --session isolated
+        openclaw cron add --name daily-summary --cron "0 18 * * *" --message "Generate daily summary of documents processed today including health status. If all ok, stay silent — do NOT broadcast unless something requires attention." --no-deliver --session isolated 2>/dev/null || true
         _nx_cron_add --name retention-job --cron "0 2 * * *" --message "Run retention and purge deleted documents. Use exec: nexhelper-retention purge" --announce --channel telegram --session isolated
         wait \$\$GW_PID
     ports:
@@ -586,16 +665,20 @@ services:
       - ./logs:/app/logs
       - nexhelper-data-${SLUG}:/root/.openclaw
     environment:
-      - OPENAI_API_KEY=\${OPENAI_API_KEY:-\${OPENROUTER_API_KEY:-}}
-      - OPENAI_BASE_URL=\${OPENAI_BASE_URL:-https://openrouter.ai/api/v1}
-      - OPENROUTER_API_KEY=\${OPENROUTER_API_KEY:-\${OPENAI_API_KEY:-}}
-      - OPENROUTER_BASE_URL=\${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      - OPENAI_API_KEY=$AI_API_KEY
+      - OPENAI_BASE_URL=$AI_BASE_URL
+      - AI_PROVIDER=$AI_PROVIDER
+      - AI_API_KEY=$AI_API_KEY
+      - AI_BASE_URL=$AI_BASE_URL
+      - GEMINI_API_KEY=\${GEMINI_API_KEY:-}
+      - OPENROUTER_API_KEY=\${OPENROUTER_API_KEY:-}
+      - WHISPER_API_KEY=$WHISPER_API_KEY
+      - WHISPER_BASE_URL=$WHISPER_BASE_URL
+      - WHISPER_MODEL=$WHISPER_MODEL
       - STORAGE_DIR=/root/.openclaw/workspace
-      - USE_OPENROUTER=\${USE_OPENROUTER:-1}
       - EMBEDDING_MODEL=\${EMBEDDING_MODEL:-$EMBEDDING_MODEL}
       - DEFAULT_DELIVERY_TO=\${DEFAULT_DELIVERY_TO:-$DELIVERY_TO}
       - TELEGRAM_BOT_TOKEN=\${TELEGRAM_BOT_TOKEN:-}
-      - NEXHELPER_LANG=\${NEXHELPER_LANG:-de}
       - PORT=$PORT
       - NODE_ENV=production
       - CUSTOMER_ID=$CUSTOMER_ID
@@ -639,11 +722,16 @@ cat <<EOF > "$CUSTOMER_DIR/.env"
 # NexHelper Environment: $CUSTOMER_NAME
 # Generated: $(date -Iseconds)
 
-OPENAI_API_KEY=$API_KEY
-OPENAI_BASE_URL=$OPENROUTER_BASE_URL
-OPENROUTER_API_KEY=$API_KEY
-OPENROUTER_BASE_URL=$OPENROUTER_BASE_URL
-USE_OPENROUTER=1
+AI_PROVIDER=$AI_PROVIDER
+AI_API_KEY=$AI_API_KEY
+AI_BASE_URL=$AI_BASE_URL
+OPENAI_API_KEY=$AI_API_KEY
+OPENAI_BASE_URL=$AI_BASE_URL
+GEMINI_API_KEY=${GEMINI_API_KEY:-}
+OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+WHISPER_API_KEY=$WHISPER_API_KEY
+WHISPER_BASE_URL=$WHISPER_BASE_URL
+WHISPER_MODEL=$WHISPER_MODEL
 EMBEDDING_MODEL=$EMBEDDING_MODEL
 DEFAULT_DELIVERY_TO=$DELIVERY_TO
 TELEGRAM_BOT_TOKEN=${TELEGRAM_TOKEN:-}
@@ -750,7 +838,7 @@ Du bist **NexHelper** - ein digitaler Dokumenten-Assistent für ${CUSTOMER_NAME}
 
 - **Name:** NexHelper
 - **Rolle:** Dokumenten-Assistent für KMU
-- **Sprache:** Deutsch
+- **Sprache:** Antworte IMMER in der Sprache, in der der Nutzer schreibt. Erkenne die Sprache automatisch. Wechsle nie die Sprache ohne Aufforderung.
 - **Emoji:** 📄
 
 ---
@@ -784,6 +872,11 @@ storage/
 ---
 
 ## WAS DU TUST
+
+### 0. Sprachnachricht empfangen
+Sprachnachrichten werden automatisch transkribiert, bevor sie bei dir ankommen — du siehst den Text direkt in der Nachricht. Kein exec, kein write nötig. Verarbeite den transkribierten Text genau wie eine normale Textnachricht.
+
+---
 
 ### 1. Dokumente empfangen
 Wenn ein Nutzer ein Bild oder PDF sendet:
@@ -820,6 +913,12 @@ memory_search "[RECHNUNGSNUMMER]"
 
 Rufe das exec tool auf mit command:
 `nexhelper-doc store --type [typ] --amount [betrag] --supplier [lieferant] --number [nummer] --date [yyyy-mm-dd] --entity [entity] --file [datei] --source-text '[nachricht]' --idempotency-key [event-id]`
+
+**Schritt 3b: Projekt-Hinweis**
+Wenn das Tool-Ergebnis `suggestProject: true` enthält (kein Projekt erkannt):
+Frage kurz nach dem Projekt: "📁 Zu welchem Projekt/Baustelle gehört dieses Dokument? (oder 'kein')"
+Wenn der Nutzer antwortet: `exec nexhelper-doc update <doc_id> --field project --value "<antwort>"`
+Wenn der Nutzer "kein" / "keins" / "egal" / "–" antwortet: kein Update nötig.
 
 **Schritt 4: In Memory spiegeln**
 ```
@@ -868,6 +967,12 @@ Verarbeite... ━━━━━━━━━━░░░░░ 0/5
 💰 Gesamt: €5.624,56
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+#### Zusätzliche Seiten (Mehrseitige Dokumente):
+Wenn der Nutzer "Seite 2", "nächste Seite", "weiteres Foto", "noch ein Foto" schreibt und
+auf ein vorheriges Dokument Bezug nimmt:
+1. Speichere neue Seite: \`exec nexhelper-doc append --id <vorherige_doc_id> --file <neues_foto>\`
+2. Bestätige: "✅ Seite 2 zu [DOC_NR] hinzugefügt (jetzt [N] Seiten)"
 
 ---
 
@@ -1287,19 +1392,26 @@ Du bist **kein**:
 - Informationsquelle für allgemeine Fragen
 - Unterhaltungsbote
 
-Wenn dich jemand nach etwas anderem fragt:
+Wenn du eine Nachricht nicht einordnen kannst (Tool gibt `status: "noop"` zurück):
+Antworte NICHT mit einer generischen Aussage. Zeige konkret was du kannst — in der Sprache des Nutzers:
 
-**Beispiel:**
-> User: "Erzähl mir einen Witz"
-> 
-> Bot: "Ich bin dein Dokumenten-Assistent! 😊
->      
->      Ich helfe bei:
->      • Dokumente erfassen (Foto senden)
->      • Dokumente suchen
->      • Erinnerungen setzen
->      
->      Was kann ich für dich tun?"
+**Beispiel (Deutsch):**
+> "Ich habe verstanden: '[ORIGINAL_TEXT]'
+> Ich kann helfen mit:
+> 📄 Dokument speichern — einfach ein Foto/PDF senden
+> 🔍 Suchen — z.B. 'Rechnung Müller März'
+> ⏰ Erinnerung — z.B. 'Erinnere mich morgen um 9 Uhr'
+> 📊 Status — schreib 'Status'
+> ℹ️ Überblick — schreib /start"
+
+**Beispiel (Englisch):**
+> "I understood: '[ORIGINAL_TEXT]'
+> I can help with:
+> 📄 Save document — just send a photo/PDF
+> 🔍 Search — e.g. 'Invoice Miller March'
+> ⏰ Reminder — e.g. 'Remind me tomorrow at 9am'
+> 📊 Status — write 'Status'
+> ℹ️ Overview — write /start"
 
 ---
 
@@ -1564,8 +1676,8 @@ if [ "${RUN_SMOKE_ON_START:-true}" = "true" ]; then
       docker-compose exec -T nexhelper openclaw cron add \
         --name "daily-summary" \
         --cron "0 18 * * *" \
-        --message "Generate daily summary of documents processed today" \
-        --announce --channel telegram --session isolated "${CRON_TO_ARGS[@]}" 2>/dev/null || true
+        --message "Generate daily summary of documents processed today including health status. If all ok, stay silent — do NOT broadcast unless something requires attention." \
+        --no-deliver --session isolated 2>/dev/null || true
       
       docker-compose exec -T nexhelper openclaw cron add \
         --name "retention-job" \
@@ -2022,8 +2134,8 @@ if [ "$AUTO_START" = true ]; then
         docker exec -it "$INSTANCE_NAME" openclaw cron add \
           --name "daily-summary" \
           --cron "0 18 * * *" \
-          --message "Generate daily summary of documents processed today" \
-          --announce --channel telegram --session isolated "${CRON_TO_ARGS[@]}" 2>/dev/null || true
+          --message "Generate daily summary of documents processed today including health status. If all ok, stay silent — do NOT broadcast unless something requires attention." \
+          --no-deliver --session isolated 2>/dev/null || true
         
         docker exec -it "$INSTANCE_NAME" openclaw cron add \
           --name "retention-job" \
