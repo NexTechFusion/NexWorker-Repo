@@ -47,18 +47,18 @@ case "$AI_PROVIDER" in
   gemini)
     AI_API_KEY="${GEMINI_API_KEY:-${AI_API_KEY:-}}"
     AI_BASE_URL="${AI_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai}"
-    DEFAULT_MODEL="${DEFAULT_MODEL:-gemini-2.0-flash}"
-    IMAGE_MODEL="${IMAGE_MODEL:-gemini-2.0-flash}"
-    PDF_MODEL="${PDF_MODEL:-gemini-2.0-flash}"
-    MODEL_FALLBACKS="${MODEL_FALLBACKS:-[\"gemini-2.5-flash-preview-05-20\",\"gemini-1.5-flash\"]}"
+    DEFAULT_MODEL="${DEFAULT_MODEL:-gemini-3-flash-preview}"
+    IMAGE_MODEL="${IMAGE_MODEL:-gemini-3-flash-preview}"
+    PDF_MODEL="${PDF_MODEL:-gemini-3-flash-preview}"
+    MODEL_FALLBACKS="${MODEL_FALLBACKS:-[\"gemini-2.5-flash\",\"gemini-2.5-flash\"]}"
     ;;
   openrouter)
     AI_API_KEY="${OPENROUTER_API_KEY:-${AI_API_KEY:-}}"
     AI_BASE_URL="${AI_BASE_URL:-https://openrouter.ai/api/v1}"
     DEFAULT_MODEL="${DEFAULT_MODEL:-openrouter/google/gemini-3-flash-preview}"
     IMAGE_MODEL="${IMAGE_MODEL:-openrouter/google/gemini-3-flash-preview}"
-    PDF_MODEL="${PDF_MODEL:-openrouter/google/gemini-2.0-flash-001}"
-    MODEL_FALLBACKS="${MODEL_FALLBACKS:-[\"openrouter/google/gemini-2.5-flash\",\"openrouter/google/gemini-2.0-flash-001\"]}"
+    PDF_MODEL="${PDF_MODEL:-openrouter/google/gemini-3-flash-preview-001}"
+    MODEL_FALLBACKS="${MODEL_FALLBACKS:-[\"openrouter/google/gemini-2.5-flash\",\"openrouter/google/gemini-3-flash-preview-001\"]}"
     ;;
   openai)
     AI_API_KEY="${OPENAI_API_KEY:-${AI_API_KEY:-}}"
