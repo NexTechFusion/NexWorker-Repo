@@ -47,6 +47,24 @@ function Add-Result {
   }
 }
 
+# Runs a bash command in the container via a temp script file to avoid
+# PowerShell 5.x Windows argument-quoting issues with JSON containing double-quotes.
+function Invoke-ContainerScript {
+  param(
+    [string]$InstanceName,
+    [string]$BashCommand
+  )
+  $ErrorActionPreference = "Continue"
+  $tmpLocal = [System.IO.Path]::GetTempFileName() -replace '\.tmp$','.sh'
+  $scriptContent = "#!/bin/bash`n$BashCommand`n"
+  [System.IO.File]::WriteAllText($tmpLocal, $scriptContent.Replace("`r`n", "`n"), [System.Text.Encoding]::ASCII)
+  docker cp $tmpLocal "${InstanceName}:/tmp/nx_cscript.sh" 2>&1 | Out-Null
+  Remove-Item $tmpLocal -ErrorAction SilentlyContinue
+  $raw = docker exec $InstanceName bash -l /tmp/nx_cscript.sh 2>&1
+  $ErrorActionPreference = "Stop"
+  return $raw
+}
+
 function Invoke-AgentTurn {
   param(
     [string]$InstanceName,
@@ -707,8 +725,8 @@ try {
   $ErrorActionPreference = "Stop"
   try {
     $cronAllJson = $cronListAllText | ConvertFrom-Json -ErrorAction Stop
-    $hasHealthMon = ($cronAllJson.jobs | Where-Object { $_.name -eq "health-monitor" }).Count -gt 0
-    $hasRemAuditor = ($cronAllJson.jobs | Where-Object { $_.name -eq "reminder-auditor" }).Count -gt 0
+    $hasHealthMon = $cronAllJson.jobs.name -contains "health-monitor"
+    $hasRemAuditor = $cronAllJson.jobs.name -contains "reminder-auditor"
     if ($hasHealthMon -and $hasRemAuditor) {
       Add-Result "health_monitor_cron" "pass" "health-monitor and reminder-auditor crons registered"
     } elseif ($hasHealthMon) {
@@ -720,28 +738,93 @@ try {
     Add-Result "health_monitor_cron" "warn" "could not parse cron list"
   }
 
-  # --- Healthcheck includes liveness checks ---
+  # --- Healthcheck includes liveness checks (use login shell for PATH) ---
   $ErrorActionPreference = "Continue"
-  $hcRaw = docker exec $instanceName sh -c "nexhelper-healthcheck 2>&1" 2>&1
+  $hcRaw = docker exec $instanceName sh -lc "nexhelper-healthcheck 2>&1" 2>&1
   $hcText = ($hcRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
   $ErrorActionPreference = "Stop"
   try {
     $hcLine = ($hcText -split "`n" | Where-Object { $_.TrimStart().StartsWith('{') } | Select-Object -First 1)
-    $hcJson = $hcLine | ConvertFrom-Json -ErrorAction Stop
-    $hasApiKey = ($hcJson.checks | Where-Object { $_.name -eq "api_key_configured" }).Count -gt 0
-    $hasProvider = ($hcJson.checks | Where-Object { $_.name -eq "ai_provider_reachable" }).Count -gt 0
+    $hcJson = $hcLine.Trim() | ConvertFrom-Json -ErrorAction Stop
+    $hasApiKey = $hcJson.checks.name -contains "api_key_configured"
+    $hasProvider = $hcJson.checks.name -contains "ai_provider_reachable"
     if ($hasApiKey -and $hasProvider) {
-      Add-Result "healthcheck_liveness_checks" "pass" "api_key and provider checks present"
+      Add-Result "healthcheck_liveness_checks" "pass" "api_key and provider checks present (status=$($hcJson.status))"
     } else {
       Add-Result "healthcheck_liveness_checks" "fail" "missing liveness checks (api_key=$hasApiKey provider=$hasProvider)"
     }
   } catch {
-    Add-Result "healthcheck_liveness_checks" "warn" "could not parse healthcheck output"
+    Add-Result "healthcheck_liveness_checks" "warn" "could not parse healthcheck output: $_"
+  }
+
+  # --- nexhelper-locale script available ---
+  $ErrorActionPreference = "Continue"
+  $localeRaw = docker exec $instanceName sh -lc "nexhelper-locale welcome Lieferant testuser123 2>&1" 2>&1
+  $localeText = ($localeRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
+  $ErrorActionPreference = "Stop"
+  if ($localeText -match "NexHelper|Welcome" -and $localeText -match "testuser123") {
+    Add-Result "locale_script_available" "pass" "nexhelper-locale outputs multilingual welcome"
+  } else {
+    Add-Result "locale_script_available" "fail" "nexhelper-locale not available or wrong output"
+  }
+
+  # --- /start command returns user ID ---
+  $startEventJson = '{"id":"start_test","kind":"message","text":"/start","senderId":"startuser"}'
+  $startRaw = Invoke-ContainerScript -InstanceName $instanceName -BashCommand "nexhelper-workflow run --event-json '$startEventJson' 2>&1"
+  $startText = ($startRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
+  $ErrorActionPreference = "Stop"
+  if ($startText -match '"status":"start"' -and $startText -match "startuser") {
+    Add-Result "start_command_handler" "pass" "/start returns user ID and role"
+  } else {
+    Add-Result "start_command_handler" "fail" "/start not handled: $($startText.Substring(0,[Math]::Min(120,$startText.Length)))"
+  }
+
+  # --- userMessage field present in doc responses (multilingual) ---
+  $ErrorActionPreference = "Continue"
+  $docSearchRaw = docker exec $instanceName sh -lc "nexhelper-doc search --query 'TestQuery2026' --semantic false 2>&1" 2>&1
+  $docSearchText = ($docSearchRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
+  $ErrorActionPreference = "Stop"
+  try {
+    $docSearchLine = ($docSearchText -split "`n" | Where-Object { $_.TrimStart().StartsWith('{') } | Select-Object -First 1)
+    $docSearchJson = $docSearchLine.Trim() | ConvertFrom-Json -ErrorAction Stop
+    if ($docSearchJson.userMessage -and $docSearchJson.userMessage.Length -gt 0) {
+      Add-Result "doc_user_message_field" "pass" "search result has userMessage: $($docSearchJson.userMessage.Substring(0,60))..."
+    } else {
+      Add-Result "doc_user_message_field" "fail" "search result missing userMessage field"
+    }
+  } catch {
+    Add-Result "doc_user_message_field" "warn" "could not parse doc search output"
+  }
+
+  # --- Project tag store + search ---
+  $ErrorActionPreference = "Continue"
+  $projStoreRaw = docker exec $instanceName sh -lc "nexhelper-doc store --type rechnung --amount 999 --supplier TestBauGmbH --number P-2026-TEST --date 2026-01-01 --project 'BaustelleTest' 2>&1" 2>&1
+  $projStoreText = ($projStoreRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
+  $ErrorActionPreference = "Stop"
+  try {
+    $projStoreLine = ($projStoreText -split "`n" | Where-Object { $_.TrimStart().StartsWith('{') } | Select-Object -First 1)
+    $projStoreJson = $projStoreLine.Trim() | ConvertFrom-Json -ErrorAction Stop
+    if ($projStoreJson.status -eq "stored" -and $projStoreJson.document.project -eq "BaustelleTest") {
+      # Now search by project
+      $projSearchRaw = docker exec $instanceName sh -lc "nexhelper-doc search --project 'BaustelleTest' --semantic false 2>&1" 2>&1
+      $projSearchText = ($projSearchRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
+      $projSearchLine = ($projSearchText -split "`n" | Where-Object { $_.TrimStart().StartsWith('{') } | Select-Object -First 1)
+      $projSearchJson = $projSearchLine.Trim() | ConvertFrom-Json -ErrorAction Stop
+      if ($projSearchJson.count -gt 0) {
+        Add-Result "project_tag_store_search" "pass" "stored with project=BaustelleTest, search returned $($projSearchJson.count) result(s)"
+      } else {
+        Add-Result "project_tag_store_search" "fail" "project search returned 0 results after store"
+      }
+    } else {
+      Add-Result "project_tag_store_search" "fail" "store with --project failed: status=$($projStoreJson.status)"
+    }
+  } catch {
+    Add-Result "project_tag_store_search" "warn" "could not parse project store/search output: $_"
   }
 
   # --- whois command available in workflow (also seeds user registry via senderId) ---
-  $ErrorActionPreference = "Continue"
-  $whoisRaw = docker exec $instanceName sh -lc "nexhelper-workflow run --event-json '{\"id\":\"whois_test\",\"kind\":\"message\",\"text\":\"/whois nonexistent\",\"senderId\":\"testuser\",\"senderUsername\":\"testuser\"}' 2>&1" 2>&1
+  $whoisEventJson = '{"id":"whois_test","kind":"message","text":"/whois nonexistent","senderId":"testuser","senderUsername":"testuser"}'
+  $whoisRaw = Invoke-ContainerScript -InstanceName $instanceName -BashCommand "nexhelper-workflow run --event-json '$whoisEventJson' 2>&1"
   $whoisText = ($whoisRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
   $ErrorActionPreference = "Stop"
   if ($whoisText -match "not_found|found") {
@@ -752,16 +835,16 @@ try {
 
   # --- User registry populated by first contact ---
   $ErrorActionPreference = "Continue"
-  $usersRaw = docker exec $instanceName sh -c "cat /root/.openclaw/workspace/users.json 2>/dev/null || echo '{}'" 2>&1
+  $usersRaw = docker exec $instanceName sh -lc "cat /root/.openclaw/workspace/users.json 2>/dev/null || echo '{}'" 2>&1
   $usersText = ($usersRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
   $ErrorActionPreference = "Stop"
   try {
-    $usersJson = $usersText.Trim() | ConvertFrom-Json -ErrorAction Stop
+    $usersJson = ($usersText -split "`n" | Where-Object { $_.TrimStart().StartsWith('{') } | Select-Object -First 1).Trim() | ConvertFrom-Json -ErrorAction Stop
     $userCount = ($usersJson.PSObject.Properties | Measure-Object).Count
     if ($userCount -gt 0) {
       Add-Result "user_registry_populated" "pass" "registry has $userCount user(s)"
     } else {
-      Add-Result "user_registry_populated" "warn" "user registry empty (no chat interaction logged)"
+      Add-Result "user_registry_populated" "warn" "user registry empty (whois may have registered but registry not flushed yet)"
     }
   } catch {
     Add-Result "user_registry_populated" "warn" "could not parse users.json"
@@ -770,13 +853,29 @@ try {
   # --- Health monitor system event routes correctly ---
   $ErrorActionPreference = "Continue"
   $hmEventJson = '{"id":"hm_test","kind":"systemEvent","text":"Run system health check and alert admin if status is degraded"}'
-  $hmRaw = docker exec $instanceName sh -lc "nexhelper-workflow run --event-json '$hmEventJson' 2>&1" 2>&1
+  $hmRaw = Invoke-ContainerScript -InstanceName $instanceName -BashCommand "nexhelper-workflow run --event-json '$hmEventJson' 2>&1"
   $hmText = ($hmRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
   $ErrorActionPreference = "Stop"
   if ($hmText -match "health_monitor") {
     Add-Result "health_monitor_event" "pass" "health-monitor system event routes correctly"
   } else {
     Add-Result "health_monitor_event" "fail" "health-monitor event not handled: $($hmText.Substring(0,[Math]::Min(100,$hmText.Length)))"
+  }
+
+  # --- policy.json contains language field ---
+  $ErrorActionPreference = "Continue"
+  $policyRaw = docker exec $instanceName sh -lc "cat /root/.openclaw/workspace/policy.json 2>/dev/null || echo '{}'" 2>&1
+  $policyText = ($policyRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
+  $ErrorActionPreference = "Stop"
+  try {
+    $policyJson = ($policyText -split "`n" | Where-Object { $_.TrimStart().StartsWith('{') } | Select-Object -First 1).Trim() | ConvertFrom-Json -ErrorAction Stop
+    if ($policyJson.language -and $policyJson.language -in @("de","en")) {
+      Add-Result "policy_language_field" "pass" "policy has language=$($policyJson.language)"
+    } else {
+      Add-Result "policy_language_field" "fail" "policy missing language field or invalid value"
+    }
+  } catch {
+    Add-Result "policy_language_field" "warn" "could not parse policy.json"
   }
 
   # --- Mandatory log lookup ---

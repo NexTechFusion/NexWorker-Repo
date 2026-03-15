@@ -10,6 +10,8 @@ HEALTH_SCRIPT="$ROOT_DIR/skills/common/nexhelper-healthcheck"
 POLICY_SCRIPT="$ROOT_DIR/skills/common/nexhelper-policy"
 ADMIN_REPORT_SCRIPT="$ROOT_DIR/skills/common/nexhelper-admin-report"
 NOTIFY_SCRIPT="$ROOT_DIR/skills/common/nexhelper-notify"
+LOCALE_SCRIPT="$ROOT_DIR/skills/common/nexhelper-locale"
+WORKFLOW_SCRIPT="$ROOT_DIR/skills/common/nexhelper-workflow"
 TMP_DIR="${TMP_DIR:-$ROOT_DIR/.tmp/regression}"
 STORAGE_DIR="$TMP_DIR/storage"
 export STORAGE_DIR
@@ -20,7 +22,7 @@ mkdir -p "$STORAGE_DIR/canonical/documents" "$STORAGE_DIR/canonical/reminders" \
          "$STORAGE_DIR/audit" "$STORAGE_DIR/idempotency" "$STORAGE_DIR/ops/smoke" \
          "$STORAGE_DIR/canonical/indices"
 
-printf '%s\n' '{"admins":[],"memberPermissions":{"store":true,"search":true,"list":true,"get":true,"stats":true,"reminder_create":true,"reminder_list":true,"reminder_delete_own":true},"adminNotificationChannel":"","createdAt":"2026-01-01T00:00:00Z","tenantId":"test","tenantName":"Test Suite"}' \
+printf '%s\n' '{"admins":[],"memberPermissions":{"store":true,"search":true,"list":true,"get":true,"stats":true,"reminder_create":true,"reminder_list":true,"reminder_delete_own":true},"adminNotificationChannel":"","language":"de","createdAt":"2026-01-01T00:00:00Z","tenantId":"test","tenantName":"Test Suite"}' \
   > "$STORAGE_DIR/policy.json"
 
 pass=0
@@ -175,6 +177,66 @@ if [ -x "$NOTIFY_SCRIPT" ]; then
 else
   fail=$((fail+1))
   results="$(echo "$results" | jq -c '. + [{name:"notify_script_executable",status:"fail"}]')"
+fi
+
+# ── nexhelper-locale — multilingual messages ──────────────────────────────────
+
+if [ -x "$LOCALE_SCRIPT" ]; then
+  locale_welcome="$(NX_LANG=de "$LOCALE_SCRIPT" welcome TestSupplier user123 2>/dev/null || true)"
+  assert_true "locale_de_welcome_has_id" "echo '$locale_welcome' | grep -q 'user123'"
+  locale_en="$(NX_LANG=en "$LOCALE_SCRIPT" start uid42 member 2>/dev/null || true)"
+  assert_true "locale_en_start_has_uid" "echo '$locale_en' | grep -q 'uid42'"
+  assert_true "locale_de_forbidden_has_user_id" \
+    "NX_LANG=de '$LOCALE_SCRIPT' forbidden testuid | grep -q 'testuid'"
+  assert_true "locale_noop_de_not_empty" \
+    "[ -n \"\$(NX_LANG=de '$LOCALE_SCRIPT' noop)\" ]"
+else
+  fail=$((fail+1))
+  results="$(echo "$results" | jq -c '. + [{name:"locale_script_executable",status:"fail"}]')"
+fi
+
+# ── nexhelper-doc --project store + search ───────────────────────────────────
+
+proj_store="$(STORAGE_DIR="$STORAGE_DIR" "$DOC_SCRIPT" store \
+  --type rechnung --amount 250 --supplier "BauStoff AG" \
+  --number "BS-2026-001" --date 2026-03-01 \
+  --project "BaustelleMusterstr" 2>/dev/null || true)"
+assert_true "doc_store_project_field_set" \
+  "echo '$proj_store' | jq -e '.document.project == \"BaustelleMusterstr\"' >/dev/null"
+assert_true "doc_store_has_user_message" \
+  "echo '$proj_store' | jq -e '.userMessage' >/dev/null"
+
+proj_search="$(STORAGE_DIR="$STORAGE_DIR" "$DOC_SCRIPT" search \
+  --project "BaustelleMusterstr" --semantic false 2>/dev/null || true)"
+assert_true "doc_search_project_returns_results" \
+  "echo '$proj_search' | jq -e '.count > 0' >/dev/null"
+assert_true "doc_search_has_user_message" \
+  "echo '$proj_search' | jq -e '.userMessage' >/dev/null"
+
+proj_search_miss="$(STORAGE_DIR="$STORAGE_DIR" "$DOC_SCRIPT" search \
+  --project "NichtVorhandenerProjekt" --semantic false 2>/dev/null || true)"
+assert_true "doc_search_project_miss_zero_count" \
+  "echo '$proj_search_miss' | jq -e '.count == 0' >/dev/null"
+
+# stats should include byProject field
+proj_stats="$(STORAGE_DIR="$STORAGE_DIR" "$DOC_SCRIPT" stats 2>/dev/null || true)"
+assert_true "doc_stats_has_user_message" \
+  "echo '$proj_stats' | jq -e '.userMessage' >/dev/null"
+assert_true "doc_stats_has_by_project" \
+  "echo '$proj_stats' | jq -e '.byProject | type == \"array\"' >/dev/null"
+
+# ── workflow /start command ───────────────────────────────────────────────────
+
+if [ -x "$WORKFLOW_SCRIPT" ]; then
+  start_result="$(STORAGE_DIR="$STORAGE_DIR" "$WORKFLOW_SCRIPT" run \
+    --event-json '{"id":"start_unit_test","kind":"message","text":"/start","senderId":"unit_test_user"}' \
+    2>/dev/null || true)"
+  assert_true "workflow_start_status" \
+    "echo '$start_result' | jq -e '.result.status == \"start\"' >/dev/null"
+  assert_true "workflow_start_has_user_message" \
+    "echo '$start_result' | jq -e '.result.userMessage' >/dev/null"
+  assert_true "workflow_start_has_user_id" \
+    "echo '$start_result' | jq -e '.result.userId == \"unit_test_user\"' >/dev/null"
 fi
 
 # ── Summary ──────────────────────────────────────────────────────────────────

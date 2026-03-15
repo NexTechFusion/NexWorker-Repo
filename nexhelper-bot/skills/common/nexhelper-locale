@@ -1,0 +1,137 @@
+#!/bin/bash
+# Multilingual message library for NexHelper.
+# Supported languages: de (default), en
+# Language resolved from NX_LANG env var or policy.json (set by workflow/core).
+#
+# Usage (sourced):  source nexhelper-locale; nx_msg <key> [arg1 arg2 arg3]
+# Usage (direct):   nexhelper-locale <key> [args...]
+
+NX_LANG="${NX_LANG:-${NEXHELPER_LANG:-de}}"
+
+nx_msg() {
+  local key="${1:-}"
+  shift || true
+  local a1="${1:-}" a2="${2:-}" a3="${3:-}"
+  local lang="${NX_LANG:-de}"
+
+  case "${lang}:${key}" in
+
+    # ─── Welcome (first contact) ─────────────────────────────────────────────
+    de:welcome)
+      printf "👋 Willkommen bei NexHelper!\n\nIch bin dein intelligenter Büroassistent.\n\n📄 *Dokumente* — Schick Fotos von Rechnungen, Lieferscheinen oder Belegen.\n🔍 *Suchen* — \"Zeig mir alle Rechnungen von %s\"\n📁 *Baustelle/Projekt* — \"Suche Baustelle Musterstraße\"\n⏰ *Erinnerungen* — \"Erinnere mich am Freitag um 9 Uhr\"\n📊 *Überblick* — /start\n\n🪪 Deine Nutzer-ID: \`%s\`\n_(Teile sie mit deinem Admin für erweiterte Rechte.)_" \
+        "${a1:-Lieferant}" "${a2:-?}" ;;
+    en:welcome)
+      printf "👋 Welcome to NexHelper!\n\nI'm your intelligent office assistant.\n\n📄 *Documents* — Send photos of invoices, delivery notes or receipts.\n🔍 *Search* — \"Show me all invoices from %s\"\n📁 *Project/Site* — \"Search project Main Street\"\n⏰ *Reminders* — \"Remind me on Friday at 9am\"\n📊 *Overview* — /start\n\n🪪 Your User ID: \`%s\`\n_(Share it with your admin for extended permissions.)_" \
+        "${a1:-supplier}" "${a2:-?}" ;;
+
+    # ─── /start command ───────────────────────────────────────────────────────
+    de:start)
+      printf "📋 *NexHelper — Dein Überblick*\n\n🪪 Nutzer-ID: \`%s\`\n👤 Rolle: *%s*\n\n*Befehle:*\n📄 Foto/Datei senden → wird gespeichert\n🔍 \"Suche Rechnung Müller\" → Dokument finden\n📁 \"Suche Baustelle Musterstraße\" → Projekt-Filter\n⏰ \"Erinnere mich am Mo 8 Uhr\" → Erinnerung\n📊 \"Status\" → Dokumentenstatistik\n\n*Admin-Befehle:*\n/whois @benutzername → Nutzer-ID nachschlagen" \
+        "${a1:-?}" "${a2:-Mitglied}" ;;
+    en:start)
+      printf "📋 *NexHelper — Your Overview*\n\n🪪 User ID: \`%s\`\n👤 Role: *%s*\n\n*Commands:*\n📄 Send photo/file → gets stored\n🔍 \"Search invoice Müller\" → find document\n📁 \"Search project Main St\" → project filter\n⏰ \"Remind me Mon 8am\" → set reminder\n📊 \"Status\" → document statistics\n\n*Admin Commands:*\n/whois @username → look up user ID" \
+        "${a1:-?}" "${a2:-member}" ;;
+
+    # ─── Document stored ──────────────────────────────────────────────────────
+    de:doc_stored)
+      printf "✅ Gespeichert! %s (ID: \`%s\`)" "${a1:-Dokument}" "${a2:-?}" ;;
+    en:doc_stored)
+      printf "✅ Saved! %s (ID: \`%s\`)" "${a1:-Document}" "${a2:-?}" ;;
+
+    # ─── Document duplicate ───────────────────────────────────────────────────
+    de:doc_duplicate)
+      printf "⚠️ Dieses Dokument existiert bereits (ID: \`%s\`). Kein Duplikat gespeichert." "${a1:-?}" ;;
+    en:doc_duplicate)
+      printf "⚠️ This document already exists (ID: \`%s\`). No duplicate saved." "${a1:-?}" ;;
+
+    # ─── Document not found ───────────────────────────────────────────────────
+    de:doc_not_found)
+      printf "🔍 Nichts gefunden für \"%s\". Versuch eine andere Beschreibung." "${a1:-}" ;;
+    en:doc_not_found)
+      printf "🔍 Nothing found for \"%s\". Try a different search term." "${a1:-}" ;;
+
+    # ─── Search results found ─────────────────────────────────────────────────
+    de:doc_found)
+      printf "🔍 %s Ergebnis(se) für \"%s\"." "${a1:-0}" "${a2:-}" ;;
+    en:doc_found)
+      printf "🔍 Found %s result(s) for \"%s\"." "${a1:-0}" "${a2:-}" ;;
+
+    # ─── Project filter active ────────────────────────────────────────────────
+    de:project_filter)
+      printf "📁 Dokumente für Baustelle/Projekt: *%s*" "${a1:-}" ;;
+    en:project_filter)
+      printf "📁 Documents for project/site: *%s*" "${a1:-}" ;;
+
+    # ─── Forbidden (RBAC) ─────────────────────────────────────────────────────
+    de:forbidden)
+      printf "🚫 Diese Aktion erfordert Admin-Berechtigung.\n\n🪪 Deine Nutzer-ID: \`%s\`\nTeile sie mit deinem Admin, damit er dich befördern kann.\n_(Admins: /whois @benutzername → Nutzer-ID nachschlagen)_" "${a1:-?}" ;;
+    en:forbidden)
+      printf "🚫 This action requires admin permission.\n\n🪪 Your User ID: \`%s\`\nShare it with your admin to get promoted.\n_(Admins: /whois @username → look up user ID)_" "${a1:-?}" ;;
+
+    # ─── Document stats ───────────────────────────────────────────────────────
+    de:doc_stats)
+      printf "📊 *Dokumentenstatus*\n📄 Gesamt: %s Dokument(e)\n💶 Summe: €%s" "${a1:-0}" "${a2:-0.00}" ;;
+    en:doc_stats)
+      printf "📊 *Document Status*\n📄 Total: %s document(s)\n💶 Sum: €%s" "${a1:-0}" "${a2:-0.00}" ;;
+
+    # ─── Reminders ────────────────────────────────────────────────────────────
+    de:reminder_set)
+      printf "⏰ Erinnerung gesetzt für %s." "${a1:-den angegebenen Zeitpunkt}" ;;
+    en:reminder_set)
+      printf "⏰ Reminder set for %s." "${a1:-the specified time}" ;;
+
+    # ─── Whois lookup ─────────────────────────────────────────────────────────
+    de:whois_found)
+      printf "👤 Nutzer gefunden:\n🪪 ID: \`%s\`\nBenutzername: @%s\nName: %s" "${a1:-?}" "${a2:-?}" "${a3:-?}" ;;
+    en:whois_found)
+      printf "👤 User found:\n🪪 ID: \`%s\`\nUsername: @%s\nName: %s" "${a1:-?}" "${a2:-?}" "${a3:-?}" ;;
+
+    de:whois_not_found)
+      printf "👤 @%s nicht gefunden.\nBitte den Nutzer bitten, /start zu schreiben — damit wird er registriert." "${a1:-?}" ;;
+    en:whois_not_found)
+      printf "👤 @%s not found.\nAsk the user to send /start — this registers them." "${a1:-?}" ;;
+
+    # ─── Admin role changes ───────────────────────────────────────────────────
+    de:admin_promoted)
+      printf "🛡️ \`%s\` wurde zum Admin befördert." "${a1:-?}" ;;
+    en:admin_promoted)
+      printf "🛡️ \`%s\` has been promoted to admin." "${a1:-?}" ;;
+
+    de:admin_demoted)
+      printf "👤 \`%s\` wurde als Admin entfernt." "${a1:-?}" ;;
+    en:admin_demoted)
+      printf "👤 \`%s\` has been removed as admin." "${a1:-?}" ;;
+
+    # ─── Health monitor ───────────────────────────────────────────────────────
+    de:health_ok)
+      printf "✅ System gesund. Alle Dienste laufen normal." ;;
+    en:health_ok)
+      printf "✅ System healthy. All services running normally." ;;
+
+    de:health_degraded)
+      printf "⚠️ Systemwarnung: Status *%s*\nProbleme: %s\nBitte den Administrator informieren." "${a1:-degraded}" "${a2:-unbekannt}" ;;
+    en:health_degraded)
+      printf "⚠️ System warning: Status *%s*\nIssues: %s\nPlease contact your administrator." "${a1:-degraded}" "${a2:-unknown}" ;;
+
+    # ─── Generic noop / unrecognised message ──────────────────────────────────
+    de:noop)
+      printf "Ich habe deine Nachricht erhalten, bin mir aber nicht sicher was du meinst. Schick ein Dokument oder beschreibe dein Anliegen genauer." ;;
+    en:noop)
+      printf "I received your message but I'm not sure what you mean. Send a document or describe your request more clearly." ;;
+
+    # ─── Daily summary ────────────────────────────────────────────────────────
+    de:daily_summary)
+      printf "%s Tagesbericht: %s Dokument(e), €%s Gesamt | System: %s" "${a1:-📊}" "${a2:-0}" "${a3:-0}" ;;
+    en:daily_summary)
+      printf "%s Daily report: %s document(s), €%s total | System: %s" "${a1:-📊}" "${a2:-0}" "${a3:-0}" ;;
+
+    # ─── Fallback ─────────────────────────────────────────────────────────────
+    *)
+      printf "%s" "${a1:-}" ;;
+  esac
+}
+
+# When executed directly (not sourced): nexhelper-locale <key> [args...]
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  nx_msg "$@"
+fi

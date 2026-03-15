@@ -186,8 +186,12 @@ nx_policy_load() {
   if [ -f "$NX_POLICY_FILE" ]; then
     cat "$NX_POLICY_FILE"
   else
-    echo '{"admins":[],"memberPermissions":{"store":true,"search":true,"list":true,"get":true,"stats":true,"reminder_create":true,"reminder_list":true,"reminder_delete_own":true},"adminNotificationChannel":"","adminIds":[]}'
+    echo '{"admins":[],"memberPermissions":{"store":true,"search":true,"list":true,"get":true,"stats":true,"reminder_create":true,"reminder_list":true,"reminder_delete_own":true},"adminNotificationChannel":"","adminIds":[],"language":"de"}'
   fi
+}
+
+nx_policy_get_language() {
+  nx_policy_load | jq -r '.language // "de"'
 }
 
 nx_role_get() {

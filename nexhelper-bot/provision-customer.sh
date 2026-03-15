@@ -264,6 +264,7 @@ cat <<POLICYEOF > "$CUSTOMER_DIR/storage/policy.json"
     "reminder_delete_own": true
   },
   "adminNotificationChannel": "${DELIVERY_TO:-}",
+  "language": "${NEXHELPER_LANG:-de}",
   "createdAt": "$(date -Iseconds)",
   "tenantId": "$CUSTOMER_ID",
   "tenantName": "$CUSTOMER_NAME"
@@ -561,7 +562,6 @@ services:
         openclaw gateway run --port $PORT --bind lan &
         GW_PID=\$\$!
         sleep 8
-        openclaw cron add --name reminder-auditor --every 1m --system-event "Check reminders audit and sync missing cron jobs for any confirmed but unscheduled reminders" --no-deliver >/dev/null 2>&1 || true
         _NX_TO="\${DEFAULT_DELIVERY_TO:-}"
         _nx_cron_add() {
           if [ -n "\$\$_NX_TO" ]; then
@@ -570,11 +570,12 @@ services:
             openclaw cron add "\$\$@" 2>/dev/null || true
           fi
         }
-        _nx_cron_add --name check-reminders --every 1m --message "Check due reminders and send notifications. Use exec: nexhelper-reminder check" --announce --channel telegram --session isolated
+        openclaw cron add --name reminder-auditor --every 1m --message "Background: audit reminder cron jobs and sync any confirmed but unscheduled reminders. Use exec: nexhelper-reminder-auditor. No user response needed." --no-deliver --session isolated 2>/dev/null || true
+        openclaw cron add --name health-monitor --cron "0 */6 * * *" --message "Background: run nexhelper-healthcheck. If any checks are degraded, notify admin via nexhelper-notify. Stay silent if all ok." --no-deliver --session isolated 2>/dev/null || true
+        openclaw cron add --name check-reminders --every 5m --message "Background: run nexhelper-reminder check. If any reminders are due, send each one to the respective user with nexhelper-notify. If nothing is due, stay completely silent — do NOT send any message." --no-deliver --session isolated 2>/dev/null || true
         _nx_cron_add --name budget-check --cron "0 * * * *" --message "Check entity budgets and send alerts if thresholds exceeded. Use exec: nexhelper-entity check" --announce --channel telegram --session isolated
         _nx_cron_add --name daily-summary --cron "0 18 * * *" --message "Generate daily summary of documents processed today including health status" --announce --channel telegram --session isolated
         _nx_cron_add --name retention-job --cron "0 2 * * *" --message "Run retention and purge deleted documents. Use exec: nexhelper-retention purge" --announce --channel telegram --session isolated
-        openclaw cron add --name health-monitor --cron "0 */6 * * *" --system-event "Run system health check and alert admin if status is degraded" --no-deliver >/dev/null 2>&1 || true
         wait \$\$GW_PID
     ports:
       - "$PORT:$PORT"
@@ -594,6 +595,7 @@ services:
       - EMBEDDING_MODEL=\${EMBEDDING_MODEL:-$EMBEDDING_MODEL}
       - DEFAULT_DELIVERY_TO=\${DEFAULT_DELIVERY_TO:-$DELIVERY_TO}
       - TELEGRAM_BOT_TOKEN=\${TELEGRAM_BOT_TOKEN:-}
+      - NEXHELPER_LANG=\${NEXHELPER_LANG:-de}
       - PORT=$PORT
       - NODE_ENV=production
       - CUSTOMER_ID=$CUSTOMER_ID
@@ -1549,9 +1551,9 @@ if [ "${RUN_SMOKE_ON_START:-true}" = "true" ]; then
       echo "⏰ Setting up scheduled jobs..."
       docker-compose exec -T nexhelper openclaw cron add \
         --name "check-reminders" \
-        --every "1m" \
-        --message "Check due reminders and send notifications. Use exec: nexhelper-reminder check" \
-        --announce --channel telegram --session isolated "${CRON_TO_ARGS[@]}" 2>/dev/null || true
+        --every "5m" \
+        --message "Background: run nexhelper-reminder check. If any reminders are due, send each one to the respective user with nexhelper-notify. If nothing is due, stay completely silent — do NOT send any message." \
+        --no-deliver --session isolated 2>/dev/null || true
       
       docker-compose exec -T nexhelper openclaw cron add \
         --name "budget-check" \
@@ -2007,9 +2009,9 @@ if [ "$AUTO_START" = true ]; then
         echo "⏰ Setting up scheduled jobs..."
         docker exec -it "$INSTANCE_NAME" openclaw cron add \
           --name "check-reminders" \
-          --every "1m" \
-          --message "Check due reminders and send notifications. Use exec: nexhelper-reminder check" \
-          --announce --channel telegram --session isolated "${CRON_TO_ARGS[@]}" 2>/dev/null || true
+          --every "5m" \
+          --message "Background: run nexhelper-reminder check. If any reminders are due, send each one to the respective user with nexhelper-notify. If nothing is due, stay completely silent — do NOT send any message." \
+          --no-deliver --session isolated 2>/dev/null || true
         
         docker exec -it "$INSTANCE_NAME" openclaw cron add \
           --name "budget-check" \
