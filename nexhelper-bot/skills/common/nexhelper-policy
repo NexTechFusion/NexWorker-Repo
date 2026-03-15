@@ -1,0 +1,145 @@
+#!/bin/bash
+# Tenant policy and role enforcement helper.
+# Loaded by workflow, doc-handler, export, and reminder scripts.
+# Policy file: $NX_STORAGE_DIR/policy.json
+# Roles: admin | member (default: member for unknown users)
+
+set -euo pipefail
+
+NX_STORAGE_DIR="${STORAGE_DIR:-/root/.openclaw/workspace/storage}"
+NX_POLICY_FILE="${NX_STORAGE_DIR}/policy.json"
+
+# Protected actions require admin role.
+NX_PROTECTED_ACTIONS="delete hard-delete export email-send upload purge consent-admin promote demote settings"
+
+nx_policy_load() {
+  if [ -f "$NX_POLICY_FILE" ]; then
+    cat "$NX_POLICY_FILE"
+  else
+    echo '{"admins":[],"memberPermissions":{"store":true,"search":true,"list":true,"get":true,"stats":true,"reminder_create":true,"reminder_list":true,"reminder_delete_own":true},"adminNotificationChannel":"","adminIds":[]}'
+  fi
+}
+
+nx_role_get() {
+  local user_id="$1"
+  if [ -z "$user_id" ]; then
+    echo "member"
+    return
+  fi
+  local policy
+  policy="$(nx_policy_load)"
+  local is_admin
+  is_admin="$(echo "$policy" | jq -r --arg u "$user_id" '.admins | any(. == $u)')"
+  if [ "$is_admin" = "true" ]; then
+    echo "admin"
+  else
+    echo "member"
+  fi
+}
+
+nx_require_role() {
+  local user_id="$1"
+  local required_role="$2"
+  local action="${3:-action}"
+  local role
+  role="$(nx_role_get "$user_id")"
+  if [ "$required_role" = "admin" ] && [ "$role" != "admin" ]; then
+    jq -c -n \
+      --arg status "forbidden" \
+      --arg action "$action" \
+      --arg user "$user_id" \
+      --arg role "$role" \
+      '{status:$status,action:$action,user:$user,role:$role,message:"Diese Aktion erfordert Admin-Berechtigung. Bitte deinen Admin um Hilfe."}'
+    return 1
+  fi
+  return 0
+}
+
+nx_is_admin() {
+  local user_id="$1"
+  [ "$(nx_role_get "$user_id")" = "admin" ]
+}
+
+nx_policy_add_admin() {
+  local user_id="$1"
+  local promoted_by="${2:-system}"
+  local policy
+  policy="$(nx_policy_load)"
+  local already
+  already="$(echo "$policy" | jq -r --arg u "$user_id" '.admins | any(. == $u)')"
+  if [ "$already" = "true" ]; then
+    jq -c -n --arg u "$user_id" '{status:"already_admin",userId:$u}'
+    return
+  fi
+  local updated
+  updated="$(echo "$policy" | jq -c --arg u "$user_id" '.admins += [$u]')"
+  printf "%s\n" "$updated" > "$NX_POLICY_FILE"
+  jq -c -n --arg u "$user_id" --arg by "$promoted_by" '{status:"promoted",userId:$u,promotedBy:$by}'
+}
+
+nx_policy_remove_admin() {
+  local user_id="$1"
+  local demoted_by="${2:-system}"
+  local policy
+  policy="$(nx_policy_load)"
+  local updated
+  updated="$(echo "$policy" | jq -c --arg u "$user_id" '.admins = [.admins[] | select(. != $u)]')"
+  printf "%s\n" "$updated" > "$NX_POLICY_FILE"
+  jq -c -n --arg u "$user_id" --arg by "$demoted_by" '{status:"demoted",userId:$u,demotedBy:$by}'
+}
+
+nx_policy_list_admins() {
+  local policy
+  policy="$(nx_policy_load)"
+  echo "$policy" | jq -c '.admins'
+}
+
+nx_policy_set_notification_channel() {
+  local channel="$1"
+  local policy
+  policy="$(nx_policy_load)"
+  local updated
+  updated="$(echo "$policy" | jq -c --arg c "$channel" '.adminNotificationChannel = $c')"
+  printf "%s\n" "$updated" > "$NX_POLICY_FILE"
+}
+
+nx_policy_get_admin_ids() {
+  local policy
+  policy="$(nx_policy_load)"
+  echo "$policy" | jq -r '.admins[]' 2>/dev/null || true
+}
+
+nx_policy_has_any_admin() {
+  local policy
+  policy="$(nx_policy_load)"
+  local count
+  count="$(echo "$policy" | jq '.admins | length')"
+  [ "$count" -gt 0 ]
+}
+
+CMD="${1:-}"
+shift || true
+case "$CMD" in
+  role)
+    nx_role_get "${1:-}"
+    ;;
+  is-admin)
+    if nx_is_admin "${1:-}"; then echo "true"; else echo "false"; fi
+    ;;
+  add-admin)
+    nx_policy_add_admin "${1:-}" "${2:-cli}"
+    ;;
+  remove-admin)
+    nx_policy_remove_admin "${1:-}" "${2:-cli}"
+    ;;
+  list-admins)
+    nx_policy_list_admins
+    ;;
+  set-notify-channel)
+    nx_policy_set_notification_channel "${1:-}"
+    ;;
+  *)
+    echo "Usage: nexhelper-policy {role <user_id>|is-admin <user_id>|add-admin <user_id> [by]|remove-admin <user_id> [by]|list-admins|set-notify-channel <channel>}" >&2
+    exit 1
+    ;;
+esac

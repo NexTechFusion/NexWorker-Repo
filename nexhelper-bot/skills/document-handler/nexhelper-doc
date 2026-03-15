@@ -5,6 +5,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")" 2>/dev/null || dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../common/nexhelper-core.sh"
 
+# Actor performing the operation. Pass --actor <user_id> to enforce RBAC on protected commands.
+NX_ACTOR="${NX_ACTOR:-}"
+
 ENTITIES_SCRIPT="$SCRIPT_DIR/../entity-system/nexhelper-entity"
 CLASSIFIER_SCRIPT="$SCRIPT_DIR/../classifier/nexhelper-classify"
 
@@ -234,6 +237,10 @@ soft_delete_document() {
   local doc_id="$1"
   local reason="$2"
   nx_init_dirs
+  if [ -n "$NX_ACTOR" ] && ! nx_is_admin "$NX_ACTOR"; then
+    nx_require_admin "$NX_ACTOR" "delete"
+    return 1
+  fi
   if ! nx_doc_exists "$doc_id"; then
     jq -c -n --arg status "not_found" --arg id "$doc_id" '{status:$status,id:$id}'
     return
@@ -255,6 +262,10 @@ soft_delete_document() {
 hard_delete_document() {
   local doc_id="$1"
   nx_init_dirs
+  if [ -n "$NX_ACTOR" ] && ! nx_is_admin "$NX_ACTOR"; then
+    nx_require_admin "$NX_ACTOR" "hard-delete"
+    return 1
+  fi
   local file
   file="$(nx_doc_path_by_id "$doc_id")"
   if [ ! -f "$file" ]; then
@@ -272,6 +283,10 @@ hard_delete_document() {
 restore_document() {
   local doc_id="$1"
   nx_init_dirs
+  if [ -n "$NX_ACTOR" ] && ! nx_is_admin "$NX_ACTOR"; then
+    nx_require_admin "$NX_ACTOR" "restore"
+    return 1
+  fi
   if ! nx_doc_exists "$doc_id"; then
     jq -c -n --arg status "not_found" --arg id "$doc_id" '{status:$status,id:$id}'
     return
@@ -378,6 +393,40 @@ list_documents() {
   search_documents "" "all" "all" "" "" "$limit" "false" "$include_deleted"
 }
 
+retrieve_document() {
+  local doc_id="$1"
+  nx_init_dirs
+  if ! nx_doc_exists "$doc_id"; then
+    jq -c -n --arg status "not_found" --arg id "$doc_id" '{status:$status,id:$id}'
+    return
+  fi
+  local doc
+  doc="$(nx_load_doc_json "$doc_id")"
+  local file_ref
+  file_ref="$(echo "$doc" | jq -r '.fileRef // empty')"
+  local supplier
+  supplier="$(echo "$doc" | jq -r '.supplier // empty')"
+  local number
+  number="$(echo "$doc" | jq -r '.number // empty')"
+  if [ -n "$file_ref" ] && [ -f "$file_ref" ]; then
+    jq -c -n \
+      --arg status "found" \
+      --arg id "$doc_id" \
+      --arg filePath "$file_ref" \
+      --arg supplier "$supplier" \
+      --arg number "$number" \
+      --argjson document "$doc" \
+      '{status:$status,id:$id,filePath:$filePath,supplier:$supplier,number:$number,document:$document}'
+  else
+    jq -c -n \
+      --arg status "no_file" \
+      --arg id "$doc_id" \
+      --arg supplier "$supplier" \
+      --arg number "$number" \
+      '{status:$status,id:$id,supplier:$supplier,number:$number,message:"Original file not available — only metadata stored"}'
+  fi
+}
+
 stats_documents() {
   nx_init_dirs
   local results
@@ -393,6 +442,10 @@ stats_documents() {
 purge_deleted() {
   local older_than_days="$1"
   nx_init_dirs
+  if [ -n "$NX_ACTOR" ] && ! nx_is_admin "$NX_ACTOR"; then
+    nx_require_admin "$NX_ACTOR" "purge-deleted"
+    return 1
+  fi
   local now_ts
   now_ts="$(date +%s)"
   local purged=0
@@ -427,6 +480,7 @@ usage() {
   echo "Commands:"
   echo "  store --type <type> --amount <value> --supplier <name> --number <nr> --date <YYYY-MM-DD> [--entity <id>] [--due-date <YYYY-MM-DD>] [--category <name>] [--file <path>] [--source <telegram|whatsapp|system>] [--source-text <text>] [--ocr-text <text>] [--idempotency-key <key>]"
   echo "  get <doc_id>"
+  echo "  retrieve <doc_id>          # returns filePath for sending original document back to user"
   echo "  search --query <text> [--entity <id>] [--type <type>] [--date-from <YYYY-MM-DD>] [--date-to <YYYY-MM-DD>] [--limit <n>] [--semantic true|false] [--include-deleted true|false]"
   echo "  list [--limit <n>] [--include-deleted true|false]"
   echo "  update <doc_id> --field <field> --value <value> [--reason <text>]"
@@ -439,6 +493,28 @@ usage() {
 
 CMD="${1:-}"
 shift || true
+
+# Pre-scan for --actor before dispatching to allow RBAC on all commands
+_ARGS=("$@")
+_NEW_ARGS=()
+_SKIP_NEXT=false
+for _i in "${!_ARGS[@]}"; do
+  if [ "$_SKIP_NEXT" = "true" ]; then
+    _SKIP_NEXT=false
+    continue
+  fi
+  if [ "${_ARGS[$_i]}" = "--actor" ]; then
+    NX_ACTOR="${_ARGS[$((_i+1))]:-}"
+    _SKIP_NEXT=true
+  else
+    _NEW_ARGS+=("${_ARGS[$_i]}")
+  fi
+done
+if [ "${#_NEW_ARGS[@]}" -gt 0 ]; then
+  set -- "${_NEW_ARGS[@]}"
+else
+  set --
+fi
 
 case "$CMD" in
   store)
@@ -477,6 +553,9 @@ case "$CMD" in
     ;;
   get)
     get_document "${1:-}"
+    ;;
+  retrieve)
+    retrieve_document "${1:-}"
     ;;
   search)
     QUERY=""

@@ -15,6 +15,8 @@
 
 set -e
 
+PROVISION_SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+
 # ============================================
 # Default Configuration
 # ============================================
@@ -31,6 +33,7 @@ DEFAULT_MODEL="openrouter/google/gemini-3-flash-preview"
 ENTITIES="${ENTITIES:-default}"
 BUDGETS="${BUDGETS:-}"
 DELIVERY_TO="${DEFAULT_DELIVERY_TO:-}"
+INITIAL_ADMIN_ID="${INITIAL_ADMIN_ID:-}"
 OPENROUTER_BASE_URL="${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}"
 EMBEDDING_MODEL="${EMBEDDING_MODEL:-openai/text-embedding-3-small}"
 IMAGE_MODEL="${IMAGE_MODEL:-openrouter/google/gemini-3-flash-preview}"
@@ -80,6 +83,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --delivery-to)
             DELIVERY_TO="$2"
+            shift 2
+            ;;
+        --initial-admin)
+            INITIAL_ADMIN_ID="$2"
             shift 2
             ;;
         -*)
@@ -171,6 +178,21 @@ PORT=$((3000 + CUSTOMER_ID % 1000))
 CUSTOMER_DIR="${BASE_DIR}/${SLUG}"
 
 # ============================================
+# Idempotency Guard — warn if container already running
+# ============================================
+if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${INSTANCE_NAME}$"; then
+  echo ""
+  echo "⚠️  Container '${INSTANCE_NAME}' is already running."
+  echo "   To re-provision, first stop it:  docker stop ${INSTANCE_NAME}"
+  echo "   Or use --force to overwrite (will recreate the container)."
+  if [ "${FORCE_REPROVISION:-false}" != "true" ]; then
+    echo "   Aborting. Pass FORCE_REPROVISION=true to override."
+    exit 1
+  fi
+  echo "   FORCE_REPROVISION=true — continuing..."
+fi
+
+# ============================================
 # Display Configuration
 # ============================================
 echo ""
@@ -219,6 +241,35 @@ fi
 echo "📁 Creating directory structure..."
 mkdir -p "$CUSTOMER_DIR"/{config,logs,storage/{memory,consent,audit,documents,reminders,entities,idempotency,ops,canonical/{documents,reminders,indices}}}
 mkdir -p "$CUSTOMER_DIR/storage/.openclaw"
+mkdir -p "$CUSTOMER_DIR/config/scripts"
+
+# scripts are served from the skills volume at /app/skills/common/; config/scripts/ is reserved for future use
+
+# Generate tenant policy with role model
+_INITIAL_ADMINS="[]"
+if [ -n "$INITIAL_ADMIN_ID" ]; then
+    _INITIAL_ADMINS="[\"$INITIAL_ADMIN_ID\"]"
+fi
+cat <<POLICYEOF > "$CUSTOMER_DIR/storage/policy.json"
+{
+  "admins": $_INITIAL_ADMINS,
+  "memberPermissions": {
+    "store": true,
+    "search": true,
+    "list": true,
+    "get": true,
+    "stats": true,
+    "reminder_create": true,
+    "reminder_list": true,
+    "reminder_delete_own": true
+  },
+  "adminNotificationChannel": "${DELIVERY_TO:-}",
+  "createdAt": "$(date -Iseconds)",
+  "tenantId": "$CUSTOMER_ID",
+  "tenantName": "$CUSTOMER_NAME"
+}
+POLICYEOF
+echo "   Policy file created (admins: ${INITIAL_ADMIN_ID:-none set - promote via nexhelper-policy add-admin})"
 
 # ============================================
 # 2. Generate Consent Configuration
@@ -361,34 +412,28 @@ cat <<EOF > "$CUSTOMER_DIR/config/openclaw.json"
 {
   // NexHelper Configuration for $CUSTOMER_NAME
   // Generated: $(date -Iseconds)
-  
+  // Model provider env vars (OPENAI_API_KEY, OPENAI_BASE_URL) are set in docker-compose.yml
+
   "gateway": {
     "port": $PORT,
     "mode": "local",
     "bind": "lan",
     "reload": { "mode": "hybrid" },
   },
-  
-  "auth": {
-    "profiles": {
-      "openrouter:default": {
-        "provider": "openrouter",
-        "mode": "api_key",
-      },
-    },
-  },
-  
+
   "agents": {
     "defaults": {
       "model": {
         "primary": "$DEFAULT_MODEL",
         "fallbacks": ["openrouter/google/gemini-2.5-flash", "openrouter/google/gemini-2.0-flash-001"],
-        "imageModel": "$IMAGE_MODEL",
-        "pdfModel": "$PDF_MODEL"
       },
+      "imageModel": { "primary": "$IMAGE_MODEL" },
+      "pdfModel":   { "primary": "$PDF_MODEL" },
       "workspace": "/root/.openclaw/workspace",
       "thinkingDefault": "medium",
       "timeoutSeconds": 120,
+      "maxConcurrent": 4,
+      "subagents": { "maxConcurrent": 8 },
       "compaction": {
         "mode": "safeguard",
         "reserveTokens": 40000,
@@ -399,8 +444,8 @@ cat <<EOF > "$CUSTOMER_DIR/config/openclaw.json"
           "enabled": true,
           "softThresholdTokens": 50000,
           "prompt": "Write document summaries and important facts to memory/YYYY-MM-DD.md; reply NO_REPLY if nothing to store.",
-          "systemPrompt": "Session nearing compaction. Persist document metadata and user preferences to memory files; reply NO_REPLY if none."
-        }
+          "systemPrompt": "Session nearing compaction. Persist document metadata and user preferences to memory files; reply NO_REPLY if none.",
+        },
       },
     },
     "list": [
@@ -414,31 +459,7 @@ cat <<EOF > "$CUSTOMER_DIR/config/openclaw.json"
     ],
   },
 
-  "memory": {
-    "search": {
-      "provider": "openrouter",
-      "baseUrl": "$OPENROUTER_BASE_URL",
-      "embeddingModel": "$EMBEDDING_MODEL"
-    }
-  },
-
-  "skills": {
-    "openai-whisper-api": {
-      "apiKey": "$API_KEY",
-      "openRouterKey": "$API_KEY",
-      "useOpenRouter": true,
-      "defaultModel": "$WHISPER_MODEL"
-    },
-    "image": {
-      "defaultModel": "$IMAGE_MODEL"
-    },
-    "pdf": {
-      "defaultModel": "$PDF_MODEL"
-    }
-  },
-  
   "tools": {
-    "profile": "coding",
     "allow": [
       "exec",
       "read",
@@ -463,17 +484,21 @@ cat <<EOF > "$CUSTOMER_DIR/config/openclaw.json"
       "agents_list",
     ],
   },
-  
+
   "commands": {
     "native": false,
     "nativeSkills": true,
-    "restart": false
+    "restart": false,
   },
-  
+
   "session": {
-    "dmScope": "per-channel-peer"
+    "dmScope": "per-channel-peer",
   },
-  
+
+  "messages": {
+    "ackReactionScope": "group-mentions",
+  },
+
   "channels": {
 $CHANNELS_CONFIG  },
 }
@@ -515,30 +540,47 @@ services:
         mkdir -p /root/.openclaw
         cp /app/config/openclaw.json /root/.openclaw/openclaw.json
         cp /app/config/auth-profiles.json /root/.openclaw/auth-profiles.json 2>/dev/null || true
-        tmp_cfg=\$(mktemp)
-        jq 'if .tools and .tools.allow then .tools.allow |= map(select(. != "apply_patch" and . != "cron")) else . end' /root/.openclaw/openclaw.json > "\$tmp_cfg" 2>/dev/null && mv "\$tmp_cfg" /root/.openclaw/openclaw.json || rm -f "\$tmp_cfg"
+        tmp_cfg=\$\$(mktemp)
+        jq 'if .tools and .tools.allow then .tools.allow |= map(select(. != "apply_patch" and . != "cron")) else . end' /root/.openclaw/openclaw.json > "\$\$tmp_cfg" 2>/dev/null && mv "\$\$tmp_cfg" /root/.openclaw/openclaw.json || rm -f "\$\$tmp_cfg"
         mkdir -p /root/.openclaw/agents/main/agent
         cp /app/config/auth-profiles.json /root/.openclaw/agents/main/agent/auth-profiles.json 2>/dev/null || true
         rm -f /root/.openclaw/workspace/BOOTSTRAP.md
         while IFS= read -r -d '' f; do
-          sed -i 's/\r$//' "\$f" 2>/dev/null || true
-          chmod +x "\$f" 2>/dev/null || true
+          sed -i 's/\r$//' "\$\$f" 2>/dev/null || true
+          chmod +x "\$\$f" 2>/dev/null || true
         done < <(find /app/skills -type f \\( -name "*.sh" -o -name "nexhelper-*" \\) -print0)
         while IFS= read -r -d '' f; do
-          ln -sf "\$f" /usr/local/bin/"\$(basename "\$f")" 2>/dev/null || true
+          bn="\$\$(basename "\$\$f")"
+          printf '#!/bin/bash\nexec bash "%s" "\$@"\n' "\$\$f" > "/usr/local/bin/\$\$bn"
+          chmod +x "/usr/local/bin/\$\$bn"
         done < <(find /app/skills -type f \\( -name "nexhelper-*" -o -path "*/scripts/*.sh" \\) -print0)
         command -v nexhelper-doc >/dev/null 2>&1 || echo "⚠️ nexhelper-doc missing on PATH"
         nexhelper-set-reminder --help >/dev/null 2>&1 || echo "⚠️ nexhelper-set-reminder missing or not executable"
         [ -n "\${OPENAI_BASE_URL:-}" ] || echo "⚠️ OPENAI_BASE_URL is unset; OpenRouter API keys can fail for memory_search/image/pdf/whisper clients"
+        openclaw doctor --fix >/dev/null 2>&1 || true
         openclaw gateway run --port $PORT --bind lan &
-        GW_PID=\$!
+        GW_PID=\$\$!
         sleep 8
-        openclaw cron add --name reminder-auditor --every 1m --system-event "Check reminders audit and sync missing cron jobs for any confirmed but unscheduled reminders" --no-deliver --delete-after-run=false --json >/dev/null 2>&1 || true
-        wait \$GW_PID
+        openclaw cron add --name reminder-auditor --every 1m --system-event "Check reminders audit and sync missing cron jobs for any confirmed but unscheduled reminders" --no-deliver >/dev/null 2>&1 || true
+        _NX_TO="\${DEFAULT_DELIVERY_TO:-}"
+        _nx_cron_add() {
+          if [ -n "\$\$_NX_TO" ]; then
+            openclaw cron add "\$\$@" --to "\$\$_NX_TO" 2>/dev/null || true
+          else
+            openclaw cron add "\$\$@" 2>/dev/null || true
+          fi
+        }
+        _nx_cron_add --name check-reminders --every 1m --message "Check due reminders and send notifications. Use exec: nexhelper-reminder check" --announce --channel telegram --session isolated
+        _nx_cron_add --name budget-check --cron "0 * * * *" --message "Check entity budgets and send alerts if thresholds exceeded. Use exec: nexhelper-entity check" --announce --channel telegram --session isolated
+        _nx_cron_add --name daily-summary --cron "0 18 * * *" --message "Generate daily summary of documents processed today including health status" --announce --channel telegram --session isolated
+        _nx_cron_add --name retention-job --cron "0 2 * * *" --message "Run retention and purge deleted documents. Use exec: nexhelper-retention purge" --announce --channel telegram --session isolated
+        openclaw cron add --name health-monitor --cron "0 */6 * * *" --system-event "Run system health check and alert admin if status is degraded" --no-deliver >/dev/null 2>&1 || true
+        wait \$\$GW_PID
     ports:
       - "$PORT:$PORT"
     volumes:
       - ./config:/app/config:ro
+      - \${NEXHELPER_SKILLS_DIR}:/app/skills:ro
       - ./storage:/root/.openclaw/workspace
       - ./logs:/app/logs
       - nexhelper-data-${SLUG}:/root/.openclaw
@@ -547,6 +589,7 @@ services:
       - OPENAI_BASE_URL=\${OPENAI_BASE_URL:-https://openrouter.ai/api/v1}
       - OPENROUTER_API_KEY=\${OPENROUTER_API_KEY:-\${OPENAI_API_KEY:-}}
       - OPENROUTER_BASE_URL=\${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      - STORAGE_DIR=/root/.openclaw/workspace
       - USE_OPENROUTER=\${USE_OPENROUTER:-1}
       - EMBEDDING_MODEL=\${EMBEDDING_MODEL:-$EMBEDDING_MODEL}
       - DEFAULT_DELIVERY_TO=\${DEFAULT_DELIVERY_TO:-$DELIVERY_TO}
@@ -611,6 +654,8 @@ RUN_SMOKE_ON_START=true
 SMOKE_REQUIRED_ON_START=false
 OPS_REPORT_DAYS=30
 TZ=Europe/Berlin
+NEXHELPER_SKILLS_DIR=$PROVISION_SCRIPT_DIR/skills
+STORAGE_DIR=/root/.openclaw/workspace
 EOF
 
 # ============================================
@@ -855,7 +900,25 @@ done
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 💰 Gesamt: €4.224,56
 
-[Details] [Export] [Original senden]
+Tippe die Nummer (z. B. "1") für Details oder "Original 1" für die Datei.
+```
+
+**WICHTIG: Keine Inline-Buttons als primäre Navigation.** Nutzer können auf Nummern antworten oder Befehle tippen. Buttons können zusätzlich verwendet werden, sind aber nie die einzige Interaktionsmöglichkeit.
+
+#### Original-Dokument senden:
+Wenn der Nutzer "Original senden", "Datei 1" oder "schick mir das Original" schreibt:
+
+```
+# Hole Dateipfad über retrieve
+exec nexhelper-doc retrieve <DOC_ID>
+
+# Falls filePath vorhanden: Datei senden
+message action="send_file" filePath="<filePath>"
+
+# Falls keine Datei:
+"⚠️ Original-Datei nicht verfügbar.
+   Nur Metadaten wurden gespeichert.
+   Nummer: RE-2026-0342 | Müller GmbH"
 ```
 
 ---
@@ -1148,6 +1211,70 @@ Wenn etwas schiefgeht, biete Optionen:
 | Kein Dokument | Manuell kategorisieren |
 | Fehlende Daten | Nachfragen |
 | Export fehlgeschlagen | Alternative anbieten |
+
+---
+
+## 🔐 ROLLEN & BERECHTIGUNGEN
+
+Jeder Nutzer hat eine Rolle: **admin** oder **member** (Standard).
+
+### Aktionen nach Rolle
+
+| Aktion | member | admin |
+|--------|--------|-------|
+| Dokumente einreichen | ✅ | ✅ |
+| Dokumente suchen | ✅ | ✅ |
+| Erinnerungen setzen | ✅ | ✅ |
+| Eigene Erinnerungen löschen | ✅ | ✅ |
+| Dokumente löschen | ❌ | ✅ |
+| Export starten | ❌ | ✅ |
+| Admin verwalten | ❌ | ✅ |
+
+### Wenn eine member-Aktion blockiert wird
+
+Antworte direkt und ohne Erklärungsumwege:
+
+```
+🔒 Diese Aktion erfordert Admin-Berechtigung.
+
+Wende dich an deinen Admin, um fortzufahren.
+```
+
+### Admin-Förderung im Chat
+
+Nur ein bestehender Admin kann andere Admins fördern:
+
+```
+# Admin schreibt: "Mach [Name] zum Admin"
+exec nexhelper-policy add-admin <USER_ID> <ADMIN_ID>
+```
+
+---
+
+## ⏳ VERARBEITUNGS-FEEDBACK
+
+Bei jeder Aktion, die mehr als 2 Sekunden dauern kann, sende zuerst eine Feedback-Nachricht:
+
+### Dokument-Analyse:
+```
+⏳ Analysiere Dokument...
+```
+
+### Mehrere Dokumente:
+```
+📥 3 Dokumente empfangen
+⏳ Verarbeite... 0/3
+```
+
+### Export:
+```
+⏳ Erstelle Export...
+```
+
+### Suche:
+```
+🔍 Suche...
+```
 
 ---
 
@@ -1550,27 +1677,81 @@ docker-compose exec -T nexhelper nexhelper-smoke
 SCRIPT
 chmod +x "$CUSTOMER_DIR/smoke.sh"
 
-# remove.sh
+# report.sh - admin ops report
+cat <<'SCRIPT' > "$CUSTOMER_DIR/report.sh"
+#!/bin/bash
+cd "$(dirname "$0")"
+FORMAT="${1:-json}"
+if [ "$FORMAT" = "html" ]; then
+  docker-compose exec -T nexhelper nexhelper-admin-report html
+else
+  docker-compose exec -T nexhelper nexhelper-admin-report | jq .
+fi
+SCRIPT
+chmod +x "$CUSTOMER_DIR/report.sh"
+
+# remove.sh (safe export-first offboarding)
 cat <<SCRIPT > "$CUSTOMER_DIR/remove.sh"
 #!/bin/bash
-# Remove NexHelper Instance: $SLUG
-echo "⚠️  WARNING: This will delete ALL data for $CUSTOMER_NAME"
-echo "   Directory: $CUSTOMER_DIR"
+# Offboarding script for NexHelper Instance: $SLUG
+# Follows export-first, confirm-before-delete pattern for DSGVO compliance.
+
+set -euo pipefail
+SELF_DIR="\$(cd "\$(dirname "\$0")" && pwd)"
+cd "\$SELF_DIR"
+
+EXPORT_DIR="\$SELF_DIR/offboarding-export-\$(date +%Y%m%d_%H%M%S)"
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "⚠️  NexHelper Offboarding: $CUSTOMER_NAME"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "This includes:"
-echo "   - All stored documents"
-echo "   - All consent records"
-echo "   - All audit logs"
+echo "This script will:"
+echo "  1. Export all data to: \$EXPORT_DIR"
+echo "  2. Stop and remove the container"
+echo "  3. Delete the instance directory"
 echo ""
-read -p "Are you sure? (y/n) " -n 1 -r
-echo
-if [[ \$REPLY =~ ^[Yy]$ ]]; then
-    cd "$(dirname "\$0")"
-    docker-compose down -v
+echo "Data includes:"
+echo "  - All stored documents (canonical JSON)"
+echo "  - All consent records"
+echo "  - All audit logs"
+echo "  - Policy and configuration"
+echo ""
+echo "IMPORTANT: Back up \$EXPORT_DIR before proceeding."
+echo ""
+read -rp "Step 1: Run data export? (y/n) " EXPORT_CONFIRM
+if [[ "\$EXPORT_CONFIRM" =~ ^[Yy]\$ ]]; then
+    mkdir -p "\$EXPORT_DIR"
+    echo "📦 Exporting canonical documents..."
+    cp -r "\$SELF_DIR/storage/canonical" "\$EXPORT_DIR/" 2>/dev/null && echo "   ✅ canonical/" || echo "   ⚠️  canonical/ not found"
+    cp -r "\$SELF_DIR/storage/consent" "\$EXPORT_DIR/" 2>/dev/null && echo "   ✅ consent/" || echo "   ⚠️  consent/ not found"
+    cp -r "\$SELF_DIR/storage/audit" "\$EXPORT_DIR/" 2>/dev/null && echo "   ✅ audit/" || echo "   ⚠️  audit/ not found"
+    cp "\$SELF_DIR/storage/policy.json" "\$EXPORT_DIR/" 2>/dev/null && echo "   ✅ policy.json" || true
+    cp "\$SELF_DIR/config/"*.yaml "\$EXPORT_DIR/" 2>/dev/null && echo "   ✅ config/" || true
+    echo ""
+    echo "✅ Export complete: \$EXPORT_DIR"
+    echo "   Document count: \$(ls "\$EXPORT_DIR/canonical/documents/" 2>/dev/null | wc -l || echo 0)"
+    echo ""
+else
+    echo "⏸️  Export skipped. Deletion aborted for safety."
+    exit 0
+fi
+
+echo ""
+read -rp "Step 2: Stop and PERMANENTLY DELETE the instance? (type 'DELETE' to confirm) " DELETE_CONFIRM
+if [ "\$DELETE_CONFIRM" = "DELETE" ]; then
+    echo "🛑 Stopping container..."
+    docker-compose down -v 2>/dev/null || true
+    echo "🗑️  Removing directory..."
     cd ..
     rm -rf "$SLUG"
-    echo "🗑️  Removed: $SLUG"
-    echo "✅ All data deleted (DSGVO-compliant)"
+    echo ""
+    echo "✅ Instance deleted."
+    echo "   Export preserved at: \$EXPORT_DIR"
+    echo "   This export can be retained for compliance purposes."
+else
+    echo "⏸️  Deletion cancelled. Container still running."
+    echo "   Export is available at: \$EXPORT_DIR"
 fi
 SCRIPT
 chmod +x "$CUSTOMER_DIR/remove.sh"
@@ -1663,17 +1844,122 @@ else
     echo "   docker exec -it $INSTANCE_NAME openclaw pairing list telegram"
     echo "   docker exec -it $INSTANCE_NAME openclaw pairing approve telegram <CODE>"
     echo ""
-    echo "5. Set cron delivery target after pairing:"
+    echo "5. Set cron delivery target after pairing (replace <CHAT_ID> with the numeric ID):"
     echo "   docker exec -it $INSTANCE_NAME openclaw cron list --json"
     echo "   docker exec -it $INSTANCE_NAME openclaw cron edit --id <JOB_ID> --to telegram:<CHAT_ID>"
+    echo ""
+    echo "6. Promote first company admin (replace <TELEGRAM_USER_ID>):"
+    echo "   docker exec -it $INSTANCE_NAME nexhelper-policy add-admin <TELEGRAM_USER_ID> founder"
     echo ""
     echo "💡 Tip: Add the bot to a group for team access"
 fi
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📋 Founder Handover Checklist"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "  [ ] Container started and healthy"
+echo "  [ ] Bot paired (pairing approve done)"
+echo "  [ ] Cron delivery target set for all jobs"
+echo "  [ ] First company admin promoted (nexhelper-policy add-admin)"
+echo "  [ ] Admin quickstart shared: ./admin-quickstart.sh"
+echo "  [ ] User guide sent to team: ./storage/USER-GUIDE.md"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 SCRIPT
 chmod +x "$CUSTOMER_DIR/onboard.sh"
+
+# admin-quickstart.sh
+cat <<AQSCRIPT > "$CUSTOMER_DIR/admin-quickstart.sh"
+#!/bin/bash
+# NexHelper Admin Quickstart for $CUSTOMER_NAME
+# Run this after pairing to verify the setup is working correctly.
+cd "$(dirname "\$0")"
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🔑 NexHelper Admin Quickstart"
+echo "   $CUSTOMER_NAME"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "📊 Health check:"
+./health.sh 2>/dev/null | head -20 || echo "   (run ./start.sh first)"
+echo ""
+echo "👥 Current admins:"
+docker exec -i $INSTANCE_NAME nexhelper-policy list-admins 2>/dev/null || echo "   (container not running)"
+echo ""
+echo "⏰ Scheduled jobs:"
+docker exec -i $INSTANCE_NAME openclaw cron list 2>/dev/null || echo "   (container not running)"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📋 Admin Commands"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "  Promote user to admin:"
+echo "    docker exec -i $INSTANCE_NAME nexhelper-policy add-admin <USER_ID>"
+echo ""
+echo "  Remove admin:"
+echo "    docker exec -i $INSTANCE_NAME nexhelper-policy remove-admin <USER_ID>"
+echo ""
+echo "  List all admins:"
+echo "    docker exec -i $INSTANCE_NAME nexhelper-policy list-admins"
+echo ""
+echo "  View audit log:"
+echo "    docker exec -i $INSTANCE_NAME cat /root/.openclaw/workspace/storage/audit/events.ndjson | tail -20"
+echo ""
+echo "  Run smoke test:"
+echo "    ./smoke.sh"
+echo ""
+AQSCRIPT
+chmod +x "$CUSTOMER_DIR/admin-quickstart.sh"
+
+# USER-GUIDE.md
+cat <<'UGEOF' > "$CUSTOMER_DIR/storage/USER-GUIDE.md"
+# NexHelper – Kurzanleitung für Mitarbeitende
+
+## Was ist NexHelper?
+
+NexHelper ist euer Dokumenten-Assistent im Messenger. Ihr könnt Rechnungen, Belege und Dokumente direkt per Chat einreichen – ohne App, ohne Formular.
+
+---
+
+## Erste Schritte
+
+1. Schreib dem Bot einfach eine Nachricht oder sende ein Dokument.
+2. Beim ersten Kontakt wirst du um deine Einwilligung zur Datenverarbeitung gebeten.
+3. Antworte mit **Ja** oder **Ich stimme zu** um fortzufahren.
+
+---
+
+## Was du tun kannst
+
+| Aktion | Was du schickst |
+|--------|----------------|
+| Rechnung einreichen | Foto oder PDF der Rechnung senden |
+| Dokument suchen | z. B. "Zeig mir die Rechnung von Müller vom März" |
+| Erinnerung setzen | z. B. "Erinnere mich am Freitag um 10 Uhr an das Meeting" |
+| Erinnerungen anzeigen | z. B. "Was sind meine Erinnerungen?" |
+| Statistik | z. B. "Wie viele Dokumente wurden diese Woche erfasst?" |
+| Einwilligung widerrufen | Schreib: /widerruf |
+
+---
+
+## Tipps
+
+- **Einfach schreiben wie du redest** – der Bot versteht natürliche Sprache.
+- Bei langen Analysen erscheint eine Meldung "⏳ Analysiere..." – das ist normal.
+- Du kannst mehrere Dokumente gleichzeitig senden (Album/Mehrere Dateien).
+- Deine Daten gehören deinem Unternehmen und werden DSGVO-konform behandelt.
+
+---
+
+## Hilfe
+
+Schreib einfach "Hilfe" oder "/hilfe" für eine Übersicht aller Funktionen.
+
+Bei technischen Problemen wende dich an deinen Admin.
+
+UGEOF
 
 # ============================================
 # 9. Create Docker network if not exists
@@ -1809,8 +2095,10 @@ echo "   Health:  $CUSTOMER_DIR/health.sh"
 echo "   Migrate: $CUSTOMER_DIR/migrate.sh"
 echo "   Retain:  $CUSTOMER_DIR/retention.sh"
 echo "   Smoke:   $CUSTOMER_DIR/smoke.sh"
+echo "   Report:  $CUSTOMER_DIR/report.sh  (./report.sh html for browser view)"
 echo "   Consent: $CUSTOMER_DIR/consent.sh"
 echo "   Onboard: $CUSTOMER_DIR/onboard.sh"
+echo "   Admin:   $CUSTOMER_DIR/admin-quickstart.sh"
 echo "   Remove:  $CUSTOMER_DIR/remove.sh"
 echo ""
 echo "🌐 Dashboard Reachability:"
@@ -1827,14 +2115,17 @@ if [ "$STARTED" = true ]; then
     echo "📱 NEXT STEP: Pair your device"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
-    if [ -n "$TELEGRAM_TOKEN" ]; then
-        echo "1. Open Telegram and find @$BOT_USERNAME"
-        echo "2. Send /start"
-        echo "3. Note the pairing code"
-        echo "4. Approve: docker exec -it $INSTANCE_NAME openclaw pairing approve telegram <CODE>"
-    else
-        echo "Run: $CUSTOMER_DIR/onboard.sh"
-    fi
+if [ -n "$TELEGRAM_TOKEN" ]; then
+    echo "1. Open Telegram and find @$BOT_USERNAME"
+    echo "2. Send /start"
+    echo "3. Note the pairing code"
+    echo "4. Approve: docker exec -it $INSTANCE_NAME openclaw pairing approve telegram <CODE>"
+    echo "5. Promote first admin: docker exec -it $INSTANCE_NAME nexhelper-policy add-admin <TELEGRAM_USER_ID> founder"
+    echo "6. Verify setup: $CUSTOMER_DIR/admin-quickstart.sh"
+else
+    echo "Run: $CUSTOMER_DIR/onboard.sh"
+    echo "Then: $CUSTOMER_DIR/admin-quickstart.sh"
+fi
 else
     echo "⏸️  Container not started"
     echo "   Run: $CUSTOMER_DIR/start.sh"

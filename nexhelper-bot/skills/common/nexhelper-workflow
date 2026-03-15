@@ -7,6 +7,8 @@ source "$SCRIPT_DIR/nexhelper-core.sh"
 
 DOC_SCRIPT="$SCRIPT_DIR/../document-handler/nexhelper-doc"
 CLASSIFIER_SCRIPT="$SCRIPT_DIR/../classifier/nexhelper-classify"
+NOTIFY_SCRIPT="$SCRIPT_DIR/nexhelper-notify"
+HEALTH_SCRIPT="$SCRIPT_DIR/nexhelper-healthcheck"
 
 normalize_event() {
   local input="$1"
@@ -16,16 +18,79 @@ normalize_event() {
       kind: (.kind // (if .systemEvent then "systemEvent" else "message" end)),
       channel: (.channel // "telegram"),
       senderId: (.senderId // .from // ""),
+      senderUsername: (.senderUsername // .username // ""),
+      senderName: (.senderName // .firstName // .displayName // ""),
       text: (.text // .message // ""),
       timestamp: (.timestamp // now | tostring),
       payload: (.payload // {})
     }'
 }
 
+_send_welcome() {
+  local sender_id="$1"
+  local channel="${2:-telegram}"
+  local msg
+  msg="👋 Willkommen bei NexHelper!
+
+Ich bin dein intelligenter Büroassistent. Hier ist, was ich kann:
+
+📄 *Dokumente* — Schick mir Fotos von Rechnungen, Angeboten oder Quittungen, ich extrahiere und speichere alles.
+🔍 *Suchen* — \"Zeig mir alle Rechnungen von Müller GmbH\"
+⏰ *Erinnerungen* — \"Erinnere mich am Freitag um 9 Uhr an den Steuertermin\"
+📊 *Status* — \"Wie viele Dokumente habe ich diese Woche?\"
+
+Deine Nutzer-ID: \`$sender_id\`
+(Teile diese ID mit deinem Admin, falls du erweiterte Rechte benötigst.)
+
+Einfach loslegen — schreib mir oder schick ein Dokument!"
+  if [ -x "$NOTIFY_SCRIPT" ]; then
+    "$NOTIFY_SCRIPT" send --audience single --to "${channel}:${sender_id}" --message "$msg" 2>/dev/null || true
+  fi
+}
+
+_register_and_check_welcome() {
+  local event_json="$1"
+  local sender_id
+  sender_id="$(echo "$event_json" | jq -r '.senderId // empty')"
+  local username
+  username="$(echo "$event_json" | jq -r '.senderUsername // empty')"
+  local display_name
+  display_name="$(echo "$event_json" | jq -r '.senderName // empty')"
+  local channel
+  channel="$(echo "$event_json" | jq -r '.channel // "telegram"')"
+
+  [ -n "$sender_id" ] || return 0
+
+  local is_new
+  is_new="$(nx_user_seen "$sender_id" "$username" "$display_name")"
+
+  if [ "$is_new" = "true" ]; then
+    _send_welcome "$sender_id" "$channel"
+    nx_log_event "user.first_contact" "welcome_$(nx_op_id)" "success" \
+      "$(jq -c -n --arg u "$sender_id" --arg name "$username" '{userId:$u,username:$name}')"
+  fi
+}
+
 route_message() {
   local event_json="$1"
   local text
   text="$(echo "$event_json" | jq -r '.text')"
+  local sender_id
+  sender_id="$(echo "$event_json" | jq -r '.senderId')"
+
+  # whois lookup — admin resolves @username to user_id without AI
+  if [[ "$text" =~ ^/whois[[:space:]] ]] || [[ "$text" =~ ^whois[[:space:]] ]]; then
+    local query="${text#*whois }"
+    local found
+    found="$(nx_user_find_by_username "$query" 2>/dev/null || echo '{}')"
+    if [ -z "$found" ] || [ "$found" = "{}" ]; then
+      jq -c -n --arg q "$query" '{status:"not_found",query:$q,message:"Nutzer nicht gefunden. Bitte den Nutzer bitten, einmal mit dem Bot zu schreiben."}'
+    else
+      echo "$found" | jq -c '{status:"found",user:.}'
+    fi
+    return
+  fi
+
   local classification
   classification="$("$CLASSIFIER_SCRIPT" intent --text "$text")"
   local intent
@@ -34,8 +99,54 @@ route_message() {
     document_search)
       "$DOC_SCRIPT" search --query "$text" --semantic true
       ;;
+    document_retrieve)
+      local doc_id
+      doc_id="$(echo "$classification" | jq -r '.documentId // empty')"
+      if [ -n "$doc_id" ]; then
+        "$DOC_SCRIPT" retrieve "$doc_id"
+      else
+        "$DOC_SCRIPT" search --query "$text" --semantic true
+      fi
+      ;;
     status)
       "$DOC_SCRIPT" stats
+      ;;
+    admin_promote)
+      if nx_is_admin "$sender_id"; then
+        local target
+        target="$(echo "$classification" | jq -r '.targetUser // empty')"
+        # Try to resolve @username to user_id if needed
+        if [[ "$target" == @* ]]; then
+          local resolved
+          resolved="$(nx_user_find_by_username "$target" 2>/dev/null | jq -r '.userId // empty' 2>/dev/null || true)"
+          [ -n "$resolved" ] && target="$resolved"
+        fi
+        if [ -n "$target" ]; then
+          nx_policy_add_admin "$target" "$sender_id"
+        else
+          jq -c -n '{status:"error",message:"Bitte eine User-ID oder @Benutzername zum Befördern angeben."}'
+        fi
+      else
+        nx_require_admin "$sender_id" "admin_promote"
+      fi
+      ;;
+    admin_demote)
+      if nx_is_admin "$sender_id"; then
+        local target
+        target="$(echo "$classification" | jq -r '.targetUser // empty')"
+        if [[ "$target" == @* ]]; then
+          local resolved
+          resolved="$(nx_user_find_by_username "$target" 2>/dev/null | jq -r '.userId // empty' 2>/dev/null || true)"
+          [ -n "$resolved" ] && target="$resolved"
+        fi
+        if [ -n "$target" ]; then
+          nx_policy_remove_admin "$target" "$sender_id"
+        else
+          jq -c -n '{status:"error",message:"Bitte eine User-ID oder @Benutzername zum Entfernen angeben."}'
+        fi
+      else
+        nx_require_admin "$sender_id" "admin_demote"
+      fi
       ;;
     *)
       jq -c -n --arg status "noop" --arg intent "$intent" --arg text "$text" \
@@ -48,6 +159,7 @@ route_system_event() {
   local event_json="$1"
   local text
   text="$(echo "$event_json" | jq -r '.text')"
+
   if [[ "$text" == *"reminder"* ]]; then
     local sync_result="{}"
     if [ -x "$SCRIPT_DIR/../reminder-system/nexhelper-reminder-sync" ]; then
@@ -61,16 +173,55 @@ route_system_event() {
     due="$("$SCRIPT_DIR/../reminder-system/nexhelper-reminder" due)"
     jq -c -n --arg status "processed" --arg handler "reminder_due" --argjson due "$due" --argjson sync "$sync_result" --argjson audit "$audit_result" \
       '{status:$status,handler:$handler,due:$due,sync:$sync,audit:$audit}'
+
   elif [[ "$text" == *"budget"* ]]; then
     local alerts
     alerts="$("$SCRIPT_DIR/../entity-system/nexhelper-entity" check)"
     jq -c -n --arg status "processed" --arg handler "budget_check" --argjson alerts "$alerts" \
       '{status:$status,handler:$handler,alerts:$alerts}'
+
   elif [[ "$text" == *"retention"* ]]; then
     local retention
     retention="$("$SCRIPT_DIR/nexhelper-retention")"
     jq -c -n --arg status "processed" --arg handler "retention" --argjson retention "$retention" \
       '{status:$status,handler:$handler,retention:$retention}'
+
+  elif [[ "$text" == *"health"* ]] || [[ "$text" == *"monitor"* ]] || [[ "$text" == *"degraded"* ]]; then
+    local health="{}"
+    if [ -x "$HEALTH_SCRIPT" ]; then
+      health="$("$HEALTH_SCRIPT" 2>/dev/null || echo '{}')"
+    fi
+    local health_status
+    health_status="$(echo "$health" | jq -r '.status // "unknown"')"
+    if [ "$health_status" != "ok" ] && [ -x "$NOTIFY_SCRIPT" ]; then
+      local degraded_checks
+      degraded_checks="$(echo "$health" | jq -r '[.checks[]? | select(.status != "ok") | .name] | join(", ")')"
+      "$NOTIFY_SCRIPT" send --audience broadcast \
+        --message "⚠️ NexHelper Systemwarnung: Status ist '$health_status'. Probleme: ${degraded_checks:-unbekannt}. Bitte den Administrator benachrichtigen." \
+        2>/dev/null || true
+    fi
+    jq -c -n --arg status "processed" --arg handler "health_monitor" --argjson health "$health" \
+      '{status:$status,handler:$handler,healthStatus:($health.status // "unknown"),health:$health}'
+
+  elif [[ "$text" == *"daily"* ]] || [[ "$text" == *"summary"* ]]; then
+    local stats
+    stats="$("$DOC_SCRIPT" stats 2>/dev/null || echo '{}')"
+    local health="{}"
+    if [ -x "$HEALTH_SCRIPT" ]; then
+      health="$("$HEALTH_SCRIPT" 2>/dev/null || echo '{}')"
+    fi
+    local health_status
+    health_status="$(echo "$health" | jq -r '.status // "ok"')"
+    local health_icon
+    health_icon="$( [ "$health_status" = "ok" ] && echo "✅" || echo "⚠️" )"
+    if [ -x "$NOTIFY_SCRIPT" ]; then
+      local msg
+      msg="${health_icon} Tagesbericht: $(echo "$stats" | jq -r '.documents // 0') Dokumente, €$(echo "$stats" | jq -r '.totalAmount // 0') Gesamt | System: ${health_status}"
+      "$NOTIFY_SCRIPT" send --audience broadcast --message "$msg" 2>/dev/null || true
+    fi
+    jq -c -n --arg status "processed" --arg handler "daily_summary" --argjson stats "$stats" --argjson health "$health" \
+      '{status:$status,handler:$handler,stats:$stats,healthStatus:($health.status // "ok")}'
+
   else
     jq -c -n --arg status "ignored" --arg text "$text" '{status:$status,text:$text}'
   fi
@@ -98,6 +249,8 @@ run_event() {
   if [ "$kind" = "systemEvent" ]; then
     result="$(route_system_event "$event_json")"
   else
+    # Register user on every non-system interaction (sends welcome on first contact)
+    _register_and_check_welcome "$event_json"
     result="$(route_message "$event_json")"
   fi
   local output

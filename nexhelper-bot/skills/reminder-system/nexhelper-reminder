@@ -70,12 +70,20 @@ list_reminders() {
 
 delete_reminder() {
   local reminder_id="$1"
+  local actor="${2:-}"
   nx_init_dirs
   local rem
   rem="$(nx_load_reminder_json "$reminder_id")"
   if [ "$(echo "$rem" | jq -r '.id // empty')" = "" ]; then
     jq -c -n --arg status "not_found" --arg id "$reminder_id" '{status:$status,id:$id}'
     return
+  fi
+  local owner
+  owner="$(echo "$rem" | jq -r '.userId')"
+  if [ -n "$actor" ] && [ "$actor" != "$owner" ] && ! nx_is_admin "$actor"; then
+    jq -c -n --arg status "forbidden" --arg id "$reminder_id" \
+      '{status:$status,id:$id,message:"Nur der Ersteller oder ein Admin kann diese Erinnerung löschen."}'
+    return 1
   fi
   local updated
   updated="$(echo "$rem" | jq -c --arg now "$(nx_now_iso)" '.cancelled=true | .status="cancelled" | .updatedAt=$now')"
@@ -115,7 +123,7 @@ usage() {
   echo "NexHelper Reminder CLI"
   echo "  create --user <id> --text <text> --datetime <iso> [--channel telegram] [--idempotency-key <key>]"
   echo "  list --user <id>"
-  echo "  delete <reminder_id>"
+  echo "  delete <reminder_id> [--actor <user_id>]"
   echo "  due"
 }
 
@@ -149,7 +157,16 @@ case "$CMD" in
     fi
     ;;
   delete)
-    delete_reminder "${1:-}"
+    REM_ID="${1:-}"
+    shift || true
+    ACTOR=""
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --actor) ACTOR="$2"; shift 2 ;;
+        *) shift ;;
+      esac
+    done
+    delete_reminder "$REM_ID" "$ACTOR"
     ;;
   due)
     mark_due

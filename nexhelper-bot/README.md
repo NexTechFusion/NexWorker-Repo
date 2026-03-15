@@ -29,6 +29,9 @@ Primary components:
 - `skills/common/nexhelper-workflow`
 - `skills/common/nexhelper-healthcheck`
 - `skills/common/nexhelper-smoke`
+- `skills/common/nexhelper-policy` (tenant RBAC)
+- `skills/common/nexhelper-notify` (audience-aware notifications)
+- `skills/common/nexhelper-admin-report` (ops read model)
 
 ## Quick Start
 
@@ -77,10 +80,13 @@ Provisioning outputs scripts in the customer directory:
 - `logs.sh`
 - `health.sh`
 - `smoke.sh`
+- `report.sh` (admin ops report)
 - `migrate.sh`
 - `retention.sh`
 - `consent.sh`
-- `remove.sh`
+- `onboard.sh` (founder handover guide)
+- `admin-quickstart.sh` (admin verification after pairing)
+- `remove.sh` (export-first offboarding)
 
 ## Testing and Quality Gates
 
@@ -184,8 +190,79 @@ nexhelper-bot/
 └── tests/regression/
 ```
 
+## Role-Based Access Control
+
+NexHelper enforces an `admin | member` role model per tenant.
+
+- **member** (default for all unknown users): can store, search, list, create/delete own reminders.
+- **admin**: all member permissions plus delete, hard-delete, purge, export, policy management.
+- Role state is stored in `storage/policy.json` per tenant.
+
+Promote a user to admin:
+
+```bash
+docker exec -i <container> nexhelper-policy add-admin <USER_ID> <PROMOTED_BY>
+```
+
+Remove admin:
+
+```bash
+docker exec -i <container> nexhelper-policy remove-admin <USER_ID>
+```
+
+List admins:
+
+```bash
+docker exec -i <container> nexhelper-policy list-admins
+```
+
+## Compliance and Offboarding Runbook
+
+### Data retention defaults
+
+- Documents older than `RETENTION_DAYS` (default: 365) are archived automatically.
+- Soft-deleted documents are purged after `PURGE_DELETED_AFTER_DAYS` (default: 30).
+- Override per instance via environment variables in `docker-compose.yaml`.
+
+### Exporting data before deletion
+
+Always run `./remove.sh` instead of deleting the directory directly. The script performs an export-first confirmation flow:
+
+1. Creates a timestamped `offboarding-export-*/` directory.
+2. Copies `canonical/`, `consent/`, `audit/`, `policy.json`, and config files.
+3. Prompts you to type `DELETE` before removing the container and directory.
+
+You can also export manually without deleting:
+
+```bash
+# Full canonical export
+cp -r <CUSTOMER_DIR>/storage/canonical ./backup-$(date +%Y%m%d)
+cp -r <CUSTOMER_DIR>/storage/consent  ./backup-$(date +%Y%m%d)
+cp -r <CUSTOMER_DIR>/storage/audit    ./backup-$(date +%Y%m%d)
+```
+
+### Consent withdrawal
+
+```bash
+<CUSTOMER_DIR>/consent.sh revoke <USER_ID>
+```
+
+### Audit log retrieval
+
+```bash
+docker exec -i <container> cat /root/.openclaw/workspace/storage/audit/events.ndjson | jq -c '.'
+```
+
+### Admin ops report
+
+```bash
+<CUSTOMER_DIR>/report.sh           # JSON report
+<CUSTOMER_DIR>/report.sh html      # HTML report (redirect to .html file)
+```
+
 ## Notes
 
 - OpenRouter is the preferred provider path.
 - Reminder reliability is implemented as layered behavior: direct tool execution + canonical reminder storage + sync/audit safety nets.
 - Agent behavior checks include deterministic pass/fail for system guarantees and warn-level for residual LLM variability where appropriate.
+- The `nexhelper-notify` script routes proactive notifications by audience: `single`, `admin-only`, or `broadcast` (uses `adminNotificationChannel` from policy).

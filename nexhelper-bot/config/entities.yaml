@@ -7,7 +7,7 @@ entities:
     active: true
     notifyOnOverBudget: false
   - id: marketing
-    name: "Marketing Dept"
+    name: "Marketing"
     budget: 5000
     budgetPeriod: monthly
     aliases: ["@marketing","marketing"]

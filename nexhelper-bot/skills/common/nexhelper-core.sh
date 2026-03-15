@@ -3,6 +3,7 @@
 set -euo pipefail
 
 NX_STORAGE_DIR="${STORAGE_DIR:-/root/.openclaw/workspace/storage}"
+NX_POLICY_FILE="${NX_STORAGE_DIR}/policy.json"
 NX_CANONICAL_DIR="$NX_STORAGE_DIR/canonical"
 NX_DOCS_DIR="$NX_CANONICAL_DIR/documents"
 NX_REMINDERS_DIR="$NX_CANONICAL_DIR/reminders"
@@ -181,6 +182,97 @@ nx_date_ymd_from_compact() {
   fi
 }
 
+nx_policy_load() {
+  if [ -f "$NX_POLICY_FILE" ]; then
+    cat "$NX_POLICY_FILE"
+  else
+    echo '{"admins":[],"memberPermissions":{"store":true,"search":true,"list":true,"get":true,"stats":true,"reminder_create":true,"reminder_list":true,"reminder_delete_own":true},"adminNotificationChannel":"","adminIds":[]}'
+  fi
+}
+
+nx_role_get() {
+  local user_id="$1"
+  if [ -z "$user_id" ]; then
+    echo "member"
+    return
+  fi
+  local policy
+  policy="$(nx_policy_load)"
+  local is_admin
+  is_admin="$(echo "$policy" | jq -r --arg u "$user_id" '.admins | any(. == $u)')"
+  if [ "$is_admin" = "true" ]; then
+    echo "admin"
+  else
+    echo "member"
+  fi
+}
+
+nx_require_admin() {
+  local user_id="$1"
+  local action="${2:-action}"
+  local role
+  role="$(nx_role_get "$user_id")"
+  if [ "$role" != "admin" ]; then
+    jq -c -n \
+      --arg status "forbidden" \
+      --arg action "$action" \
+      --arg user "$user_id" \
+      --arg role "$role" \
+      '{status:$status,action:$action,user:$user,role:$role,message:"Diese Aktion erfordert Admin-Berechtigung."}'
+    return 1
+  fi
+  return 0
+}
+
+nx_is_admin() {
+  local user_id="$1"
+  [ "$(nx_role_get "$user_id")" = "admin" ]
+}
+
+nx_policy_add_admin() {
+  local user_id="$1"
+  local promoted_by="${2:-system}"
+  local policy
+  policy="$(nx_policy_load)"
+  local already
+  already="$(echo "$policy" | jq -r --arg u "$user_id" '.admins | any(. == $u)')"
+  if [ "$already" = "true" ]; then
+    jq -c -n --arg u "$user_id" '{status:"already_admin",userId:$u}'
+    return
+  fi
+  mkdir -p "$(dirname "$NX_POLICY_FILE")"
+  local updated
+  updated="$(echo "$policy" | jq -c --arg u "$user_id" '.admins += [$u]')"
+  printf "%s\n" "$updated" > "$NX_POLICY_FILE"
+  jq -c -n --arg u "$user_id" --arg by "$promoted_by" '{status:"promoted",userId:$u,promotedBy:$by}'
+}
+
+nx_policy_remove_admin() {
+  local user_id="$1"
+  local demoted_by="${2:-system}"
+  local policy
+  policy="$(nx_policy_load)"
+  mkdir -p "$(dirname "$NX_POLICY_FILE")"
+  local updated
+  updated="$(echo "$policy" | jq -c --arg u "$user_id" '.admins = [.admins[] | select(. != $u)]')"
+  printf "%s\n" "$updated" > "$NX_POLICY_FILE"
+  jq -c -n --arg u "$user_id" --arg by "$demoted_by" '{status:"demoted",userId:$u,demotedBy:$by}'
+}
+
+nx_policy_list_admins() {
+  nx_policy_load | jq -c '.admins'
+}
+
+nx_policy_get_admin_ids() {
+  nx_policy_load | jq -r '.admins[]' 2>/dev/null || true
+}
+
+nx_policy_has_any_admin() {
+  local count
+  count="$(nx_policy_load | jq '.admins | length')"
+  [ "$count" -gt 0 ]
+}
+
 nx_within_date_range() {
   local value="$1"
   local from="$2"
@@ -192,4 +284,53 @@ nx_within_date_range() {
     return 1
   fi
   return 0
+}
+
+# ─── User Registry ────────────────────────────────────────────────────────────
+# Persists user_id ↔ username pairs so admins can resolve @username → user_id.
+# File: $NX_STORAGE_DIR/users.json  (JSON object keyed by user_id)
+
+NX_USERS_FILE="${NX_STORAGE_DIR}/users.json"
+
+nx_user_load() {
+  if [ -f "$NX_USERS_FILE" ]; then
+    cat "$NX_USERS_FILE"
+  else
+    echo '{}'
+  fi
+}
+
+nx_user_seen() {
+  local user_id="$1"
+  local username="${2:-}"
+  local display_name="${3:-}"
+  local users
+  users="$(nx_user_load)"
+  local now
+  now="$(nx_now_iso)"
+  local is_new
+  is_new="$(echo "$users" | jq -r --arg u "$user_id" 'has($u) | not')"
+  local updated
+  updated="$(echo "$users" | jq -c \
+    --arg u "$user_id" \
+    --arg name "$username" \
+    --arg display "$display_name" \
+    --arg ts "$now" \
+    '.[$u] = {userId:$u, username:$name, displayName:$display, lastSeen:$ts} + (if .[$u] then {firstSeen: .[$u].firstSeen} else {firstSeen:$ts} end)')"
+  mkdir -p "$(dirname "$NX_USERS_FILE")"
+  printf "%s\n" "$updated" > "$NX_USERS_FILE"
+  echo "$is_new"
+}
+
+nx_user_is_new() {
+  local user_id="$1"
+  local users
+  users="$(nx_user_load)"
+  echo "$users" | jq -r --arg u "$user_id" 'has($u) | not'
+}
+
+nx_user_find_by_username() {
+  local username="$1"
+  local clean_name="${username#@}"
+  nx_user_load | jq -c --arg n "$clean_name" 'to_entries[] | select(.value.username == $n or .value.displayName == $n) | .value' 2>/dev/null | head -1
 }

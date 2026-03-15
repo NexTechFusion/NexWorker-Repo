@@ -1,0 +1,175 @@
+---
+import Layout from '../layouts/Layout.astro';
+const pageTitle = "NexHelper Admin Panel";
+---
+
+<Layout title={pageTitle} description="NexHelper Betriebsübersicht und Admin-Dokumentation">
+  <nav class="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-100">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 bg-teal-600 rounded-lg flex items-center justify-center">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+          </svg>
+        </div>
+        <span class="font-bold text-slate-900">NexHelper Admin</span>
+      </div>
+      <a href="/" class="text-sm text-slate-500 hover:text-teal-600 transition-colors">← Zurück</a>
+    </div>
+  </nav>
+
+  <main class="pt-20 pb-16 max-w-5xl mx-auto px-4">
+
+    <!-- Header -->
+    <div class="mb-10 mt-6">
+      <h1 class="text-3xl font-extrabold text-slate-900 mb-2">Admin-Übersicht</h1>
+      <p class="text-slate-500">Operational read models, Gesundheitsstatus und Nutzerverwaltung für deine NexHelper-Instanz.</p>
+    </div>
+
+    <!-- Live status section -->
+    <section class="mb-10 p-6 bg-amber-50 border border-amber-200 rounded-2xl">
+      <h2 class="text-lg font-bold text-amber-900 mb-2">Live-Status abrufen</h2>
+      <p class="text-amber-800 text-sm mb-4">
+        Das Admin-Panel zeigt statische Dokumentation. Für Live-Betriebsdaten führe folgende Befehle im Container aus:
+      </p>
+      <div class="space-y-3">
+        <div class="bg-white rounded-xl p-4 border border-amber-100">
+          <p class="text-xs font-semibold text-slate-500 mb-1">JSON-Report (Maschinen-lesbar)</p>
+          <code class="text-sm font-mono text-teal-700">docker exec -i &lt;INSTANCE&gt; nexhelper-admin-report</code>
+        </div>
+        <div class="bg-white rounded-xl p-4 border border-amber-100">
+          <p class="text-xs font-semibold text-slate-500 mb-1">HTML-Report (Browser-lesbar)</p>
+          <code class="text-sm font-mono text-teal-700">docker exec -i &lt;INSTANCE&gt; nexhelper-admin-report html &gt; report.html</code>
+        </div>
+        <div class="bg-white rounded-xl p-4 border border-amber-100">
+          <p class="text-xs font-semibold text-slate-500 mb-1">Health-Check</p>
+          <code class="text-sm font-mono text-teal-700">docker exec -i &lt;INSTANCE&gt; nexhelper-healthcheck</code>
+        </div>
+      </div>
+    </section>
+
+    <!-- Quick actions grid -->
+    <section class="mb-10">
+      <h2 class="text-xl font-bold text-slate-900 mb-4">Admin-Aktionen</h2>
+      <div class="grid sm:grid-cols-2 gap-4">
+
+        <div class="p-5 border border-slate-200 rounded-2xl hover:border-teal-300 transition-colors">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="text-xl">👥</span>
+            <h3 class="font-semibold text-slate-900">Nutzerverwaltung</h3>
+          </div>
+          <div class="space-y-2 text-sm font-mono text-slate-600">
+            <p><span class="text-slate-400"># Admin fördern</span></p>
+            <p class="bg-slate-50 rounded px-2 py-1">nexhelper-policy add-admin &lt;USER_ID&gt;</p>
+            <p><span class="text-slate-400"># Admin entfernen</span></p>
+            <p class="bg-slate-50 rounded px-2 py-1">nexhelper-policy remove-admin &lt;USER_ID&gt;</p>
+            <p><span class="text-slate-400"># Alle Admins auflisten</span></p>
+            <p class="bg-slate-50 rounded px-2 py-1">nexhelper-policy list-admins</p>
+          </div>
+        </div>
+
+        <div class="p-5 border border-slate-200 rounded-2xl hover:border-teal-300 transition-colors">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="text-xl">⏰</span>
+            <h3 class="font-semibold text-slate-900">Cron-Jobs</h3>
+          </div>
+          <div class="space-y-2 text-sm font-mono text-slate-600">
+            <p><span class="text-slate-400"># Jobs auflisten</span></p>
+            <p class="bg-slate-50 rounded px-2 py-1">openclaw cron list --json</p>
+            <p><span class="text-slate-400"># Delivery-Ziel setzen</span></p>
+            <p class="bg-slate-50 rounded px-2 py-1">openclaw cron edit --id &lt;ID&gt; --to telegram:&lt;CHAT_ID&gt;</p>
+          </div>
+        </div>
+
+        <div class="p-5 border border-slate-200 rounded-2xl hover:border-teal-300 transition-colors">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="text-xl">🩺</span>
+            <h3 class="font-semibold text-slate-900">Health &amp; Smoke</h3>
+          </div>
+          <div class="space-y-2 text-sm font-mono text-slate-600">
+            <p><span class="text-slate-400"># Systemgesundheit</span></p>
+            <p class="bg-slate-50 rounded px-2 py-1">nexhelper-healthcheck</p>
+            <p><span class="text-slate-400"># Smoke-Test</span></p>
+            <p class="bg-slate-50 rounded px-2 py-1">nexhelper-smoke</p>
+          </div>
+        </div>
+
+        <div class="p-5 border border-slate-200 rounded-2xl hover:border-teal-300 transition-colors">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="text-xl">📊</span>
+            <h3 class="font-semibold text-slate-900">Dokumente &amp; Audit</h3>
+          </div>
+          <div class="space-y-2 text-sm font-mono text-slate-600">
+            <p><span class="text-slate-400"># Statistiken</span></p>
+            <p class="bg-slate-50 rounded px-2 py-1">nexhelper-doc stats</p>
+            <p><span class="text-slate-400"># Letzte Audit-Events</span></p>
+            <p class="bg-slate-50 rounded px-2 py-1">tail -20 storage/audit/events.ndjson</p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Role model reference -->
+    <section class="mb-10">
+      <h2 class="text-xl font-bold text-slate-900 mb-4">Rollenmodell</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm border border-slate-200 rounded-2xl overflow-hidden">
+          <thead>
+            <tr class="bg-slate-50">
+              <th class="text-left px-4 py-3 font-semibold text-slate-700">Aktion</th>
+              <th class="text-center px-4 py-3 font-semibold text-slate-700">member</th>
+              <th class="text-center px-4 py-3 font-semibold text-slate-700">admin</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            {[
+              ["Dokumente einreichen", true, true],
+              ["Dokumente suchen", true, true],
+              ["Erinnerungen setzen", true, true],
+              ["Eigene Erinnerungen löschen", true, true],
+              ["Dokumente löschen / wiederherstellen", false, true],
+              ["Hard-Delete / Purge", false, true],
+              ["Export (DATEV, CSV)", false, true],
+              ["Admin-Förderung", false, true],
+              ["Smoke / Health-Reports", false, true],
+            ].map(([action, member, admin]) => (
+              <tr>
+                <td class="px-4 py-3 text-slate-700">{action}</td>
+                <td class="px-4 py-3 text-center">{member ? "✅" : "❌"}</td>
+                <td class="px-4 py-3 text-center">{admin ? "✅" : "❌"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Ops health indicators -->
+    <section class="mb-10 p-6 bg-slate-50 border border-slate-200 rounded-2xl">
+      <h2 class="text-xl font-bold text-slate-900 mb-4">Betriebsdiagnostik (Referenz)</h2>
+      <div class="space-y-4 text-sm text-slate-700">
+        <div>
+          <p class="font-semibold mb-1">Cron-Delivery prüfen</p>
+          <code class="block bg-white border border-slate-200 rounded-lg px-3 py-2 font-mono">
+            docker exec -i &lt;INSTANCE&gt; openclaw cron list --json | jq '.[] | select(.delivery.to == null)'
+          </code>
+          <p class="text-slate-500 text-xs mt-1">Zeigt Jobs ohne Delivery-Ziel — diese müssen mit <code>openclaw cron edit --to</code> korrigiert werden.</p>
+        </div>
+        <div>
+          <p class="font-semibold mb-1">API-Routing prüfen</p>
+          <code class="block bg-white border border-slate-200 rounded-lg px-3 py-2 font-mono">
+            docker exec -i &lt;INSTANCE&gt; env | grep -E "OPENROUTER|OPENAI|USE_OPENROUTER"
+          </code>
+        </div>
+        <div>
+          <p class="font-semibold mb-1">Audit-Log (letzte 50 Einträge)</p>
+          <code class="block bg-white border border-slate-200 rounded-lg px-3 py-2 font-mono">
+            docker exec -i &lt;INSTANCE&gt; tail -50 /root/.openclaw/workspace/storage/audit/events.ndjson | jq -c '.'
+          </code>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</Layout>

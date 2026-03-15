@@ -30,6 +30,39 @@ check_path() {
   fi
 }
 
+check_env() {
+  local name="$1"
+  local var="$2"
+  local val="${!var:-}"
+  if [ -n "$val" ]; then
+    checks="$(echo "$checks" | jq -c --arg n "$name" '. + [{name:$n,status:"ok"}]')"
+  else
+    checks="$(echo "$checks" | jq -c --arg n "$name" '. + [{name:$n,status:"missing"}]')"
+    status="degraded"
+  fi
+}
+
+check_http() {
+  local name="$1"
+  local url="$2"
+  local timeout="${3:-5}"
+  local http_code
+  http_code="$(curl -o /dev/null -s -w "%{http_code}" --max-time "$timeout" "$url" 2>/dev/null || echo "000")"
+  if [[ "$http_code" =~ ^[23] ]]; then
+    checks="$(echo "$checks" | jq -c --arg n "$name" --arg code "$http_code" '. + [{name:$n,status:"ok",httpCode:$code}]')"
+  elif [ "$http_code" = "401" ] || [ "$http_code" = "403" ]; then
+    # 401/403 means the server is reachable but auth failed — server is up
+    checks="$(echo "$checks" | jq -c --arg n "$name" --arg code "$http_code" '. + [{name:$n,status:"ok",httpCode:$code,note:"reachable-auth-required"}]')"
+  elif [ "$http_code" = "000" ]; then
+    checks="$(echo "$checks" | jq -c --arg n "$name" '. + [{name:$n,status:"unreachable"}]')"
+    status="degraded"
+  else
+    checks="$(echo "$checks" | jq -c --arg n "$name" --arg code "$http_code" '. + [{name:$n,status:"degraded",httpCode:$code}]')"
+    status="degraded"
+  fi
+}
+
+# Local system tools
 nx_init_dirs
 check_cmd "jq" "jq"
 check_cmd "curl" "curl"
@@ -38,6 +71,42 @@ check_cmd "pdftoppm" "pdftoppm"
 check_path "canonical_documents_dir" "$NX_DOCS_DIR"
 check_path "canonical_reminders_dir" "$NX_REMINDERS_DIR"
 check_path "audit_dir" "$NX_AUDIT_DIR"
+
+# API key presence
+_API_KEY="${OPENROUTER_API_KEY:-${OPENAI_API_KEY:-}}"
+if [ -n "$_API_KEY" ]; then
+  checks="$(echo "$checks" | jq -c '. + [{name:"api_key_configured",status:"ok"}]')"
+else
+  checks="$(echo "$checks" | jq -c '. + [{name:"api_key_configured",status:"missing"}]')"
+  status="degraded"
+fi
+
+# AI provider reachability (cheap HTTP check — no actual AI call)
+_BASE_URL="${OPENAI_BASE_URL:-${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}}"
+_PROVIDER_HOST="$(echo "$_BASE_URL" | sed 's|https\?://||' | cut -d'/' -f1)"
+if [ -n "$_PROVIDER_HOST" ] && command -v curl >/dev/null 2>&1; then
+  check_http "ai_provider_reachable" "https://${_PROVIDER_HOST}" 5
+fi
+
+# Telegram gateway reachability (only if a Telegram token is configured)
+_TG_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
+if [ -n "$_TG_TOKEN" ] && command -v curl >/dev/null 2>&1; then
+  _TG_BOT_ID="${_TG_TOKEN%%:*}"
+  _TG_URL="https://api.telegram.org/bot${_TG_TOKEN}/getMe"
+  _TG_CODE="$(curl -o /dev/null -s -w "%{http_code}" --max-time 5 "$_TG_URL" 2>/dev/null || echo "000")"
+  if [ "$_TG_CODE" = "200" ]; then
+    checks="$(echo "$checks" | jq -c --arg id "$_TG_BOT_ID" '. + [{name:"telegram_token_valid",status:"ok",botId:$id}]')"
+  elif [ "$_TG_CODE" = "401" ]; then
+    checks="$(echo "$checks" | jq -c '. + [{name:"telegram_token_valid",status:"invalid"}]')"
+    status="degraded"
+  elif [ "$_TG_CODE" = "000" ]; then
+    checks="$(echo "$checks" | jq -c '. + [{name:"telegram_token_valid",status:"unreachable"}]')"
+    status="degraded"
+  else
+    checks="$(echo "$checks" | jq -c --arg code "$_TG_CODE" '. + [{name:"telegram_token_valid",status:"degraded",httpCode:$code}]')"
+    status="degraded"
+  fi
+fi
 
 jq -c -n --arg timestamp "$(nx_now_iso)" --arg status "$status" --argjson checks "$checks" \
   '{timestamp:$timestamp,status:$status,checks:$checks}'

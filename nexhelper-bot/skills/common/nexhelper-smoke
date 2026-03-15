@@ -65,6 +65,10 @@ main() {
     '{timestamp:$timestamp,pass:$pass,fail:$fail,checks:$checks,reportFile:$reportFile}')"
   printf "%s\n" "$output" > "$report_file"
   echo "$output"
+
+  if [ "$(echo "$output" | jq '.fail')" -gt 0 ]; then
+    echo "⚠️  SMOKE FAILURES DETECTED — run nexhelper-admin-report for full diagnostics" >&2
+  fi
 }
 
 main

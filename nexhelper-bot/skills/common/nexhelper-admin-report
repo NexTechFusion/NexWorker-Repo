@@ -1,0 +1,134 @@
+#!/bin/bash
+# Generates a JSON operational summary for the admin panel.
+# Includes: health, cron status, smoke reports, role roster, consent counts.
+
+set -uo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")" 2>/dev/null || dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/nexhelper-core.sh"
+
+HEALTH_SCRIPT="$SCRIPT_DIR/nexhelper-healthcheck"
+DOC_SCRIPT="$SCRIPT_DIR/../document-handler/nexhelper-doc"
+
+generate_report() {
+  nx_init_dirs
+
+  local health="{}"
+  if [ -x "$HEALTH_SCRIPT" ]; then
+    local _h
+    _h="$("$HEALTH_SCRIPT" 2>/dev/null || true)"
+    echo "$_h" | jq -e . >/dev/null 2>&1 && health="$_h" || health="{}"
+  fi
+
+  local doc_stats="{}"
+  if [ -x "$DOC_SCRIPT" ]; then
+    local _d
+    _d="$("$DOC_SCRIPT" stats 2>/dev/null || true)"
+    echo "$_d" | jq -e . >/dev/null 2>&1 && doc_stats="$_d" || doc_stats="{}"
+  fi
+
+  local smoke_reports="[]"
+  local smoke_dir="$NX_OPS_DIR/smoke"
+  if [ -d "$smoke_dir" ]; then
+    local f
+    for f in "$smoke_dir"/report-*.json; do
+      [ -f "$f" ] || continue
+      local r
+      r="$(cat "$f" 2>/dev/null || true)"
+      if [ -n "$r" ] && echo "$r" | jq -e . >/dev/null 2>&1; then
+        smoke_reports="$(echo "$smoke_reports" | jq -c --argjson r "$r" '. + [$r]' 2>/dev/null || echo "$smoke_reports")"
+      fi
+    done
+    smoke_reports="$(echo "$smoke_reports" | jq -c 'sort_by(.timestamp) | reverse | .[:5]' 2>/dev/null || echo "[]")"
+  fi
+
+  local admins="[]"
+  admins="$(nx_policy_list_admins 2>/dev/null || echo '[]')"
+
+  local consent_count=0
+  local consent_dir="$NX_STORAGE_DIR/consent"
+  if [ -d "$consent_dir" ]; then
+    consent_count="$(find "$consent_dir" -maxdepth 1 -name '*.json' 2>/dev/null | wc -l | tr -d ' ')"
+  fi
+
+  local recent_events="[]"
+  local events_file="$NX_AUDIT_DIR/events.ndjson"
+  if [ -f "$events_file" ]; then
+    recent_events="$(tail -20 "$events_file" 2>/dev/null | jq -sc '.' 2>/dev/null || echo '[]')"
+  fi
+
+  jq -c -n \
+    --arg timestamp "$(nx_now_iso)" \
+    --argjson health "$health" \
+    --argjson docStats "$doc_stats" \
+    --argjson smokeReports "$smoke_reports" \
+    --argjson admins "$admins" \
+    --argjson consentCount "$consent_count" \
+    --argjson recentEvents "$recent_events" \
+    '{
+      timestamp: $timestamp,
+      health: $health,
+      docStats: $docStats,
+      smokeReports: $smokeReports,
+      roles: { admins: $admins, adminCount: ($admins | length) },
+      consent: { consented: $consentCount },
+      recentAuditEvents: $recentEvents
+    }'
+}
+
+FORMAT="${1:-json}"
+REPORT="$(generate_report)"
+
+if [ "$FORMAT" = "html" ]; then
+  HEALTH_STATUS="$(echo "$REPORT" | jq -r '.health.status // "unknown"')"
+  ADMIN_COUNT="$(echo "$REPORT" | jq -r '.roles.adminCount')"
+  DOC_COUNT="$(echo "$REPORT" | jq -r '.docStats.documents // 0')"
+  CONSENT_COUNT="$(echo "$REPORT" | jq -r '.consent.consented')"
+  TIMESTAMP="$(echo "$REPORT" | jq -r '.timestamp')"
+  cat <<HTMLEOF
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NexHelper Admin Report</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; color: #1e293b; }
+  h1 { color: #0d9488; }
+  .badge { display: inline-block; padding: .2rem .6rem; border-radius: 9999px; font-size: .8rem; font-weight: 600; }
+  .ok { background: #d1fae5; color: #065f46; }
+  .degraded { background: #fef3c7; color: #92400e; }
+  .fail, .unknown { background: #fee2e2; color: #991b1b; }
+  table { border-collapse: collapse; width: 100%; margin-bottom: 1.5rem; }
+  th, td { text-align: left; padding: .5rem .75rem; border-bottom: 1px solid #e2e8f0; }
+  th { background: #f8fafc; font-weight: 600; }
+  pre { background: #f1f5f9; padding: 1rem; border-radius: .5rem; overflow: auto; font-size: .8rem; }
+</style>
+</head>
+<body>
+<h1>🔑 NexHelper Admin Report</h1>
+<p>Erstellt: <strong>${TIMESTAMP}</strong></p>
+
+<h2>Systemstatus</h2>
+<table>
+<tr><th>Check</th><th>Status</th></tr>
+<tr><td>Health</td><td><span class="badge ${HEALTH_STATUS}">${HEALTH_STATUS}</span></td></tr>
+<tr><td>Admins</td><td>${ADMIN_COUNT}</td></tr>
+<tr><td>Dokumente</td><td>${DOC_COUNT}</td></tr>
+<tr><td>Einwilligungen</td><td>${CONSENT_COUNT}</td></tr>
+</table>
+
+<h2>Letzte Smoke-Tests</h2>
+<pre>$(echo "$REPORT" | jq -r '.smokeReports[] | "\(.timestamp) pass=\(.pass) fail=\(.fail)"' 2>/dev/null || echo "(keine)")</pre>
+
+<h2>Letzte Audit-Events</h2>
+<pre>$(echo "$REPORT" | jq -r '.recentAuditEvents[] | "\(.timestamp) \(.event) \(.status)"' 2>/dev/null || echo "(keine)")</pre>
+
+<h2>Rohdaten (JSON)</h2>
+<pre>$(echo "$REPORT" | jq .)</pre>
+</body>
+</html>
+HTMLEOF
+else
+  echo "$REPORT"
+fi

@@ -13,6 +13,18 @@ AUDIT_DIR="${CUSTOMER_DIR}/storage/audit"
 
 source "${CUSTOMER_DIR}/.env" 2>/dev/null || true
 
+EXPORT_ACTOR="${EXPORT_ACTOR:-}"
+if [ -n "$EXPORT_ACTOR" ]; then
+  _POLICY_FILE="${CUSTOMER_DIR}/storage/policy.json"
+  if [ -f "$_POLICY_FILE" ]; then
+    _IS_ADMIN=$(jq -r --arg u "$EXPORT_ACTOR" '.admins | any(. == $u)' "$_POLICY_FILE" 2>/dev/null || echo "false")
+    if [ "$_IS_ADMIN" != "true" ]; then
+      echo '{"status":"forbidden","action":"export","message":"Export erfordert Admin-Berechtigung."}' >&2
+      exit 1
+    fi
+  fi
+fi
+
 BERATER_NR="${DATEV_BERATER_NR:-100000}"
 MANDANTEN_NR="${DATEV_MANDANTEN_NR:-100}"
 SACHKONTENLAENGE="${DATEV_SACHKONTENLAENGE:-4}"

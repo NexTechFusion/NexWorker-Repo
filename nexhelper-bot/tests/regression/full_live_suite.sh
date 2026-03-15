@@ -38,6 +38,8 @@ fi
 
 mkdir -p "$STORAGE_DIR" "$CONFIG_DIR" "$REPORT_DIR" "$SUITE_DIR/exports"
 rm -rf "$STORAGE_DIR"/*
+mkdir -p "$STORAGE_DIR/canonical/documents" "$STORAGE_DIR/canonical/reminders" "$STORAGE_DIR/audit" "$STORAGE_DIR/idempotency" "$STORAGE_DIR/ops" "$STORAGE_DIR/canonical/indices"
+printf '%s\n' '{"admins":[],"memberPermissions":{"store":true,"search":true,"list":true,"get":true,"stats":true,"reminder_create":true,"reminder_list":true,"reminder_delete_own":true},"adminNotificationChannel":"","createdAt":"2026-01-01T00:00:00Z","tenantId":"test","tenantName":"Test Suite"}' > "$STORAGE_DIR/policy.json"
 
 cat > "$CONFIG_DIR/entities.yaml" <<'EOF'
 entities:
@@ -427,6 +429,113 @@ idem_rem_second="$("$REMINDER_SCRIPT" create --user idem_user --text "Idempotenc
 idem_rem_first_id="$(echo "$idem_rem_first" | jq -r '.reminder.id // empty')"
 idem_rem_second_id="$(echo "$idem_rem_second" | jq -r '.reminder.id // empty')"
 run_check "F25" "reminder_idempotency_same_result" "[ -n '$idem_rem_first_id' ] && [ '$idem_rem_first_id' = '$idem_rem_second_id' ]"
+
+POLICY_SCRIPT="$ROOT_DIR/skills/common/nexhelper-policy"
+NOTIFY_SCRIPT="$ROOT_DIR/skills/common/nexhelper-notify"
+ADMIN_REPORT_SCRIPT="$ROOT_DIR/skills/common/nexhelper-admin-report"
+
+# F26 RBAC policy helpers
+# policy file initialized in storage
+if [ -f "$STORAGE_DIR/policy.json" ]; then
+  policy_admins="$(jq -r '.admins | length' "$STORAGE_DIR/policy.json" 2>/dev/null || echo "0")"
+  record "F26" "policy_file_exists" "pass" "admins count=$policy_admins"
+else
+  record "F26" "policy_file_exists" "fail" "policy.json not found in storage"
+fi
+
+# policy add-admin / list-admins / remove-admin roundtrip
+if [ -x "$POLICY_SCRIPT" ]; then
+  promote_result="$(STORAGE_DIR="$STORAGE_DIR" "$POLICY_SCRIPT" add-admin "test_rbac_suite" "ci" 2>/dev/null || echo '{}')"
+  promote_status="$(echo "$promote_result" | jq -r '.status // empty')"
+  if [ "$promote_status" = "promoted" ] || [ "$promote_status" = "already_admin" ]; then
+    record "F26" "rbac_add_admin" "pass"
+  else
+    record "F26" "rbac_add_admin" "fail" "$promote_result"
+  fi
+
+  list_result="$(STORAGE_DIR="$STORAGE_DIR" "$POLICY_SCRIPT" list-admins 2>/dev/null || echo '[]')"
+  has_test="$(echo "$list_result" | jq -r 'any(. == "test_rbac_suite")')"
+  if [ "$has_test" = "true" ]; then
+    record "F26" "rbac_list_admins" "pass"
+  else
+    record "F26" "rbac_list_admins" "fail" "expected test_rbac_suite in $list_result"
+  fi
+
+  demote_result="$(STORAGE_DIR="$STORAGE_DIR" "$POLICY_SCRIPT" remove-admin "test_rbac_suite" "ci" 2>/dev/null || echo '{}')"
+  demote_status="$(echo "$demote_result" | jq -r '.status // empty')"
+  if [ "$demote_status" = "demoted" ]; then
+    record "F26" "rbac_remove_admin" "pass"
+  else
+    record "F26" "rbac_remove_admin" "fail" "$demote_result"
+  fi
+else
+  run_skip "F26" "rbac_add_admin" "nexhelper-policy not executable"
+  run_skip "F26" "rbac_list_admins" "nexhelper-policy not executable"
+  run_skip "F26" "rbac_remove_admin" "nexhelper-policy not executable"
+fi
+
+# F27 RBAC enforcement: member cannot delete (NX_ACTOR set to non-admin)
+# Store a document first, then attempt delete as non-admin
+f27_doc="$("$DOC_SCRIPT" store --type rechnung --amount 10 --supplier "RBAC Test GmbH" --number "RE-RBAC-1" --date 2026-03-13 --entity default --source-text "rbac test")"
+f27_doc_id="$(echo "$f27_doc" | jq -r '.document.id // empty')"
+if [ -n "$f27_doc_id" ]; then
+  member_del="$(NX_ACTOR="member_user_no_admin" "$DOC_SCRIPT" delete "$f27_doc_id" --reason "test" 2>&1 || true)"
+  member_del_status="$(echo "$member_del" | jq -r '.status // empty' 2>/dev/null || echo '')"
+  if [ "$member_del_status" = "forbidden" ]; then
+    record "F27" "rbac_member_delete_blocked" "pass"
+  else
+    record "F27" "rbac_member_delete_blocked" "fail" "expected forbidden, got: $member_del_status"
+  fi
+
+  # Admin can delete
+  STORAGE_DIR="$STORAGE_DIR" "$POLICY_SCRIPT" add-admin "test_admin_del" "ci" >/dev/null 2>&1 || true
+  admin_del="$(NX_ACTOR="test_admin_del" "$DOC_SCRIPT" delete "$f27_doc_id" --reason "test" 2>/dev/null || echo '{}')"
+  admin_del_status="$(echo "$admin_del" | jq -r '.status // empty')"
+  if [ "$admin_del_status" = "deleted" ]; then
+    record "F27" "rbac_admin_delete_allowed" "pass"
+  else
+    record "F27" "rbac_admin_delete_allowed" "fail" "expected deleted, got: $admin_del_status"
+  fi
+  STORAGE_DIR="$STORAGE_DIR" "$POLICY_SCRIPT" remove-admin "test_admin_del" "ci" >/dev/null 2>&1 || true
+else
+  record "F27" "rbac_member_delete_blocked" "fail" "could not store test document"
+  record "F27" "rbac_admin_delete_allowed" "fail" "could not store test document"
+fi
+
+# F28 Document retrieve command
+f28_doc="$("$DOC_SCRIPT" store --type rechnung --amount 20 --supplier "Retrieve Test GmbH" --number "RE-RETR-1" --date 2026-03-13 --entity default --source-text "retrieve test")"
+f28_doc_id="$(echo "$f28_doc" | jq -r '.document.id // empty')"
+if [ -n "$f28_doc_id" ]; then
+  retrieve_result="$("$DOC_SCRIPT" retrieve "$f28_doc_id" 2>/dev/null || echo '{}')"
+  retrieve_status="$(echo "$retrieve_result" | jq -r '.status // empty')"
+  if [ "$retrieve_status" = "found" ] || [ "$retrieve_status" = "no_file" ]; then
+    record "F28" "doc_retrieve_responds" "pass" "status=$retrieve_status"
+  else
+    record "F28" "doc_retrieve_responds" "fail" "unexpected status: $retrieve_result"
+  fi
+else
+  record "F28" "doc_retrieve_responds" "fail" "could not store test document"
+fi
+
+# F29 Admin report script
+if [ -x "$ADMIN_REPORT_SCRIPT" ]; then
+  report_out="$(STORAGE_DIR="$STORAGE_DIR" "$ADMIN_REPORT_SCRIPT" 2>/dev/null || echo '{}')"
+  report_has_health="$(echo "$report_out" | jq -e '.health' >/dev/null 2>&1 && echo "true" || echo "false")"
+  if [ "$report_has_health" = "true" ]; then
+    record "F29" "admin_report_output" "pass"
+  else
+    record "F29" "admin_report_output" "fail" "output missing health key: $report_out"
+  fi
+else
+  run_skip "F29" "admin_report_output" "nexhelper-admin-report not executable"
+fi
+
+# F30 nexhelper-notify script present and executable
+if [ -x "$NOTIFY_SCRIPT" ]; then
+  record "F30" "notify_script_executable" "pass"
+else
+  record "F30" "notify_script_executable" "fail" "nexhelper-notify not executable at $NOTIFY_SCRIPT"
+fi
 
 report_file="$REPORT_DIR/full-live-suite-$(date +%Y%m%d_%H%M%S).json"
 summary="$(jq -c -n --argjson pass "$pass" --argjson fail "$fail" --argjson skip "$skip" --argjson results "$results" --arg reportFile "$report_file" \

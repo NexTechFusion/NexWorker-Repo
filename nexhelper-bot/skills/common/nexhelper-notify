@@ -1,0 +1,93 @@
+#!/bin/bash
+# Audience-aware proactive notification routing.
+# Resolves the delivery target(s) based on audience type and sends via openclaw.
+#
+# Audiences:
+#   single     <channel:id>          - direct to one specific target
+#   admin-only                        - all admins from policy
+#   all-admins                        - alias for admin-only
+#   broadcast                         - admin_notification_channel from policy (default channel)
+#
+# Usage:
+#   nexhelper-notify send --audience admin-only --message "Budget exceeded"
+#   nexhelper-notify send --audience single --to telegram:579539601 --message "Your reminder is due"
+#   nexhelper-notify send --audience broadcast --message "Daily summary ready"
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")" 2>/dev/null || dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/nexhelper-core.sh"
+
+nx_notify_send() {
+  local audience="$1"
+  local message="$2"
+  local to="${3:-}"
+
+  local policy
+  policy="$(nx_policy_load)"
+  local admin_channel
+  admin_channel="$(echo "$policy" | jq -r '.adminNotificationChannel // empty')"
+
+  case "$audience" in
+    single)
+      if [ -z "$to" ]; then
+        echo '{"status":"error","message":"--to required for single audience"}' >&2
+        return 1
+      fi
+      openclaw send --to "$to" --message "$message" 2>/dev/null || true
+      jq -c -n --arg status "sent" --arg audience "$audience" --arg to "$to" \
+        '{status:$status,audience:$audience,to:$to}'
+      ;;
+    admin-only|all-admins)
+      local sent=0
+      local admin_id
+      while IFS= read -r admin_id; do
+        [ -n "$admin_id" ] || continue
+        openclaw send --to "$admin_id" --message "$message" 2>/dev/null || true
+        sent=$((sent + 1))
+      done < <(nx_policy_get_admin_ids)
+      jq -c -n --arg status "sent" --arg audience "$audience" --argjson count "$sent" \
+        '{status:$status,audience:$audience,recipientCount:$count}'
+      ;;
+    broadcast)
+      if [ -n "$admin_channel" ]; then
+        openclaw send --to "$admin_channel" --message "$message" 2>/dev/null || true
+        jq -c -n --arg status "sent" --arg audience "$audience" --arg to "$admin_channel" \
+          '{status:$status,audience:$audience,to:$to}'
+      else
+        echo '{"status":"skipped","reason":"adminNotificationChannel not configured in policy"}' >&2
+      fi
+      ;;
+    *)
+      echo '{"status":"error","message":"Unknown audience. Use: single|admin-only|all-admins|broadcast"}' >&2
+      return 1
+      ;;
+  esac
+}
+
+CMD="${1:-}"
+shift || true
+case "$CMD" in
+  send)
+    AUDIENCE="broadcast"
+    MESSAGE=""
+    TO=""
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --audience) AUDIENCE="$2"; shift 2 ;;
+        --message)  MESSAGE="$2"; shift 2 ;;
+        --to)       TO="$2"; shift 2 ;;
+        *) shift ;;
+      esac
+    done
+    if [ -z "$MESSAGE" ]; then
+      echo "Usage: nexhelper-notify send --audience <single|admin-only|broadcast> --message <text> [--to <channel:id>]" >&2
+      exit 1
+    fi
+    nx_notify_send "$AUDIENCE" "$MESSAGE" "$TO"
+    ;;
+  *)
+    echo "Usage: nexhelper-notify send --audience <single|admin-only|broadcast> --message <text> [--to <channel:id>]" >&2
+    exit 1
+    ;;
+esac

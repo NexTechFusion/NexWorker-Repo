@@ -1,6 +1,7 @@
 param(
   [string]$OpenRouterApiKey = $env:OPENROUTER_API_KEY,
   [string]$OpenRouterBaseUrl = "https://openrouter.ai/api/v1",
+  [string]$TelegramBotToken = $env:TELEGRAM_BOT_TOKEN,
   [switch]$KeepCustomer
 )
 
@@ -97,7 +98,8 @@ try {
 
   $rootBash = To-GitBashPath -WindowsPath $root
   $baseDirBash = To-GitBashPath -WindowsPath $baseDir
-  $provisionCmd = "cd '$rootBash' && OPENROUTER_API_KEY='$OpenRouterApiKey' OPENROUTER_BASE_URL='$OpenRouterBaseUrl' DEFAULT_DELIVERY_TO='$defaultDeliveryTo' ./provision-customer.sh $customerId '$customerName' --whatsapp --base-dir '$baseDirBash' --no-start"
+  $channelArgs = if ($TelegramBotToken) { "--telegram '$TelegramBotToken'" } else { "--whatsapp" }
+  $provisionCmd = "cd '$rootBash' && OPENROUTER_API_KEY='$OpenRouterApiKey' OPENROUTER_BASE_URL='$OpenRouterBaseUrl' DEFAULT_DELIVERY_TO='$defaultDeliveryTo' ./provision-customer.sh $customerId '$customerName' $channelArgs --base-dir '$baseDirBash' --no-start"
   & $bashPath -lc $provisionCmd | Out-Null
   Add-Result "provision_customer" "pass"
 
@@ -603,6 +605,178 @@ try {
     Add-Result "agent_reset_isolation" "pass"
   } else {
     Add-Result "agent_reset_isolation" "warn" "session isolation not clearly enforced"
+  }
+
+  # --- RBAC: policy file exists and is valid JSON ---
+  $ErrorActionPreference = "Continue"
+  $policyRaw = docker exec $instanceName sh -lc 'cat /root/.openclaw/workspace/policy.json 2>/dev/null || cat /root/.openclaw/workspace/storage/policy.json 2>/dev/null || echo "{}"' 2>&1
+  $policyStr = ($policyRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
+  $policyStr = $policyStr.Trim()
+  $ErrorActionPreference = "Stop"
+  $policyValid = $false
+  try {
+    $policy = $policyStr | ConvertFrom-Json
+    if ($null -ne $policy.admins) { $policyValid = $true }
+  } catch {}
+  if ($policyValid) {
+    Add-Result "rbac_policy_file_exists" "pass" "policy.json is valid and contains admins array"
+  } else {
+    Add-Result "rbac_policy_file_exists" "fail" "policy.json missing or invalid: $policyStr"
+  }
+
+  # --- RBAC: nexhelper-policy command available ---
+  $ErrorActionPreference = "Continue"
+  $policyCmd = docker exec $instanceName sh -lc 'command -v nexhelper-policy >/dev/null 2>&1 && echo __OK__ || echo __FAIL__' 2>&1
+  $policyCmdText = ($policyCmd | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
+  $ErrorActionPreference = "Stop"
+  if ($policyCmdText -match "__OK__") {
+    Add-Result "rbac_policy_command_available" "pass"
+  } else {
+    Add-Result "rbac_policy_command_available" "fail" "nexhelper-policy not found on PATH"
+  }
+
+  # --- RBAC: member cannot delete (enforced when NX_ACTOR is set) ---
+  $ErrorActionPreference = "Continue"
+  $memberDeleteRaw = docker exec $instanceName sh -lc 'NX_ACTOR=member_test_user nexhelper-doc delete nonexistent_doc_id --reason test 2>&1 | head -5' 2>&1
+  $memberDeleteText = ($memberDeleteRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
+  $ErrorActionPreference = "Stop"
+  if ($memberDeleteText -match "forbidden|not_found") {
+    Add-Result "rbac_member_delete_blocked" "pass" "delete blocked or doc not found for non-admin"
+  } else {
+    Add-Result "rbac_member_delete_blocked" "warn" "could not verify member delete enforcement: $memberDeleteText"
+  }
+
+  # --- RBAC: admin promote/demote roundtrip ---
+  $ErrorActionPreference = "Continue"
+  $promoteRaw = docker exec $instanceName sh -lc 'nexhelper-policy add-admin test_rbac_user cli 2>&1' 2>&1
+  $promoteText = ($promoteRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
+  $promoteJson = $null
+  try { $promoteJson = $promoteText | ConvertFrom-Json } catch {}
+  $promoteOk = $promoteJson -and ($promoteJson.status -eq "promoted" -or $promoteJson.status -eq "already_admin")
+
+  $demoteRaw = docker exec $instanceName sh -lc 'nexhelper-policy remove-admin test_rbac_user cli 2>&1' 2>&1
+  $demoteText = ($demoteRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
+  $demoteJson = $null
+  try { $demoteJson = $demoteText | ConvertFrom-Json } catch {}
+  $demoteOk = $demoteJson -and $demoteJson.status -eq "demoted"
+  $ErrorActionPreference = "Stop"
+
+  if ($promoteOk -and $demoteOk) {
+    Add-Result "rbac_admin_promote_demote" "pass"
+  } else {
+    Add-Result "rbac_admin_promote_demote" "fail" "promote=$($promoteText.Trim()) demote=$($demoteText.Trim())"
+  }
+
+  # --- Document retrieve command available ---
+  $ErrorActionPreference = "Continue"
+  $retrieveRaw = docker exec $instanceName sh -lc 'nexhelper-doc retrieve nonexistent_doc 2>&1' 2>&1
+  $retrieveText = ($retrieveRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
+  $ErrorActionPreference = "Stop"
+  if ($retrieveText -match "not_found|found|no_file") {
+    Add-Result "doc_retrieve_command" "pass" "retrieve command responds correctly"
+  } else {
+    Add-Result "doc_retrieve_command" "fail" "unexpected retrieve output: $retrieveText"
+  }
+
+  # --- Admin report command available ---
+  $ErrorActionPreference = "Continue"
+  $reportRaw = docker exec $instanceName sh -lc 'nexhelper-admin-report 2>&1 | head -1' 2>&1
+  $reportText = ($reportRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
+  $ErrorActionPreference = "Stop"
+  if ($reportText -match "timestamp|health|docStats") {
+    Add-Result "admin_report_command" "pass"
+  } else {
+    Add-Result "admin_report_command" "fail" "admin report output unexpected: $reportText"
+  }
+
+  # --- nexhelper-notify command available ---
+  $ErrorActionPreference = "Continue"
+  $notifyRaw = docker exec $instanceName sh -lc 'command -v nexhelper-notify >/dev/null 2>&1 && echo __OK__ || echo __FAIL__' 2>&1
+  $notifyText = ($notifyRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
+  $ErrorActionPreference = "Stop"
+  if ($notifyText -match "__OK__") {
+    Add-Result "notify_command_available" "pass"
+  } else {
+    Add-Result "notify_command_available" "fail" "nexhelper-notify not found on PATH"
+  }
+
+  # --- Health-monitor + reminder-auditor crons registered ---
+  $ErrorActionPreference = "Continue"
+  $cronListAllRaw = docker exec $instanceName openclaw cron list --json 2>&1
+  $cronListAllText = ($cronListAllRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
+  $ErrorActionPreference = "Stop"
+  try {
+    $cronAllJson = $cronListAllText | ConvertFrom-Json -ErrorAction Stop
+    $hasHealthMon = ($cronAllJson.jobs | Where-Object { $_.name -eq "health-monitor" }).Count -gt 0
+    $hasRemAuditor = ($cronAllJson.jobs | Where-Object { $_.name -eq "reminder-auditor" }).Count -gt 0
+    if ($hasHealthMon -and $hasRemAuditor) {
+      Add-Result "health_monitor_cron" "pass" "health-monitor and reminder-auditor crons registered"
+    } elseif ($hasHealthMon) {
+      Add-Result "health_monitor_cron" "warn" "health-monitor present but reminder-auditor missing"
+    } else {
+      Add-Result "health_monitor_cron" "fail" "health-monitor cron missing (reminder-auditor=$hasRemAuditor)"
+    }
+  } catch {
+    Add-Result "health_monitor_cron" "warn" "could not parse cron list"
+  }
+
+  # --- Healthcheck includes liveness checks ---
+  $ErrorActionPreference = "Continue"
+  $hcRaw = docker exec $instanceName sh -c "nexhelper-healthcheck 2>&1" 2>&1
+  $hcText = ($hcRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
+  $ErrorActionPreference = "Stop"
+  try {
+    $hcLine = ($hcText -split "`n" | Where-Object { $_.TrimStart().StartsWith('{') } | Select-Object -First 1)
+    $hcJson = $hcLine | ConvertFrom-Json -ErrorAction Stop
+    $hasApiKey = ($hcJson.checks | Where-Object { $_.name -eq "api_key_configured" }).Count -gt 0
+    $hasProvider = ($hcJson.checks | Where-Object { $_.name -eq "ai_provider_reachable" }).Count -gt 0
+    if ($hasApiKey -and $hasProvider) {
+      Add-Result "healthcheck_liveness_checks" "pass" "api_key and provider checks present"
+    } else {
+      Add-Result "healthcheck_liveness_checks" "fail" "missing liveness checks (api_key=$hasApiKey provider=$hasProvider)"
+    }
+  } catch {
+    Add-Result "healthcheck_liveness_checks" "warn" "could not parse healthcheck output"
+  }
+
+  # --- whois command available in workflow (also seeds user registry via senderId) ---
+  $ErrorActionPreference = "Continue"
+  $whoisRaw = docker exec $instanceName sh -lc "nexhelper-workflow run --event-json '{\"id\":\"whois_test\",\"kind\":\"message\",\"text\":\"/whois nonexistent\",\"senderId\":\"testuser\",\"senderUsername\":\"testuser\"}' 2>&1" 2>&1
+  $whoisText = ($whoisRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
+  $ErrorActionPreference = "Stop"
+  if ($whoisText -match "not_found|found") {
+    Add-Result "whois_command_available" "pass" "whois lookup responds correctly"
+  } else {
+    Add-Result "whois_command_available" "warn" "whois response unexpected: $($whoisText.Substring(0,[Math]::Min(100,$whoisText.Length)))"
+  }
+
+  # --- User registry populated by first contact ---
+  $ErrorActionPreference = "Continue"
+  $usersRaw = docker exec $instanceName sh -c "cat /root/.openclaw/workspace/users.json 2>/dev/null || echo '{}'" 2>&1
+  $usersText = ($usersRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
+  $ErrorActionPreference = "Stop"
+  try {
+    $usersJson = $usersText.Trim() | ConvertFrom-Json -ErrorAction Stop
+    $userCount = ($usersJson.PSObject.Properties | Measure-Object).Count
+    if ($userCount -gt 0) {
+      Add-Result "user_registry_populated" "pass" "registry has $userCount user(s)"
+    } else {
+      Add-Result "user_registry_populated" "warn" "user registry empty (no chat interaction logged)"
+    }
+  } catch {
+    Add-Result "user_registry_populated" "warn" "could not parse users.json"
+  }
+
+  # --- Health monitor system event routes correctly ---
+  $ErrorActionPreference = "Continue"
+  $hmEventJson = '{"id":"hm_test","kind":"systemEvent","text":"Run system health check and alert admin if status is degraded"}'
+  $hmRaw = docker exec $instanceName sh -lc "nexhelper-workflow run --event-json '$hmEventJson' 2>&1" 2>&1
+  $hmText = ($hmRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
+  $ErrorActionPreference = "Stop"
+  if ($hmText -match "health_monitor") {
+    Add-Result "health_monitor_event" "pass" "health-monitor system event routes correctly"
+  } else {
+    Add-Result "health_monitor_event" "fail" "health-monitor event not handled: $($hmText.Substring(0,[Math]::Min(100,$hmText.Length)))"
   }
 
   # --- Mandatory log lookup ---
