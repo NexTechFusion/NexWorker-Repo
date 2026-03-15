@@ -1,0 +1,175 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "title": "nexhelper-classify",
+  "description": "Intent classifier and entity detection for NexHelper",
+  "version": "1.0.0",
+  "commands": {
+    "intent": {
+      "description": "Classify user message into intent categories",
+      "input": {
+        "type": "object",
+        "required": ["text"],
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 10000,
+            "description": "Raw user message to classify"
+          }
+        },
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "intent": {
+            "type": "string",
+            "enum": [
+              "document_store",
+              "document_search",
+              "document_edit",
+              "document_delete",
+              "reminder_create",
+              "reminder_list",
+              "reminder_delete",
+              "export",
+              "email_send",
+              "consent",
+              "status",
+              "unknown"
+            ],
+            "description": "Detected user intent"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Classification confidence score"
+          },
+          "action": {
+            "type": "string",
+            "enum": ["execute", "confirm", "clarify"],
+            "description": "Recommended next action"
+          },
+          "entity": {
+            "type": ["string", "null"],
+            "description": "Detected entity ID or null"
+          },
+          "normalizedTime": {
+            "type": ["string", "null"],
+            "description": "ISO-8601 timestamp if time was mentioned"
+          },
+          "reason": {
+            "type": ["string", "null"],
+            "description": "Fallback reason (if classifier unavailable)"
+          },
+          "input": {
+            "type": "string",
+            "description": "Original input (for fallback)"
+          }
+        },
+        "required": ["intent", "confidence", "action"]
+      }
+    },
+    "entity": {
+      "description": "Select best matching entity from a list",
+      "input": {
+        "type": "object",
+        "required": ["text", "entities_json"],
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "description": "User message mentioning entity"
+          },
+          "entities_json": {
+            "type": "string",
+            "description": "JSON array of entity IDs to choose from",
+            "pattern": "^\\[.*\\]$"
+          }
+        },
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "entity": {
+            "type": "string",
+            "description": "Selected entity ID"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "action": {
+            "type": "string",
+            "enum": ["execute", "confirm", "clarify"]
+          },
+          "reason": {
+            "type": ["string", "null"]
+          },
+          "input": {
+            "type": "string"
+          }
+        },
+        "required": ["entity", "confidence", "action"]
+      }
+    },
+    "rerank": {
+      "description": "Rank document candidates by relevance",
+      "input": {
+        "type": "object",
+        "required": ["query", "candidates_json"],
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Search query"
+          },
+          "candidates_json": {
+            "type": "string",
+            "description": "JSON array of candidate objects with 'id' field",
+            "pattern": "^\\[.*\\]$"
+          }
+        },
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "orderedIds": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Candidate IDs in rank order"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "action": {
+            "type": "string",
+            "enum": ["execute", "fallback"]
+          },
+          "reason": {
+            "type": ["string", "null"]
+          },
+          "query": {
+            "type": "string"
+          }
+        },
+        "required": ["orderedIds", "confidence", "action"]
+      }
+    }
+  },
+  "environment": {
+    "required": ["OPENROUTER_API_KEY"],
+    "optional": ["CLASSIFIER_MODEL", "CLASSIFIER_MODELS", "OPENROUTER_BASE_URL"]
+  },
+  "errors": {
+    "classifier_unavailable": "All classifier models failed",
+    "invalid_json_response": "Model returned malformed JSON"
+  }
+}
