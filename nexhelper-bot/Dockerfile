@@ -48,8 +48,9 @@ COPY skills/ /app/skills/
 RUN find /app/skills -type f \( -name "*.sh" -o -name "nexhelper-*" \) -exec sed -i 's/\r$//' {} \; \
  && find /app/skills -name "*.sh" -exec chmod +x {} \; \
  && find /app/skills -name "nexhelper-*" -exec chmod +x {} \; \
- && for f in /app/skills/*/nexhelper-*; do [ -x "$f" ] && ln -sf "$f" /usr/local/bin/"$(basename "$f")" || true; done \
- && for f in /app/skills/*/scripts/*.sh; do [ -x "$f" ] && ln -sf "$f" /usr/local/bin/"$(basename "$f")" || true; done
+ && while IFS= read -r -d '' f; do ln -sf "$f" /usr/local/bin/"$(basename "$f")"; done < <(find /app/skills -type f \( -name "nexhelper-*" -o -path "*/scripts/*.sh" \) -print0) \
+ && command -v nexhelper-doc >/dev/null \
+ && nexhelper-set-reminder --help >/dev/null 2>&1
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \

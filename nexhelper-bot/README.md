@@ -20,8 +20,7 @@ Each customer is isolated:
 - One dedicated Docker container
 - One dedicated storage root
 - One dedicated OpenClaw workspace/session space
-- Canonical data under `storage/canonical`ppppppppystemEvent` flows
-98iokjm n 
+- Canonical data under `storage/canonical` plus auditable `systemEvent` flows
 Primary components:
 
 - `skills/document-handler/nexhelper-doc`
@@ -127,6 +126,44 @@ Provisioning outputs scripts in the customer directory:
 - Consent and deletion support (`consent.sh`, `remove.sh`)
 - Isolated tenant deployment model
 
+## Ops Runbook (Live Instances)
+
+Use this for already running customer containers where cron delivery or provider wiring is broken.
+
+1. Verify cron jobs and delivery target:
+
+```bash
+docker exec -it <container> openclaw cron list --json
+```
+
+1. Repair invalid `delivery.to` for each affected job:
+
+```bash
+docker exec -it <container> openclaw cron edit --id <JOB_ID> --to telegram:579539601
+```
+
+1. Confirm job execution status:
+
+```bash
+docker exec -it <container> openclaw cron runs --id <JOB_ID> --limit 5
+```
+
+1. Verify OpenRouter-compatible API routing (avoid OpenAI 401 with `sk-or-v1-*`):
+
+```bash
+docker exec -it <container> sh -lc 'env | grep -E "OPENAI_BASE_URL|OPENROUTER_API_KEY|USE_OPENROUTER|EMBEDDING_MODEL"'
+```
+
+1. Verify dashboard/network reachability:
+
+```bash
+docker ps --format "table {{.Names}}\t{{.Ports}}"
+curl -f http://localhost:<PORT>/health
+curl -f http://<HOST_IP>:<PORT>/health
+```
+
+If localhost works but external host/IP fails, open host/container firewall for TCP `<PORT>`.
+
 ## Repo Layout
 
 ```text
@@ -152,4 +189,3 @@ nexhelper-bot/
 - OpenRouter is the preferred provider path.
 - Reminder reliability is implemented as layered behavior: direct tool execution + canonical reminder storage + sync/audit safety nets.
 - Agent behavior checks include deterministic pass/fail for system guarantees and warn-level for residual LLM variability where appropriate.
-                                                                                                                                                                                                                                                                                                                                                                                                                                             

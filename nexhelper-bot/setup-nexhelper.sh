@@ -32,6 +32,7 @@ if [ -z "$ACTIVE_API_KEY" ]; then
     echo "   You'll need this to provision customers."
     echo "   Set it: export OPENROUTER_API_KEY=your-key"
     echo "   Legacy fallback: export OPENAI_API_KEY=your-key"
+    echo "   Optional for OpenAI-compatible clients: export OPENAI_BASE_URL=https://openrouter.ai/api/v1"
 fi
 
 # Create base directory
@@ -70,6 +71,8 @@ echo "📱 To provision a customer:"
 echo ""
 echo "   # Telegram bot"
 echo "   export OPENROUTER_API_KEY=your-key"
+echo "   export OPENAI_BASE_URL=https://openrouter.ai/api/v1"
+echo "   export USE_OPENROUTER=1"
 echo "   ./provision-customer.sh 001 'Acme GmbH' --telegram '123:ABC'"
 echo ""
 echo "   # WhatsApp"

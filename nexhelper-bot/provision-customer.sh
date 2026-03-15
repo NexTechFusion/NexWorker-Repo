@@ -30,6 +30,12 @@ CONSENT_VERSION="1.0"
 DEFAULT_MODEL="openrouter/google/gemini-3-flash-preview"
 ENTITIES="${ENTITIES:-default}"
 BUDGETS="${BUDGETS:-}"
+DELIVERY_TO="${DEFAULT_DELIVERY_TO:-}"
+OPENROUTER_BASE_URL="${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}"
+EMBEDDING_MODEL="${EMBEDDING_MODEL:-openai/text-embedding-3-small}"
+IMAGE_MODEL="${IMAGE_MODEL:-openrouter/google/gemini-3-flash-preview}"
+PDF_MODEL="${PDF_MODEL:-openrouter/google/gemini-2.0-flash-001}"
+WHISPER_MODEL="${WHISPER_MODEL:-openai/whisper-large-v3-turbo}"
 
 # ============================================
 # Parse Arguments
@@ -72,6 +78,10 @@ while [[ $# -gt 0 ]]; do
             BUDGETS="$2"
             shift 2
             ;;
+        --delivery-to)
+            DELIVERY_TO="$2"
+            shift 2
+            ;;
         -*)
             echo "❌ Unknown option: $1"
             exit 1
@@ -101,6 +111,7 @@ if [ -z "$CUSTOMER_ID" ] || [ -z "$CUSTOMER_NAME" ]; then
     echo "  --no-start            Don't auto-start container"
     echo "  --consent-version <v> Consent text version (default: 1.0)"
     echo "  --base-dir <path>     Base directory (default: /opt/nexhelper/customers)"
+    echo "  --delivery-to <to>    Delivery target for announce cron jobs (e.g. telegram:579539601)"
     echo ""
     echo "Examples:"
     echo "  OPENROUTER_API_KEY=sk-or-xxx ./provision-customer.sh 001 'Acme GmbH' --telegram '123:ABC'"
@@ -173,6 +184,11 @@ echo "Instance:        $INSTANCE_NAME"
 echo "Port:            $PORT"
 echo "Directory:       $CUSTOMER_DIR"
 echo "Model:           $DEFAULT_MODEL"
+if [ -n "$DELIVERY_TO" ]; then
+    echo "Delivery target: $DELIVERY_TO"
+else
+    echo "Delivery target: (not set - announce cron jobs need --to later)"
+fi
 if [ -n "$TELEGRAM_TOKEN" ]; then
     echo "Channel:         Telegram (@$BOT_USERNAME)"
 fi
@@ -367,7 +383,8 @@ cat <<EOF > "$CUSTOMER_DIR/config/openclaw.json"
       "model": {
         "primary": "$DEFAULT_MODEL",
         "fallbacks": ["openrouter/google/gemini-2.5-flash", "openrouter/google/gemini-2.0-flash-001"],
-        "imageModel": "openrouter/google/gemini-3-flash-preview"
+        "imageModel": "$IMAGE_MODEL",
+        "pdfModel": "$PDF_MODEL"
       },
       "workspace": "/root/.openclaw/workspace",
       "thinkingDefault": "medium",
@@ -395,6 +412,29 @@ cat <<EOF > "$CUSTOMER_DIR/config/openclaw.json"
         },
       },
     ],
+  },
+
+  "memory": {
+    "search": {
+      "provider": "openrouter",
+      "baseUrl": "$OPENROUTER_BASE_URL",
+      "embeddingModel": "$EMBEDDING_MODEL"
+    }
+  },
+
+  "skills": {
+    "openai-whisper-api": {
+      "apiKey": "$API_KEY",
+      "openRouterKey": "$API_KEY",
+      "useOpenRouter": true,
+      "defaultModel": "$WHISPER_MODEL"
+    },
+    "image": {
+      "defaultModel": "$IMAGE_MODEL"
+    },
+    "pdf": {
+      "defaultModel": "$PDF_MODEL"
+    }
   },
   
   "tools": {
@@ -480,12 +520,16 @@ services:
         mkdir -p /root/.openclaw/agents/main/agent
         cp /app/config/auth-profiles.json /root/.openclaw/agents/main/agent/auth-profiles.json 2>/dev/null || true
         rm -f /root/.openclaw/workspace/BOOTSTRAP.md
-        for f in /app/skills/*/nexhelper-* /app/skills/*/scripts/*.sh; do
-          [ -f "\$f" ] || continue
+        while IFS= read -r -d '' f; do
           sed -i 's/\r$//' "\$f" 2>/dev/null || true
           chmod +x "\$f" 2>/dev/null || true
+        done < <(find /app/skills -type f \\( -name "*.sh" -o -name "nexhelper-*" \\) -print0)
+        while IFS= read -r -d '' f; do
           ln -sf "\$f" /usr/local/bin/"\$(basename "\$f")" 2>/dev/null || true
-        done
+        done < <(find /app/skills -type f \\( -name "nexhelper-*" -o -path "*/scripts/*.sh" \\) -print0)
+        command -v nexhelper-doc >/dev/null 2>&1 || echo "⚠️ nexhelper-doc missing on PATH"
+        nexhelper-set-reminder --help >/dev/null 2>&1 || echo "⚠️ nexhelper-set-reminder missing or not executable"
+        [ -n "\${OPENAI_BASE_URL:-}" ] || echo "⚠️ OPENAI_BASE_URL is unset; OpenRouter API keys can fail for memory_search/image/pdf/whisper clients"
         openclaw gateway run --port $PORT --bind lan &
         GW_PID=\$!
         sleep 8
@@ -499,9 +543,13 @@ services:
       - ./logs:/app/logs
       - nexhelper-data-${SLUG}:/root/.openclaw
     environment:
-      - OPENAI_API_KEY=\${OPENAI_API_KEY}
-      - OPENROUTER_API_KEY=\${OPENROUTER_API_KEY:-}
-      - USE_OPENROUTER=\${USE_OPENROUTER:-0}
+      - OPENAI_API_KEY=\${OPENAI_API_KEY:-\${OPENROUTER_API_KEY:-}}
+      - OPENAI_BASE_URL=\${OPENAI_BASE_URL:-https://openrouter.ai/api/v1}
+      - OPENROUTER_API_KEY=\${OPENROUTER_API_KEY:-\${OPENAI_API_KEY:-}}
+      - OPENROUTER_BASE_URL=\${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      - USE_OPENROUTER=\${USE_OPENROUTER:-1}
+      - EMBEDDING_MODEL=\${EMBEDDING_MODEL:-$EMBEDDING_MODEL}
+      - DEFAULT_DELIVERY_TO=\${DEFAULT_DELIVERY_TO:-$DELIVERY_TO}
       - TELEGRAM_BOT_TOKEN=\${TELEGRAM_BOT_TOKEN:-}
       - PORT=$PORT
       - NODE_ENV=production
@@ -547,6 +595,12 @@ cat <<EOF > "$CUSTOMER_DIR/.env"
 # Generated: $(date -Iseconds)
 
 OPENAI_API_KEY=$API_KEY
+OPENAI_BASE_URL=$OPENROUTER_BASE_URL
+OPENROUTER_API_KEY=$API_KEY
+OPENROUTER_BASE_URL=$OPENROUTER_BASE_URL
+USE_OPENROUTER=1
+EMBEDDING_MODEL=$EMBEDDING_MODEL
+DEFAULT_DELIVERY_TO=$DELIVERY_TO
 TELEGRAM_BOT_TOKEN=${TELEGRAM_TOKEN:-}
 PORT=$PORT
 CUSTOMER_ID=$CUSTOMER_ID
@@ -1341,6 +1395,14 @@ cd "$(dirname "$0")"
 docker-compose up -d
 echo "✅ Started $(basename $(pwd))"
 
+CRON_TO="${DEFAULT_DELIVERY_TO:-}"
+CRON_TO_ARGS=()
+if [ -n "$CRON_TO" ]; then
+  CRON_TO_ARGS=(--to "$CRON_TO")
+else
+  echo "⚠️ DEFAULT_DELIVERY_TO is not set; announce cron jobs may fail until a valid --to target is configured"
+fi
+
 if [ "${RUN_SMOKE_ON_START:-true}" = "true" ]; then
   echo "🧪 Running startup smoke check..."
   READY=false
@@ -1362,25 +1424,25 @@ if [ "${RUN_SMOKE_ON_START:-true}" = "true" ]; then
         --name "check-reminders" \
         --every "1m" \
         --message "Check due reminders and send notifications. Use exec: nexhelper-reminder check" \
-        --announce --channel telegram --session isolated 2>/dev/null || true
+        --announce --channel telegram --session isolated "${CRON_TO_ARGS[@]}" 2>/dev/null || true
       
       docker-compose exec -T nexhelper openclaw cron add \
         --name "budget-check" \
         --cron "0 * * * *" \
         --message "Check entity budgets and send alerts if thresholds exceeded. Use exec: nexhelper-entity check" \
-        --announce --channel telegram --session isolated 2>/dev/null || true
+        --announce --channel telegram --session isolated "${CRON_TO_ARGS[@]}" 2>/dev/null || true
       
       docker-compose exec -T nexhelper openclaw cron add \
         --name "daily-summary" \
         --cron "0 18 * * *" \
         --message "Generate daily summary of documents processed today" \
-        --announce --channel telegram --session isolated 2>/dev/null || true
+        --announce --channel telegram --session isolated "${CRON_TO_ARGS[@]}" 2>/dev/null || true
       
       docker-compose exec -T nexhelper openclaw cron add \
         --name "retention-job" \
         --cron "0 2 * * *" \
         --message "Run retention and purge deleted documents. Use exec: nexhelper-retention purge" \
-        --announce --channel telegram --session isolated 2>/dev/null || true
+        --announce --channel telegram --session isolated "${CRON_TO_ARGS[@]}" 2>/dev/null || true
       
       echo "✅ Scheduled jobs configured"
     else
@@ -1580,6 +1642,10 @@ if [ "$WHATSAPP_MODE" = true ]; then
     echo "5. Approve pairing:"
     echo "   docker exec -it $INSTANCE_NAME openclaw pairing list whatsapp"
     echo "   docker exec -it $INSTANCE_NAME openclaw pairing approve whatsapp <CODE>"
+    echo ""
+    echo "6. Set cron delivery target after pairing:"
+    echo "   docker exec -it $INSTANCE_NAME openclaw cron list --json"
+    echo "   docker exec -it $INSTANCE_NAME openclaw cron edit --id <JOB_ID> --to whatsapp:<PHONE_OR_CHAT_ID>"
 else
     echo "📱 Telegram Setup"
     echo ""
@@ -1596,6 +1662,10 @@ else
     echo "4. Approve pairing:"
     echo "   docker exec -it $INSTANCE_NAME openclaw pairing list telegram"
     echo "   docker exec -it $INSTANCE_NAME openclaw pairing approve telegram <CODE>"
+    echo ""
+    echo "5. Set cron delivery target after pairing:"
+    echo "   docker exec -it $INSTANCE_NAME openclaw cron list --json"
+    echo "   docker exec -it $INSTANCE_NAME openclaw cron edit --id <JOB_ID> --to telegram:<CHAT_ID>"
     echo ""
     echo "💡 Tip: Add the bot to a group for team access"
 fi
@@ -1640,6 +1710,12 @@ if [ "$AUTO_START" = true ]; then
     
     if docker ps | grep -q "$INSTANCE_NAME"; then
         STARTED=true
+        CRON_TO_ARGS=()
+        if [ -n "$DELIVERY_TO" ]; then
+            CRON_TO_ARGS=(--to "$DELIVERY_TO")
+        else
+            echo "⚠️  Delivery target not set. Use --delivery-to or edit jobs later with openclaw cron edit --to <channel:id>"
+        fi
         
         # Setup Cron Jobs (if not already present)
         echo "⏰ Setting up scheduled jobs..."
@@ -1647,25 +1723,25 @@ if [ "$AUTO_START" = true ]; then
           --name "check-reminders" \
           --every "1m" \
           --message "Check due reminders and send notifications. Use exec: nexhelper-reminder check" \
-          --announce --channel telegram --session isolated 2>/dev/null || true
+          --announce --channel telegram --session isolated "${CRON_TO_ARGS[@]}" 2>/dev/null || true
         
         docker exec -it "$INSTANCE_NAME" openclaw cron add \
           --name "budget-check" \
           --cron "0 * * * *" \
           --message "Check entity budgets and send alerts if thresholds exceeded. Use exec: nexhelper-entity check" \
-          --announce --channel telegram --session isolated 2>/dev/null || true
+          --announce --channel telegram --session isolated "${CRON_TO_ARGS[@]}" 2>/dev/null || true
         
         docker exec -it "$INSTANCE_NAME" openclaw cron add \
           --name "daily-summary" \
           --cron "0 18 * * *" \
           --message "Generate daily summary of documents processed today" \
-          --announce --channel telegram --session isolated 2>/dev/null || true
+          --announce --channel telegram --session isolated "${CRON_TO_ARGS[@]}" 2>/dev/null || true
         
         docker exec -it "$INSTANCE_NAME" openclaw cron add \
           --name "retention-job" \
           --cron "0 2 * * *" \
           --message "Run retention and purge deleted documents. Use exec: nexhelper-retention purge" \
-          --announce --channel telegram --session isolated 2>/dev/null || true
+          --announce --channel telegram --session isolated "${CRON_TO_ARGS[@]}" 2>/dev/null || true
         
         echo "✅ Scheduled jobs configured"
     else
@@ -1691,6 +1767,9 @@ echo "   Instance:   $INSTANCE_NAME"
 echo "   Port:       $PORT"
 echo "   Directory:  $CUSTOMER_DIR"
 echo "   Model:      $DEFAULT_MODEL"
+if [ -n "$DELIVERY_TO" ]; then
+    echo "   Delivery:   $DELIVERY_TO"
+fi
 echo ""
 
 if [ -n "$TELEGRAM_TOKEN" ]; then
@@ -1733,6 +1812,12 @@ echo "   Smoke:   $CUSTOMER_DIR/smoke.sh"
 echo "   Consent: $CUSTOMER_DIR/consent.sh"
 echo "   Onboard: $CUSTOMER_DIR/onboard.sh"
 echo "   Remove:  $CUSTOMER_DIR/remove.sh"
+echo ""
+echo "🌐 Dashboard Reachability:"
+echo "   Local health:   curl -f http://localhost:$PORT/health"
+echo "   Port mapping:   docker port $INSTANCE_NAME"
+echo "   LAN test:       curl -f http://<HOST_IP>:$PORT/health"
+echo "   Firewall:       ensure host/container firewall allows TCP $PORT"
 echo ""
 
 if [ "$STARTED" = true ]; then

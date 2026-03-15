@@ -17,6 +17,7 @@ $customerDir = Join-Path $baseDir $slug
 $customerName = "Gateway Session Suite"
 $customerId = "991"
 $instanceName = "nexhelper-gateway-session-suite"
+$defaultDeliveryTo = "telegram:579539601"
 $bashPath = "C:\Program Files\Git\bin\bash.exe"
 
 if (-not (Test-Path $bashPath)) {
@@ -96,7 +97,7 @@ try {
 
   $rootBash = To-GitBashPath -WindowsPath $root
   $baseDirBash = To-GitBashPath -WindowsPath $baseDir
-  $provisionCmd = "cd '$rootBash' && OPENROUTER_API_KEY='$OpenRouterApiKey' OPENROUTER_BASE_URL='$OpenRouterBaseUrl' ./provision-customer.sh $customerId '$customerName' --whatsapp --base-dir '$baseDirBash' --no-start"
+  $provisionCmd = "cd '$rootBash' && OPENROUTER_API_KEY='$OpenRouterApiKey' OPENROUTER_BASE_URL='$OpenRouterBaseUrl' DEFAULT_DELIVERY_TO='$defaultDeliveryTo' ./provision-customer.sh $customerId '$customerName' --whatsapp --base-dir '$baseDirBash' --no-start"
   & $bashPath -lc $provisionCmd | Out-Null
   Add-Result "provision_customer" "pass"
 
@@ -224,14 +225,39 @@ try {
     if ($listStart -ge 0) { $listStr = $listStr.Substring($listStart) }
     $ErrorActionPreference = "Stop"
     $cronListed = $false
+    $scheduledCronTargetsOk = $false
     try {
       $listData = $listStr | ConvertFrom-Json
       $cronListed = @($listData.jobs | Where-Object { $_.id -eq $cronJobId }).Count -gt 0
+      $scheduledJobNames = @("check-reminders", "budget-check", "daily-summary", "retention-job")
+      $scheduledJobs = @($listData.jobs | Where-Object { $_.name -in $scheduledJobNames })
+      if ($scheduledJobs.Count -eq $scheduledJobNames.Count) {
+        $scheduledCronTargetsOk = $true
+        foreach ($job in $scheduledJobs) {
+          $target = ""
+          if ($job.PSObject.Properties.Name -contains "to") {
+            $target = [string]$job.to
+          } elseif ($job.PSObject.Properties.Name -contains "delivery" -and $job.delivery) {
+            if ($job.delivery.PSObject.Properties.Name -contains "to") {
+              $target = [string]$job.delivery.to
+            }
+          }
+          if ([string]::IsNullOrWhiteSpace($target) -or ($target -ne $defaultDeliveryTo)) {
+            $scheduledCronTargetsOk = $false
+            break
+          }
+        }
+      }
     } catch {}
     if ($cronListed) {
       Add-Result "cron_listed" "pass"
     } else {
       Add-Result "cron_listed" "fail" "job not found in cron list"
+    }
+    if ($scheduledCronTargetsOk) {
+      Add-Result "cron_delivery_targets" "pass" "scheduled jobs use expected to=$defaultDeliveryTo"
+    } else {
+      Add-Result "cron_delivery_targets" "fail" "scheduled cron jobs are missing or have invalid delivery.to"
     }
 
     Write-Host "Waiting ~75s for cron job to fire..."

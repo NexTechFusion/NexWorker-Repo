@@ -165,6 +165,7 @@ cron:
     delivery:
       mode: "announce"
       channel: "telegram"
+      to: "${DEFAULT_DELIVERY_TO:-}"
   
   - name: "daily-summary"
     schedule: "cron: 0 18 * * *"
@@ -174,6 +175,7 @@ cron:
     delivery:
       mode: "announce"
       channel: "telegram"
+      to: "${DEFAULT_DELIVERY_TO:-}"
 
   - name: "budget-check"
     schedule: "cron: 0 * * * *"
@@ -183,6 +185,7 @@ cron:
     delivery:
       mode: "announce"
       channel: "telegram"
+      to: "${DEFAULT_DELIVERY_TO:-}"
 
   - name: "retention-job"
     schedule: "cron: 0 2 * * *"
@@ -192,6 +195,7 @@ cron:
     delivery:
       mode: "announce"
       channel: "telegram"
+      to: "${DEFAULT_DELIVERY_TO:-}"
 
 # Skills configuration
 skills:
@@ -227,8 +231,12 @@ skills:
 # Environment defaults
 env:
   OPENAI_API_KEY: "${OPENAI_API_KEY}"
+  OPENAI_BASE_URL: "${OPENAI_BASE_URL:-https://openrouter.ai/api/v1}"
   OPENROUTER_API_KEY: "${OPENROUTER_API_KEY:-}"
-  USE_OPENROUTER: "${USE_OPENROUTER:-0}"
+  OPENROUTER_BASE_URL: "${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}"
+  USE_OPENROUTER: "${USE_OPENROUTER:-1}"
+  EMBEDDING_MODEL: "${EMBEDDING_MODEL:-openai/text-embedding-3-small}"
+  DEFAULT_DELIVERY_TO: "${DEFAULT_DELIVERY_TO:-}"
   TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN}"
   CUSTOMER_ID: "${CUSTOMER_ID}"
   CUSTOMER_NAME: "${CUSTOMER_NAME}"
