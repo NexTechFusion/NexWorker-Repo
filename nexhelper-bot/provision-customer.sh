@@ -2084,18 +2084,36 @@ echo "   📋 Open this in your browser:"
 echo "      ${TUNNEL_URL}/?token=${GATEWAY_TOKEN}"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "📱 Watching for device pairing requests (Ctrl+C to stop)..."
+echo "📱 Watching for device & channel pairing requests (Ctrl+C to stop)..."
 echo ""
 
-# Watch for pending pairing requests every 5 s
+# Watch for pending device pairing requests and auto-approve
+LAST_DEVICES=""
 LAST_CODES=""
 while kill -0 "$CF_PID" 2>/dev/null; do
+  # Watch for device pairing requests (dashboard access)
+  DEVICE_PENDING="$(docker exec "$INSTANCE_NAME" openclaw devices list --json 2>/dev/null \
+    | jq -r '.pending[]? | "\(.requestId)"' 2>/dev/null || true)"
+  if [ -n "$DEVICE_PENDING" ] && [ "$DEVICE_PENDING" != "$LAST_DEVICES" ]; then
+    LAST_DEVICES="$DEVICE_PENDING"
+    echo ""
+    echo "🖥️  New device pairing request(s):"
+    for req_id in $DEVICE_PENDING; do
+      echo "   Approve: docker exec -it ${INSTANCE_NAME} openclaw devices approve $req_id"
+    done
+    echo "   Auto-approving..."
+    for req_id in $DEVICE_PENDING; do
+      docker exec "$INSTANCE_NAME" openclaw devices approve "$req_id" 2>/dev/null || true
+    done
+    echo ""
+  fi
+  # Watch for channel pairing requests (WhatsApp/Telegram)
   PENDING="$(docker exec "$INSTANCE_NAME" openclaw pairing list --json 2>/dev/null \
     | jq -r '.[] | select(.status == "pending") | "\(.channel)|\(.code)"' 2>/dev/null || true)"
   if [ -n "$PENDING" ] && [ "$PENDING" != "$LAST_CODES" ]; then
     LAST_CODES="$PENDING"
     echo ""
-    echo "🔔  New pairing request(s):"
+    echo "🔔  New channel pairing request(s):"
     while IFS='|' read -r ch code; do
       echo "   Channel: $ch   Code: $code"
       echo "   Approve: docker exec -it ${INSTANCE_NAME} openclaw pairing approve $ch $code"
