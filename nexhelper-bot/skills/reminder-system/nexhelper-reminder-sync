@@ -24,6 +24,12 @@ for f in $(nx_list_reminder_files); do
   user_id="$(echo "$rem" | jq -r '.userId')"
   rem_id="$(echo "$rem" | jq -r '.id')"
 
+  # Validate datetime is an ISO timestamp before syncing to cron
+  if ! nx_is_iso_timestamp "$datetime"; then
+    errors=$((errors + 1))
+    continue
+  fi
+
   marker="ERINNERUNG: $text"
   if echo "$cron_messages" | grep -qF "$marker"; then
     skipped=$((skipped + 1))

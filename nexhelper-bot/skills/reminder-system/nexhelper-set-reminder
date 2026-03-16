@@ -3,6 +3,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")" 2>/dev/null || dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../common/nexhelper-core.sh"
 
 TEXT=""
 TIME_ARG=""
@@ -22,6 +23,7 @@ while [[ $# -gt 0 ]]; do
       echo ""
       echo "Usage:"
       echo "  nexhelper-set-reminder --text 'Meeting' --time '2026-03-14T09:00:00' --user 579539601"
+      echo "  nexhelper-set-reminder --text 'Call' --time '5m' --user 579539601"
       echo ""
       echo "Options:"
       echo "  --text <text>        Reminder text (required)"
@@ -40,12 +42,15 @@ if [ -z "$TEXT" ] || [ -z "$TIME_ARG" ] || [ -z "$USER_ID" ]; then
   exit 1
 fi
 
+# Convert relative time to absolute ISO timestamp
+ABSOLUTE_TIME="$(nx_parse_relative_time "$TIME_ARG")"
+
 cron_name="reminder-$(date +%s)-$$"
 message_text="⏰ ERINNERUNG: $TEXT"
 
 cron_result="$(openclaw cron add \
   --name "$cron_name" \
-  --at "$TIME_ARG" \
+  --at "$ABSOLUTE_TIME" \
   --message "$message_text" \
   --to "$USER_ID" \
   --channel "$CHANNEL" \
@@ -86,6 +91,7 @@ jq -c -n \
   --arg cronName "$cron_name" \
   --arg canonicalId "$canonical_id" \
   --arg text "$TEXT" \
-  --arg time "$TIME_ARG" \
+  --arg time "$ABSOLUTE_TIME" \
+  --arg originalTime "$TIME_ARG" \
   --arg user "$USER_ID" \
-  '{status:$status, cronId:$cronId, cronName:$cronName, canonicalId:$canonicalId, text:$text, time:$time, user:$user}'
+  '{status:$status, cronId:$cronId, cronName:$cronName, canonicalId:$canonicalId, text:$text, time:$time, originalTime:$originalTime, user:$user}'

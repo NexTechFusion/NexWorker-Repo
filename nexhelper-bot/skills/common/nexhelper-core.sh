@@ -334,3 +334,64 @@ nx_user_find_by_username() {
   local clean_name="${username#@}"
   nx_user_load | jq -c --arg n "$clean_name" 'to_entries[] | select(.value.username == $n or .value.displayName == $n) | .value' 2>/dev/null | head -1
 }
+
+# ─── Time Parsing Utilities ──────────────────────────────────────────────────
+
+# Convert relative time string (e.g., "2m", "1h", "30s", "1d") to absolute ISO timestamp
+# Returns the original value if already an ISO timestamp or date
+# Usage: nx_parse_relative_time "2m" -> "2026-03-16T17:05:00Z"
+nx_parse_relative_time() {
+  local input="$1"
+  
+  # Empty input
+  if [ -z "$input" ]; then
+    echo ""
+    return 1
+  fi
+  
+  # Check if already an ISO timestamp (contains T or starts with date pattern)
+  if [[ "$input" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2} ]] || [[ "$input" =~ T ]]; then
+    echo "$input"
+    return 0
+  fi
+  
+  # Parse relative time: <number><unit> (e.g., "2m", "1h", "30s", "1d")
+  local num="${input%[smhd]}"
+  local unit="${input: -1}"
+  
+  # Validate number
+  if [[ ! "$num" =~ ^[0-9]+$ ]]; then
+    echo "$input"
+    return 1
+  fi
+  
+  local seconds
+  case "$unit" in
+    s) seconds="$num" ;;
+    m) seconds=$((num * 60)) ;;
+    h) seconds=$((num * 3600)) ;;
+    d) seconds=$((num * 86400)) ;;
+    *) 
+      echo "$input"
+      return 1
+      ;;
+  esac
+  
+  # Calculate absolute timestamp (compatible with both GNU and BSD date)
+  local result
+  if date -u -d "@$(($(date +%s) + seconds))" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null; then
+    return 0
+  elif date -u -v+${seconds}S +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null; then
+    return 0
+  else
+    echo "$input"
+    return 1
+  fi
+}
+
+# Check if a string looks like a valid ISO timestamp
+# Usage: nx_is_iso_timestamp "2026-03-16T17:00:00Z" -> returns 0
+nx_is_iso_timestamp() {
+  local input="$1"
+  [[ "$input" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2} ]]
+}
