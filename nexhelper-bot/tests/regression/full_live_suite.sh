@@ -534,6 +534,136 @@ else
   record "F30" "notify_script_executable" "fail" "nexhelper-notify not executable at $NOTIFY_SCRIPT"
 fi
 
+# F31 Structured event routing — reminder-audit token
+f31_event='{"kind":"systemEvent","text":"nexhelper:event:reminder-audit","senderId":"sys","channel":"system","id":"f31-audit"}'
+f31_result="$("$WORKFLOW_SCRIPT" run --event-json "$f31_event" 2>/dev/null || echo '{}')"
+f31_handler="$(echo "$f31_result" | jq -r '.result.handler // empty')"
+if [ "$f31_handler" = "reminder_due" ]; then
+  record "F31" "structured_event_reminder_audit" "pass" "handler=$f31_handler"
+else
+  record "F31" "structured_event_reminder_audit" "fail" "expected handler=reminder_due, got: $f31_result"
+fi
+
+# F32 Structured event routing — budget-check token
+f32_event='{"kind":"systemEvent","text":"nexhelper:event:budget-check","senderId":"sys","channel":"system","id":"f32-budget"}'
+f32_result="$("$WORKFLOW_SCRIPT" run --event-json "$f32_event" 2>/dev/null || echo '{}')"
+f32_handler="$(echo "$f32_result" | jq -r '.result.handler // empty')"
+if [ "$f32_handler" = "budget_check" ]; then
+  record "F32" "structured_event_budget_check" "pass" "handler=$f32_handler"
+else
+  record "F32" "structured_event_budget_check" "fail" "expected handler=budget_check, got: $f32_result"
+fi
+
+# F33 Structured event routing — health-check token
+f33_event='{"kind":"systemEvent","text":"nexhelper:event:health-check","senderId":"sys","channel":"system","id":"f33-health"}'
+f33_result="$("$WORKFLOW_SCRIPT" run --event-json "$f33_event" 2>/dev/null || echo '{}')"
+f33_handler="$(echo "$f33_result" | jq -r '.result.handler // empty')"
+if [ "$f33_handler" = "health_monitor" ]; then
+  record "F33" "structured_event_health_check" "pass" "handler=$f33_handler"
+else
+  record "F33" "structured_event_health_check" "fail" "expected handler=health_monitor, got: $f33_result"
+fi
+
+# F34 Structured event routing — retention token
+f34_event='{"kind":"systemEvent","text":"nexhelper:event:retention","senderId":"sys","channel":"system","id":"f34-retention"}'
+f34_result="$("$WORKFLOW_SCRIPT" run --event-json "$f34_event" 2>/dev/null || echo '{}')"
+f34_handler="$(echo "$f34_result" | jq -r '.result.handler // empty')"
+if [ "$f34_handler" = "retention" ]; then
+  record "F34" "structured_event_retention" "pass" "handler=$f34_handler"
+else
+  record "F34" "structured_event_retention" "fail" "expected handler=retention, got: $f34_result"
+fi
+
+# F35 Structured event routing — unknown token returns ignored
+f35_event='{"kind":"systemEvent","text":"nexhelper:event:unknown-type-xyz","senderId":"sys","channel":"system","id":"f35-unknown"}'
+f35_result="$("$WORKFLOW_SCRIPT" run --event-json "$f35_event" 2>/dev/null || echo '{}')"
+f35_status="$(echo "$f35_result" | jq -r '.result.status // empty')"
+if [ "$f35_status" = "ignored" ]; then
+  record "F35" "structured_event_unknown_ignored" "pass"
+else
+  record "F35" "structured_event_unknown_ignored" "fail" "expected status=ignored, got: $f35_result"
+fi
+
+# F36 Legacy substring routing still works (backward compat)
+f36_event='{"kind":"systemEvent","text":"Background check budget alerts","senderId":"sys","channel":"system","id":"f36-legacy"}'
+f36_result="$("$WORKFLOW_SCRIPT" run --event-json "$f36_event" 2>/dev/null || echo '{}')"
+f36_handler="$(echo "$f36_result" | jq -r '.result.handler // empty')"
+if [ "$f36_handler" = "budget_check" ]; then
+  record "F36" "legacy_event_routing_compat" "pass" "handler=$f36_handler"
+else
+  record "F36" "legacy_event_routing_compat" "fail" "expected handler=budget_check via legacy match, got: $f36_result"
+fi
+
+# F37 nexhelper-doc-core.sh unit: normalize_float and build_fingerprint
+DOC_CORE_SCRIPT="$ROOT_DIR/skills/document-handler/nexhelper-doc-core.sh"
+if [ -f "$DOC_CORE_SCRIPT" ]; then
+  # Source the core functions in isolation (requires only jq and ENTITIES_SCRIPT/CLASSIFIER_SCRIPT set as stubs)
+  ENTITIES_SCRIPT="/bin/false"
+  CLASSIFIER_SCRIPT="/bin/false"
+  # We need nx_list_doc_files for find_duplicate; provide a stub
+  nx_list_doc_files() { echo; }
+  # Source minimal core stubs
+  nx_init_dirs() { true; }
+  NX_DOCS_DIR="$STORAGE_DIR/canonical/documents"
+  source "$DOC_CORE_SCRIPT" 2>/dev/null || true
+
+  f37_float="$(normalize_float 3.5 2>/dev/null || echo "error")"
+  if [ "$f37_float" = "3.50" ]; then
+    record "F37" "doc_core_normalize_float" "pass"
+  else
+    record "F37" "doc_core_normalize_float" "fail" "expected 3.50 got $f37_float"
+  fi
+
+  f37_fp1="$(build_fingerprint "RE-001" "Mueller GmbH" "100.00" "2026-01-01" 2>/dev/null || echo "error")"
+  f37_fp2="$(build_fingerprint "RE-001" "mueller gmbh" "100.00" "2026-01-01" 2>/dev/null || echo "error")"
+  if [ "$f37_fp1" = "$f37_fp2" ] && [ -n "$f37_fp1" ] && [ "$f37_fp1" != "error" ]; then
+    record "F37" "doc_core_fingerprint_case_insensitive" "pass"
+  else
+    record "F37" "doc_core_fingerprint_case_insensitive" "fail" "fp1=$f37_fp1 fp2=$f37_fp2 should be equal"
+  fi
+
+  f37_fp_diff="$(build_fingerprint "RE-002" "Mueller GmbH" "100.00" "2026-01-01" 2>/dev/null || echo "error")"
+  if [ "$f37_fp1" != "$f37_fp_diff" ]; then
+    record "F37" "doc_core_fingerprint_unique" "pass"
+  else
+    record "F37" "doc_core_fingerprint_unique" "fail" "different docs produced same fingerprint"
+  fi
+else
+  run_skip "F37" "doc_core_normalize_float" "nexhelper-doc-core.sh not found"
+  run_skip "F37" "doc_core_fingerprint_case_insensitive" "nexhelper-doc-core.sh not found"
+  run_skip "F37" "doc_core_fingerprint_unique" "nexhelper-doc-core.sh not found"
+fi
+
+# F38 manage.sh exists and help command works
+MANAGE_SCRIPT="$ROOT_DIR/manage.sh"
+if [ -f "$MANAGE_SCRIPT" ]; then
+  chmod +x "$MANAGE_SCRIPT" 2>/dev/null || true
+  f38_help="$("$MANAGE_SCRIPT" help 2>/dev/null || echo "")"
+  if echo "$f38_help" | grep -q "list"; then
+    record "F38" "manage_sh_help" "pass"
+  else
+    record "F38" "manage_sh_help" "fail" "help output missing expected commands"
+  fi
+else
+  run_skip "F38" "manage_sh_help" "manage.sh not found"
+fi
+
+# F39 nexhelper-monitor script exists and is executable
+MONITOR_SCRIPT="$ROOT_DIR/skills/common/nexhelper-monitor"
+if [ -x "$MONITOR_SCRIPT" ] || [ -f "$MONITOR_SCRIPT" ]; then
+  chmod +x "$MONITOR_SCRIPT" 2>/dev/null || true
+  # Run in errors mode — should produce JSON even without openclaw
+  f39_out="$(STORAGE_DIR="$STORAGE_DIR" "$MONITOR_SCRIPT" errors 2>/dev/null || echo '{}')"
+  f39_has_status="$(echo "$f39_out" | jq -e '.status' >/dev/null 2>&1 && echo "true" || echo "false")"
+  if [ "$f39_has_status" = "true" ]; then
+    record "F39" "monitor_script_errors_mode" "pass"
+  else
+    record "F39" "monitor_script_errors_mode" "fail" "output missing .status: $f39_out"
+  fi
+else
+  run_skip "F39" "monitor_script_errors_mode" "nexhelper-monitor not found"
+fi
+
 report_file="$REPORT_DIR/full-live-suite-$(date +%Y%m%d_%H%M%S).json"
 summary="$(jq -c -n --argjson pass "$pass" --argjson fail "$fail" --argjson skip "$skip" --argjson results "$results" --arg reportFile "$report_file" \
   '{pass:$pass,fail:$fail,skip:$skip,results:$results,reportFile:$reportFile}')"

@@ -1,0 +1,164 @@
+#!/bin/bash
+# nexhelper-monitor — observability summary for cron job health, recent errors, and system state.
+# Usage:
+#   nexhelper-monitor              # Full report (JSON)
+#   nexhelper-monitor cron-health  # Cron job failure summary
+#   nexhelper-monitor errors       # Recent error events from audit log
+#   nexhelper-monitor alert        # Emit alert if any critical issues found
+
+set -uo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")" 2>/dev/null || dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/nexhelper-core.sh"
+set +e
+
+NOTIFY_SCRIPT="$SCRIPT_DIR/nexhelper-notify"
+HEALTH_SCRIPT="$SCRIPT_DIR/nexhelper-healthcheck"
+
+CRON_FAILURE_THRESHOLD=3
+AUDIT_TAIL_LINES="${NX_MONITOR_AUDIT_TAIL:-200}"
+
+_cron_health() {
+  if ! command -v openclaw >/dev/null 2>&1; then
+    jq -c -n '{"status":"unavailable","reason":"openclaw not on PATH"}'
+    return
+  fi
+
+  local cron_list_raw
+  cron_list_raw="$(openclaw cron list --json 2>/dev/null || echo '{}')"
+
+  local jobs
+  jobs="$(echo "$cron_list_raw" | jq -c '.jobs // []' 2>/dev/null || echo '[]')"
+  local job_count
+  job_count="$(echo "$jobs" | jq 'length')"
+
+  local issues="[]"
+  local cron_status="ok"
+
+  # Check each job for consecutive failures
+  while IFS= read -r job; do
+    local job_id job_name
+    job_id="$(echo "$job" | jq -r '.id // empty')"
+    job_name="$(echo "$job" | jq -r '.name // empty')"
+    [ -z "$job_id" ] && continue
+
+    local runs_raw
+    runs_raw="$(openclaw cron runs --id "$job_id" --limit 5 2>/dev/null || echo '{}')"
+    local recent_runs
+    recent_runs="$(echo "$runs_raw" | jq -c '[.runs[]? | {status:.status,ts:.completedAt}] // []' 2>/dev/null || echo '[]')"
+
+    local fail_count
+    fail_count="$(echo "$recent_runs" | jq '[.[] | select(.status != "success" and .status != "ok")] | length' 2>/dev/null || echo 0)"
+
+    if [ "${fail_count:-0}" -ge "$CRON_FAILURE_THRESHOLD" ]; then
+      cron_status="degraded"
+      issues="$(echo "$issues" | jq -c \
+        --arg name "$job_name" --arg id "$job_id" --argjson fails "$fail_count" \
+        '. + [{job:$name,id:$id,consecutiveFailures:$fails}]')"
+    fi
+  done < <(echo "$jobs" | jq -c '.[]')
+
+  jq -c -n \
+    --arg status "$cron_status" \
+    --argjson job_count "$job_count" \
+    --argjson issues "$issues" \
+    '{status:$status,jobCount:$job_count,issues:$issues}'
+}
+
+_recent_errors() {
+  nx_init_dirs 2>/dev/null || true
+  local audit_file="$NX_AUDIT_DIR/events.ndjson"
+
+  if [ ! -f "$audit_file" ]; then
+    jq -c -n '{"status":"unavailable","errors":[]}'
+    return
+  fi
+
+  local errors
+  errors="$(tail -n "$AUDIT_TAIL_LINES" "$audit_file" \
+    | jq -c 'select(.level == "error" or .status == "error" or .status == "fail")' 2>/dev/null \
+    | head -20 \
+    | jq -sc '.')"
+
+  if ! echo "$errors" | jq -e . >/dev/null 2>&1; then errors="[]"; fi
+
+  local error_count
+  error_count="$(echo "$errors" | jq 'length')"
+  local err_status
+  err_status="$([ "$error_count" -gt 0 ] && echo "degraded" || echo "ok")"
+
+  jq -c -n \
+    --arg status "$err_status" \
+    --argjson count "$error_count" \
+    --argjson errors "$errors" \
+    '{status:$status,errorCount:$count,recentErrors:$errors}'
+}
+
+_full_report() {
+  local health="{}"
+  if [ -x "$HEALTH_SCRIPT" ]; then
+    health="$("$HEALTH_SCRIPT" 2>/dev/null || echo '{}')"
+    if ! echo "$health" | jq -e . >/dev/null 2>&1; then health="{}"; fi
+  fi
+
+  local cron_health
+  cron_health="$(_cron_health)"
+
+  local errors
+  errors="$(_recent_errors)"
+
+  local health_status cron_status err_status overall_status
+  health_status="$(echo "$health" | jq -r '.status // "ok"')"
+  cron_status="$(echo "$cron_health" | jq -r '.status // "ok"')"
+  err_status="$(echo "$errors" | jq -r '.status // "ok"')"
+
+  if [ "$health_status" = "ok" ] && [ "$cron_status" = "ok" ] && [ "$err_status" = "ok" ]; then
+    overall_status="ok"
+  else
+    overall_status="degraded"
+  fi
+
+  jq -c -n \
+    --arg status "$overall_status" \
+    --arg ts "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+    --argjson health "$health" \
+    --argjson cron "$cron_health" \
+    --argjson errors "$errors" \
+    '{status:$status,timestamp:$ts,health:$health,cronHealth:$cron,auditErrors:$errors}'
+}
+
+_alert_if_degraded() {
+  local report
+  report="$(_full_report)"
+
+  local overall
+  overall="$(echo "$report" | jq -r '.status')"
+
+  if [ "$overall" != "ok" ]; then
+    local cron_issues
+    cron_issues="$(echo "$report" | jq -r '[.cronHealth.issues[]?.job] | join(", ")' 2>/dev/null || echo '')"
+    local error_count
+    error_count="$(echo "$report" | jq -r '.auditErrors.errorCount // 0')"
+    local health_status
+    health_status="$(echo "$report" | jq -r '.health.status // "unknown"')"
+
+    local msg="⚠️ NexHelper monitor alert | system=$health_status"
+    [ -n "$cron_issues" ] && msg="$msg | failing_jobs=$cron_issues"
+    [ "$error_count" -gt 0 ] && msg="$msg | recent_errors=$error_count"
+
+    if [ -x "$NOTIFY_SCRIPT" ]; then
+      "$NOTIFY_SCRIPT" send --audience broadcast --message "$msg" 2>/dev/null || true
+    fi
+    echo "$report"
+    return 1
+  fi
+
+  echo "$report"
+}
+
+case "${1:-report}" in
+  cron-health)  _cron_health ;;
+  errors)       _recent_errors ;;
+  alert)        _alert_if_degraded ;;
+  report|*)     _full_report ;;
+esac

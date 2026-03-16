@@ -159,88 +159,123 @@ route_message() {
   esac
 }
 
+# Resolve a structured event type from a system event text.
+# Structured tokens (nexhelper:event:<type>) take priority over legacy substring matching,
+# which is kept as a fallback for backward compatibility.
+_resolve_event_type() {
+  local text="$1"
+  # Structured token (preferred): nexhelper:event:<type>
+  if [[ "$text" =~ nexhelper:event:([a-z_-]+) ]]; then
+    echo "${BASH_REMATCH[1]}"
+    return
+  fi
+  # Legacy substring fallback so old cron messages still work
+  if [[ "$text" == *"reminder"* ]]; then echo "reminder-audit"; return; fi
+  if [[ "$text" == *"budget"* ]];   then echo "budget-check";   return; fi
+  if [[ "$text" == *"retention"* ]]; then echo "retention";     return; fi
+  if [[ "$text" == *"health"* ]] || [[ "$text" == *"monitor"* ]] || [[ "$text" == *"degraded"* ]]; then
+    echo "health-check"
+    return
+  fi
+  if [[ "$text" == *"daily"* ]] || [[ "$text" == *"summary"* ]]; then
+    echo "daily-summary"
+    return
+  fi
+  echo "unknown"
+}
+
 route_system_event() {
   local event_json="$1"
   local text
   text="$(echo "$event_json" | jq -r '.text')"
+  local event_type
+  event_type="$(_resolve_event_type "$text")"
 
-  if [[ "$text" == *"reminder"* ]]; then
-    local sync_result="{}"
-    if [ -x "$SCRIPT_DIR/../reminder-system/nexhelper-reminder-sync" ]; then
-      sync_result="$("$SCRIPT_DIR/../reminder-system/nexhelper-reminder-sync" 2>/dev/null || echo '{}')"
-    fi
-    local audit_result="{}"
-    if [ -x "$SCRIPT_DIR/../reminder-system/nexhelper-reminder-auditor" ]; then
-      audit_result="$("$SCRIPT_DIR/../reminder-system/nexhelper-reminder-auditor" 2>/dev/null || echo '{}')"
-    fi
-    local due
-    due="$("$SCRIPT_DIR/../reminder-system/nexhelper-reminder" due 2>/dev/null || echo '[]')"
-    jq -c -n \
-      --arg status "processed" --arg handler "reminder_due" \
-      --argjson due "$due" --argjson sync "$sync_result" --argjson audit "$audit_result" \
-      '{status:$status,handler:$handler,due:$due,sync:$sync,audit:$audit}'
+  case "$event_type" in
+    reminder-audit|reminder-check)
+      local sync_result="{}"
+      if [ -x "$SCRIPT_DIR/../reminder-system/nexhelper-reminder-sync" ]; then
+        sync_result="$("$SCRIPT_DIR/../reminder-system/nexhelper-reminder-sync" 2>/dev/null || echo '{}')"
+      fi
+      local audit_result="{}"
+      if [ -x "$SCRIPT_DIR/../reminder-system/nexhelper-reminder-auditor" ]; then
+        audit_result="$("$SCRIPT_DIR/../reminder-system/nexhelper-reminder-auditor" 2>/dev/null || echo '{}')"
+      fi
+      local due
+      due="$("$SCRIPT_DIR/../reminder-system/nexhelper-reminder" due 2>/dev/null || echo '[]')"
+      jq -c -n \
+        --arg status "processed" --arg handler "reminder_due" --arg event_type "$event_type" \
+        --argjson due "$due" --argjson sync "$sync_result" --argjson audit "$audit_result" \
+        '{status:$status,handler:$handler,eventType:$event_type,due:$due,sync:$sync,audit:$audit}'
+      ;;
 
-  elif [[ "$text" == *"budget"* ]]; then
-    local alerts
-    alerts="$("$SCRIPT_DIR/../entity-system/nexhelper-entity" check 2>/dev/null || echo '[]')"
-    jq -c -n --arg status "processed" --arg handler "budget_check" --argjson alerts "$alerts" \
-      '{status:$status,handler:$handler,alerts:$alerts}'
+    budget-check)
+      local alerts
+      alerts="$("$SCRIPT_DIR/../entity-system/nexhelper-entity" check 2>/dev/null || echo '[]')"
+      jq -c -n --arg status "processed" --arg handler "budget_check" --arg event_type "$event_type" \
+        --argjson alerts "$alerts" \
+        '{status:$status,handler:$handler,eventType:$event_type,alerts:$alerts}'
+      ;;
 
-  elif [[ "$text" == *"retention"* ]]; then
-    local retention
-    retention="$("$SCRIPT_DIR/nexhelper-retention" 2>/dev/null || echo '{}')"
-    jq -c -n --arg status "processed" --arg handler "retention" --argjson retention "$retention" \
-      '{status:$status,handler:$handler,retention:$retention}'
+    retention)
+      local retention
+      retention="$("$SCRIPT_DIR/nexhelper-retention" 2>/dev/null || echo '{}')"
+      jq -c -n --arg status "processed" --arg handler "retention" --arg event_type "$event_type" \
+        --argjson retention "$retention" \
+        '{status:$status,handler:$handler,eventType:$event_type,retention:$retention}'
+      ;;
 
-  elif [[ "$text" == *"health"* ]] || [[ "$text" == *"monitor"* ]] || [[ "$text" == *"degraded"* ]]; then
-    local health="{}"
-    if [ -x "$HEALTH_SCRIPT" ]; then
-      health="$("$HEALTH_SCRIPT" 2>/dev/null || echo '{}')"
-    fi
-    if ! echo "$health" | jq -e . >/dev/null 2>&1; then
-      health="{}"
-    fi
-    local health_status
-    health_status="$(echo "$health" | jq -r '.status // "unknown"')"
-    if [ "$health_status" != "ok" ] && [ -x "$NOTIFY_SCRIPT" ]; then
-      local degraded_checks
-      degraded_checks="$(echo "$health" | jq -r '[.checks[]? | select(.status != "ok") | .name] | join(", ")' 2>/dev/null || echo 'unknown')"
-      "$NOTIFY_SCRIPT" send --audience broadcast \
-        --message "⚠️ NexHelper health alert: $health_status | Issues: $degraded_checks" \
-        2>/dev/null || true
-    fi
-    jq -c -n \
-      --arg status "processed" --arg handler "health_monitor" \
-      --argjson health "$health" \
-      '{status:$status,handler:$handler,healthStatus:($health.status // "unknown"),health:$health}'
+    health-check)
+      local health="{}"
+      if [ -x "$HEALTH_SCRIPT" ]; then
+        health="$("$HEALTH_SCRIPT" 2>/dev/null || echo '{}')"
+      fi
+      if ! echo "$health" | jq -e . >/dev/null 2>&1; then health="{}"; fi
+      local health_status
+      health_status="$(echo "$health" | jq -r '.status // "unknown"')"
+      if [ "$health_status" != "ok" ] && [ -x "$NOTIFY_SCRIPT" ]; then
+        local degraded_checks
+        degraded_checks="$(echo "$health" | jq -r '[.checks[]? | select(.status != "ok") | .name] | join(", ")' 2>/dev/null || echo 'unknown')"
+        "$NOTIFY_SCRIPT" send --audience broadcast \
+          --message "⚠️ NexHelper health alert: $health_status | Issues: $degraded_checks" \
+          2>/dev/null || true
+      fi
+      jq -c -n \
+        --arg status "processed" --arg handler "health_monitor" --arg event_type "$event_type" \
+        --argjson health "$health" \
+        '{status:$status,handler:$handler,eventType:$event_type,healthStatus:($health.status // "unknown"),health:$health}'
+      ;;
 
-  elif [[ "$text" == *"daily"* ]] || [[ "$text" == *"summary"* ]]; then
-    local stats="{}"
-    stats="$("$DOC_SCRIPT" stats 2>/dev/null || echo '{}')"
-    if ! echo "$stats" | jq -e . >/dev/null 2>&1; then stats="{}"; fi
-    local health="{}"
-    if [ -x "$HEALTH_SCRIPT" ]; then
-      health="$("$HEALTH_SCRIPT" 2>/dev/null || echo '{}')"
-    fi
-    if ! echo "$health" | jq -e . >/dev/null 2>&1; then health="{}"; fi
-    local health_status doc_count total_amount health_icon
-    health_status="$(echo "$health" | jq -r '.status // "ok"')"
-    doc_count="$(echo "$stats" | jq -r '.documents // 0')"
-    total_amount="$(echo "$stats" | jq -r '.totalAmount // 0')"
-    health_icon="$([ "$health_status" = "ok" ] && echo "✅" || echo "⚠️")"
-    if [ -x "$NOTIFY_SCRIPT" ]; then
-      "$NOTIFY_SCRIPT" send --audience broadcast \
-        --message "${health_icon} Daily report: ${doc_count} doc(s), €${total_amount} total | System: ${health_status}" \
-        2>/dev/null || true
-    fi
-    jq -c -n \
-      --arg status "processed" --arg handler "daily_summary" \
-      --argjson stats "$stats" --argjson health "$health" \
-      '{status:$status,handler:$handler,stats:$stats,healthStatus:($health.status // "ok")}'
+    daily-summary)
+      local stats="{}"
+      stats="$("$DOC_SCRIPT" stats 2>/dev/null || echo '{}')"
+      if ! echo "$stats" | jq -e . >/dev/null 2>&1; then stats="{}"; fi
+      local health="{}"
+      if [ -x "$HEALTH_SCRIPT" ]; then
+        health="$("$HEALTH_SCRIPT" 2>/dev/null || echo '{}')"
+      fi
+      if ! echo "$health" | jq -e . >/dev/null 2>&1; then health="{}"; fi
+      local health_status doc_count total_amount health_icon
+      health_status="$(echo "$health" | jq -r '.status // "ok"')"
+      doc_count="$(echo "$stats" | jq -r '.documents // 0')"
+      total_amount="$(echo "$stats" | jq -r '.totalAmount // 0')"
+      health_icon="$([ "$health_status" = "ok" ] && echo "✅" || echo "⚠️")"
+      if [ -x "$NOTIFY_SCRIPT" ]; then
+        "$NOTIFY_SCRIPT" send --audience broadcast \
+          --message "${health_icon} Daily report: ${doc_count} doc(s), €${total_amount} total | System: ${health_status}" \
+          2>/dev/null || true
+      fi
+      jq -c -n \
+        --arg status "processed" --arg handler "daily_summary" --arg event_type "$event_type" \
+        --argjson stats "$stats" --argjson health "$health" \
+        '{status:$status,handler:$handler,eventType:$event_type,stats:$stats,healthStatus:($health.status // "ok")}'
+      ;;
 
-  else
-    jq -c -n --arg status "ignored" --arg text "$text" '{status:$status,text:$text}'
-  fi
+    *)
+      jq -c -n --arg status "ignored" --arg text "$text" --arg event_type "$event_type" \
+        '{status:$status,text:$text,eventType:$event_type}'
+      ;;
+  esac
 }
 
 run_event() {

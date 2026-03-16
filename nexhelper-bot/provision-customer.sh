@@ -652,18 +652,19 @@ services:
             && return 0
           openclaw cron add --name "\$\$_name" "\$\$@" 2>/dev/null || true
         }
-        # All jobs use --no-deliver and --session isolated (no announce, scripts handle delivery).
-        # Ops jobs use short exec-forward prompts to minimise token cost.
+        # All jobs use structured event tokens (nexhelper:event:<type>) so the workflow
+        # router uses exact token matching instead of fragile substring search.
+        # Jobs are --no-deliver; scripts handle their own notification via nexhelper-notify.
         _nx_ensure_cron reminder-auditor --every 1m \
-          --message "exec: nexhelper-reminder-auditor" --no-deliver --session isolated
+          --message "nexhelper:event:reminder-audit" --no-deliver --session isolated
         _nx_ensure_cron check-reminders --every 5m \
-          --message "exec: nexhelper-reminder check" --no-deliver --session isolated
+          --message "nexhelper:event:reminder-check" --no-deliver --session isolated
         _nx_ensure_cron budget-check --cron "0 * * * *" \
-          --message "exec: nexhelper-entity check" --no-deliver --session isolated
+          --message "nexhelper:event:budget-check" --no-deliver --session isolated
         _nx_ensure_cron retention-job --cron "0 2 * * *" \
-          --message "exec: nexhelper-retention" --no-deliver --session isolated
+          --message "nexhelper:event:retention" --no-deliver --session isolated
         # health-monitor removed: covered by startup smoke and /health endpoint
-        # daily-summary removed: LLM cost without deterministic value
+        # daily-summary disabled by default: LLM cost without deterministic value
         wait \$\$GW_PID
     ports:
       - "$PORT:$PORT"

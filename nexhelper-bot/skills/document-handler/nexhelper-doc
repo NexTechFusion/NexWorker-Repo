@@ -12,59 +12,8 @@ NX_ACTOR="${NX_ACTOR:-}"
 ENTITIES_SCRIPT="$SCRIPT_DIR/../entity-system/nexhelper-entity"
 CLASSIFIER_SCRIPT="$SCRIPT_DIR/../classifier/nexhelper-classify"
 
-normalize_float() {
-  local value="${1:-0}"
-  LC_ALL=C awk -v n="$value" 'BEGIN {printf "%.2f", n+0}'
-}
-
-build_fingerprint() {
-  local number="$1"
-  local supplier="$2"
-  local amount="$3"
-  local doc_date="$4"
-  printf "%s|%s|%s|%s" "${number,,}" "${supplier,,}" "$amount" "$doc_date" | sha256sum | awk '{print $1}'
-}
-
-find_duplicate() {
-  local fingerprint="$1"
-  local file_hash="$2"
-  local doc_number="${3:-}"
-  local path
-  for path in $(nx_list_doc_files); do
-    local candidate
-    candidate="$(cat "$path")"
-    if [ "$(echo "$candidate" | jq -r '.status')" != "active" ]; then
-      continue
-    fi
-    local same_fp
-    same_fp="$(echo "$candidate" | jq -r --arg fp "$fingerprint" '.fingerprint == $fp')"
-    local same_file_hash
-    same_file_hash="$(echo "$candidate" | jq -r --arg fh "$file_hash" '.fileHash == $fh and $fh != ""')"
-    local same_number
-    same_number="$(echo "$candidate" | jq -r --arg n "$doc_number" '.number == $n and $n != ""')"
-    if [ "$same_fp" = "true" ] || [ "$same_file_hash" = "true" ] || [ "$same_number" = "true" ]; then
-      echo "$candidate"
-      return 0
-    fi
-  done
-  echo "{}"
-}
-
-resolve_entity() {
-  local entity="$1"
-  local source_text="$2"
-  if [ -n "$entity" ] && [ "$entity" != "default" ]; then
-    echo "$entity"
-    return
-  fi
-  if [ -z "$source_text" ]; then
-    echo "default"
-    return
-  fi
-  local entities_json
-  entities_json="$("$ENTITIES_SCRIPT" list-json)"
-  "$CLASSIFIER_SCRIPT" entity --text "$source_text" --entities-json "$entities_json" | jq -r '.entity // "default"'
-}
+# Pure utility functions are extracted for SRP and independent testability.
+source "$SCRIPT_DIR/nexhelper-doc-core.sh"
 
 store_document() {
   local type="$1"

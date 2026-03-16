@@ -934,6 +934,55 @@ try {
     Add-Result "doc_append_command" "warn" "could not run append test: $_"
   }
 
+  # --- Structured event routing: nexhelper:event:<type> tokens ---
+  # Uses Invoke-ContainerScript to avoid PowerShell/Docker JSON quoting issues.
+  $structuredEventTests = @(
+    @{JsonStr='{"id":"se_rem","kind":"systemEvent","text":"nexhelper:event:reminder-audit"}'; expectedHandler="reminder_due";  label="reminder-audit"},
+    @{JsonStr='{"id":"se_bud","kind":"systemEvent","text":"nexhelper:event:budget-check"}';   expectedHandler="budget_check";  label="budget-check"},
+    @{JsonStr='{"id":"se_hlt","kind":"systemEvent","text":"nexhelper:event:health-check"}';   expectedHandler="health_monitor";label="health-check"},
+    @{JsonStr='{"id":"se_ret","kind":"systemEvent","text":"nexhelper:event:retention"}';       expectedHandler="retention";     label="retention"}
+  )
+  $allStructuredOk = $true
+  $structuredFailDetails = @()
+  foreach ($ev in $structuredEventTests) {
+    $seRaw = Invoke-ContainerScript -InstanceName $instanceName -BashCommand "nexhelper-workflow run --event-json '$($ev.JsonStr)' 2>/dev/null"
+    $seText = ($seRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
+    $gotHandler = ""
+    try {
+      $seLine = ($seText -split "`n" | Where-Object { $_.TrimStart().StartsWith('{') } | Select-Object -First 1)
+      $seJson = $seLine.Trim() | ConvertFrom-Json -ErrorAction Stop
+      $gotHandler = $seJson.result.handler
+    } catch {}
+    if ($gotHandler -eq $ev.expectedHandler) {
+      # token OK
+    } else {
+      $allStructuredOk = $false
+      $structuredFailDetails += "$($ev.label)->[$gotHandler](expected $($ev.expectedHandler))"
+    }
+  }
+  if ($allStructuredOk) {
+    Add-Result "structured_event_routing" "pass" "all 4 event tokens routed correctly"
+  } else {
+    Add-Result "structured_event_routing" "fail" ($structuredFailDetails -join "; ")
+  }
+
+  # --- nexhelper-monitor script available and returns valid JSON ---
+  $ErrorActionPreference = "Continue"
+  $monRaw = docker exec $instanceName sh -lc "nexhelper-monitor errors 2>/dev/null || echo '{}'" 2>&1
+  $monText = ($monRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
+  $ErrorActionPreference = "Stop"
+  try {
+    $monLine = ($monText -split "`n" | Where-Object { $_.TrimStart().StartsWith('{') } | Select-Object -First 1)
+    $monJson = $monLine.Trim() | ConvertFrom-Json -ErrorAction Stop
+    if ($monJson.status) {
+      Add-Result "monitor_available" "pass" "nexhelper-monitor errors returned status=$($monJson.status)"
+    } else {
+      Add-Result "monitor_available" "warn" "monitor output missing .status"
+    }
+  } catch {
+    Add-Result "monitor_available" "warn" "could not parse monitor output: $_"
+  }
+
   # --- Mandatory log lookup ---
   $ErrorActionPreference = "Continue"
   $logRaw = docker logs $instanceName --tail 400 2>&1
