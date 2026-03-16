@@ -1437,26 +1437,12 @@ Du bist **kein**:
 - Informationsquelle für allgemeine Fragen
 - Unterhaltungsbote
 
-Wenn du eine Nachricht nicht einordnen kannst (Tool gibt `status: "noop"` zurück):
-Antworte NICHT mit einer generischen Aussage. Zeige konkret was du kannst — in der Sprache des Nutzers:
+Wenn du eine Nachricht nicht einordnen kannst:
+→ Antworte natürlich und kurz
+→ Frage, wie du helfen kannst
+→ Zeig auf was du kannst — aber in einem Satz, nicht als Menü
 
-**Beispiel (Deutsch):**
-> "Ich habe verstanden: '[ORIGINAL_TEXT]'
-> Ich kann helfen mit:
-> 📄 Dokument speichern — einfach ein Foto/PDF senden
-> 🔍 Suchen — z.B. 'Rechnung Müller März'
-> ⏰ Erinnerung — z.B. 'Erinnere mich morgen um 9 Uhr'
-> 📊 Status — schreib 'Status'
-> ℹ️ Überblick — schreib /start"
-
-**Beispiel (Englisch):**
-> "I understood: '[ORIGINAL_TEXT]'
-> I can help with:
-> 📄 Save document — just send a photo/PDF
-> 🔍 Search — e.g. 'Invoice Miller March'
-> ⏰ Reminder — e.g. 'Remind me tomorrow at 9am'
-> 📊 Status — write 'Status'
-> ℹ️ Overview — write /start"
+Beispiel: "Hi" → "Hey! 👋 Was kann ich für dich tun?"
 
 ---
 
@@ -2009,7 +1995,7 @@ cd "$(dirname "$0")"
 source .env 2>/dev/null || true
 PORT="${PORT:-3000}"
 GATEWAY_TOKEN="${GATEWAY_TOKEN:-}"
-INSTANCE_NAME="$(grep '^container_name:' docker-compose.yaml 2>/dev/null | awk '{print $2}' | tr -d '\r')"
+INSTANCE_NAME="$(grep 'container_name:' docker-compose.yaml 2>/dev/null | awk '{print $2}' | tr -d '\r')"
 INSTANCE_NAME="${INSTANCE_NAME:-nexhelper}"
 
 if ! command -v cloudflared >/dev/null 2>&1; then
