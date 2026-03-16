@@ -300,8 +300,9 @@ try {
     try {
       $listData = $listStr | ConvertFrom-Json
       $cronListed = @($listData.jobs | Where-Object { $_.id -eq $cronJobId }).Count -gt 0
-      # All startup cron jobs now use --no-deliver; verify they exist (no delivery-to check)
-      $expectedStartupJobs = @("reminder-auditor", "check-reminders", "budget-check", "retention-job")
+      # reminder-auditor and check-reminders now run as native shell background loops (zero LLM cost).
+      # Only budget-check and retention-job remain in the cron scheduler.
+      $expectedStartupJobs = @("budget-check", "retention-job")
       $foundStartupJobs = @($listData.jobs | Where-Object { $_.name -in $expectedStartupJobs } | ForEach-Object { $_.name })
       $missingStartupJobs = @($expectedStartupJobs | Where-Object { $_ -notin $foundStartupJobs })
       if ($missingStartupJobs.Count -eq 0) {
@@ -757,22 +758,32 @@ try {
     Add-Result "notify_command_available" "fail" "nexhelper-notify not found on PATH"
   }
 
-  # --- Health-monitor + reminder-auditor crons registered ---
+  # --- Startup cron jobs registered (low-frequency only) ---
+  # reminder-auditor and check-reminders are now native background loops; they must NOT appear in cron.
   $ErrorActionPreference = "Continue"
   $cronListAllRaw = docker exec $instanceName openclaw cron list --json 2>&1
   $cronListAllText = ($cronListAllRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
   $ErrorActionPreference = "Stop"
   try {
     $cronAllJson = $cronListAllText | ConvertFrom-Json -ErrorAction Stop
-    $requiredJobs = @("reminder-auditor", "check-reminders", "budget-check", "retention-job")
-    $missingJobs = @($requiredJobs | Where-Object { $cronAllJson.jobs.name -notcontains $_ })
+    $requiredCronJobs = @("budget-check", "retention-job")
+    $missingJobs = @($requiredCronJobs | Where-Object { $cronAllJson.jobs.name -notcontains $_ })
     if ($missingJobs.Count -eq 0) {
-      Add-Result "startup_cron_registered" "pass" "all 4 startup jobs registered"
+      Add-Result "startup_cron_registered" "pass" "both low-frequency jobs registered"
     } else {
       Add-Result "startup_cron_registered" "fail" "missing: $($missingJobs -join ', ')"
     }
+    # Verify ops background-loop jobs are NOT in cron (they should run as native loops)
+    $opsLoopJobs = @("reminder-auditor", "check-reminders")
+    $unexpectedInCron = @($opsLoopJobs | Where-Object { $cronAllJson.jobs.name -contains $_ })
+    if ($unexpectedInCron.Count -eq 0) {
+      Add-Result "ops_loops_not_in_cron" "pass" "reminder-auditor and check-reminders correctly absent from cron"
+    } else {
+      Add-Result "ops_loops_not_in_cron" "fail" "ops jobs should not be in cron: $($unexpectedInCron -join ', ')"
+    }
   } catch {
     Add-Result "startup_cron_registered" "warn" "could not parse cron list"
+    Add-Result "ops_loops_not_in_cron" "warn" "could not parse cron list"
   }
 
   # --- Healthcheck includes liveness checks (use login shell for PATH) ---

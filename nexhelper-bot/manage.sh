@@ -224,11 +224,15 @@ cmd_summary() {
 
 # ── dispatch ───────────────────────────────────────────────────────────────────
 
-_require_cmd docker
-_require_cmd jq
-
 CMD="${1:-help}"
 shift 2>/dev/null || true
+
+case "$CMD" in
+  list|status|logs|provision|start|stop|crons|monitor|summary)
+    _require_cmd docker
+    _require_cmd jq
+    ;;
+esac
 
 case "$CMD" in
   list)       cmd_list "$@" ;;

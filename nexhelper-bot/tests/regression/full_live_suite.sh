@@ -664,6 +664,48 @@ else
   run_skip "F39" "monitor_script_errors_mode" "nexhelper-monitor not found"
 fi
 
+# F40 nexhelper-reminder-auditor stores cursor in durable ops dir, not /tmp
+AUDITOR_SCRIPT="$ROOT_DIR/skills/reminder-system/nexhelper-reminder-auditor"
+if [ -f "$AUDITOR_SCRIPT" ]; then
+  chmod +x "$AUDITOR_SCRIPT" 2>/dev/null || true
+  f40_ops_dir="$STORAGE_DIR/ops"
+  f40_sessions_dir="$STORAGE_DIR/sessions"
+  mkdir -p "$f40_ops_dir" "$f40_sessions_dir"
+  # Run auditor; sessions dir exists so it will process (empty) and write cursor
+  STORAGE_DIR="$STORAGE_DIR" OPENCLAW_SESSIONS_DIR="$f40_sessions_dir" \
+    "$AUDITOR_SCRIPT" 2>/dev/null || true
+  if [ -f "$f40_ops_dir/auditor-cursor" ]; then
+    record "F40" "auditor_cursor_durable_path" "pass" "cursor written to ops dir"
+  else
+    record "F40" "auditor_cursor_durable_path" "fail" "cursor not found at $f40_ops_dir/auditor-cursor"
+  fi
+else
+  run_skip "F40" "auditor_cursor_durable_path" "nexhelper-reminder-auditor not found"
+fi
+
+# F41 provision-customer.sh entrypoint uses native loops for reminder-auditor and check-reminders,
+# and does NOT register them as cron jobs
+PROVISION_SCRIPT="$ROOT_DIR/provision-customer.sh"
+if [ -f "$PROVISION_SCRIPT" ]; then
+  f41_has_loop="false"
+  f41_no_auditor_cron="true"
+  if grep -q "nexhelper-reminder-auditor.*2>/dev/null" "$PROVISION_SCRIPT"; then
+    f41_has_loop="true"
+  fi
+  if grep -qP "_nx_ensure_cron\s+reminder-auditor" "$PROVISION_SCRIPT"; then
+    f41_no_auditor_cron="false"
+  fi
+  if [ "$f41_has_loop" = "true" ] && [ "$f41_no_auditor_cron" = "true" ]; then
+    record "F41" "provision_native_loops" "pass" "native loops present, no reminder-auditor cron"
+  elif [ "$f41_has_loop" = "false" ]; then
+    record "F41" "provision_native_loops" "fail" "native loop for reminder-auditor not found in provision-customer.sh"
+  else
+    record "F41" "provision_native_loops" "fail" "reminder-auditor still registered as cron job"
+  fi
+else
+  run_skip "F41" "provision_native_loops" "provision-customer.sh not found"
+fi
+
 report_file="$REPORT_DIR/full-live-suite-$(date +%Y%m%d_%H%M%S).json"
 summary="$(jq -c -n --argjson pass "$pass" --argjson fail "$fail" --argjson skip "$skip" --argjson results "$results" --arg reportFile "$report_file" \
   '{pass:$pass,fail:$fail,skip:$skip,results:$results,reportFile:$reportFile}')"

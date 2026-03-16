@@ -642,9 +642,14 @@ services:
         openclaw doctor --fix >/dev/null 2>&1 || true
         openclaw gateway run --port $PORT --bind lan &
         GW_PID=\$\$!
+        # High-frequency ops run as native shell loops — zero LLM tokens consumed.
+        # reminder-auditor: scans sessions for missed exec calls every 60 s.
+        # check-reminders: delivers due canonical reminders every 300 s.
+        (while true; do sleep 60; nexhelper-reminder-auditor 2>/dev/null || true; nexhelper-reminder-sync 2>/dev/null || true; done) &
+        (while true; do sleep 300; nexhelper-reminder due 2>/dev/null || true; done) &
         sleep 8
-        # Idempotent cron registration: skips if a job with the same name already exists.
-        # This prevents duplicate accumulation across container restarts.
+        # Idempotent cron registration for low-frequency, LLM-appropriate jobs only.
+        # These are --no-deliver; scripts handle their own notification via nexhelper-notify.
         _nx_ensure_cron() {
           local _name="\$\$1"; shift
           openclaw cron list --json 2>/dev/null \
@@ -652,13 +657,6 @@ services:
             && return 0
           openclaw cron add --name "\$\$_name" "\$\$@" 2>/dev/null || true
         }
-        # All jobs use structured event tokens (nexhelper:event:<type>) so the workflow
-        # router uses exact token matching instead of fragile substring search.
-        # Jobs are --no-deliver; scripts handle their own notification via nexhelper-notify.
-        _nx_ensure_cron reminder-auditor --every 1m \
-          --message "nexhelper:event:reminder-audit" --no-deliver --session isolated
-        _nx_ensure_cron check-reminders --every 5m \
-          --message "nexhelper:event:reminder-check" --no-deliver --session isolated
         _nx_ensure_cron budget-check --cron "0 * * * *" \
           --message "nexhelper:event:budget-check" --no-deliver --session isolated
         _nx_ensure_cron retention-job --cron "0 2 * * *" \

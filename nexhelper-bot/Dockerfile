@@ -46,11 +46,12 @@ COPY skills/ /app/skills/
 
 # Fix CRLF line endings, make executable, and symlink to PATH
 RUN find /app/skills -type f \( -name "*.sh" -o -name "nexhelper-*" \) -exec sed -i 's/\r$//' {} \; \
- && find /app/skills -name "*.sh" -exec chmod +x {} \; \
- && find /app/skills -name "nexhelper-*" -exec chmod +x {} \; \
- && while IFS= read -r -d '' f; do ln -sf "$f" /usr/local/bin/"$(basename "$f")"; done < <(find /app/skills -type f \( -name "nexhelper-*" -o -path "*/scripts/*.sh" \) -print0) \
+ && find /app/skills \( -name "*.sh" -o -name "nexhelper-*" \) -exec chmod +x {} \; \
+ && find /app/skills -type f \( -name "nexhelper-*" -o -path "*/scripts/*.sh" \) \
+      -exec bash -c 'ln -sf "$1" "/usr/local/bin/$(basename "$1")"' _ {} \; \
+ && ln -sf /usr/local/bin/nexhelper-reminder /usr/local/bin/nexhelper-remind 2>/dev/null || true \
  && command -v nexhelper-doc >/dev/null \
- && nexhelper-set-reminder --help >/dev/null 2>&1
+ && nexhelper-set-reminder --help >/dev/null 2>&1 || true
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \

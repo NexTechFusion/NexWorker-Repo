@@ -3,7 +3,9 @@
 set -euo pipefail
 
 SESSIONS_DIR="${OPENCLAW_SESSIONS_DIR:-/root/.openclaw/agents/main/sessions}"
-AUDIT_STATE="/tmp/nexhelper-reminder-audit-cursor"
+_OPS_DIR="${STORAGE_DIR:-/root/.openclaw/workspace/storage}/ops"
+mkdir -p "$_OPS_DIR" 2>/dev/null || true
+AUDIT_STATE="$_OPS_DIR/auditor-cursor"
 
 if [ ! -d "$SESSIONS_DIR" ]; then
   echo '{"status":"ok","audited":0,"created":0,"reason":"no sessions dir"}'
