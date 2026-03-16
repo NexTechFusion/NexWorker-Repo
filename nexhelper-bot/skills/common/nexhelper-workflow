@@ -150,11 +150,13 @@ route_message() {
       fi
       ;;
     *)
+      # Return 'unclear' with guidance for natural response
       jq -c -n \
-        --arg status "noop" \
+        --arg status "unclear" \
         --arg intent "$intent" \
         --arg text "$text" \
-        '{status:$status,intent:$intent,text:$text}'
+        --arg suggestion "ask_user_needs" \
+        '{status:$status,intent:$intent,text:$text,suggestion:$suggestion,response_hint:"Frag den Nutzer natürlich, was er braucht. NIEMALS Template verwenden."}'
       ;;
   esac
 }
@@ -280,6 +282,8 @@ route_system_event() {
 
 run_event() {
   local raw_event="$1"
+  local start_ms
+  start_ms="$(date +%s%3N 2>/dev/null || echo 0)"
   nx_init_dirs
   local event_json
   event_json="$(normalize_event "$raw_event")"
@@ -295,6 +299,10 @@ run_event() {
   nx_log_event "workflow.received" "$op_id" "started" "$event_json" 2>/dev/null || true
   local kind
   kind="$(echo "$event_json" | jq -r '.kind')"
+  
+  # Metric: event received
+  nx_metric_count "workflow.events.received" "kind=$kind" 2>/dev/null || true
+  
   local result
   if [ "$kind" = "systemEvent" ]; then
     result="$(route_system_event "$event_json" 2>/dev/null || echo '{"status":"error","handler":"unknown"}')"
@@ -305,6 +313,16 @@ run_event() {
   if ! echo "$result" | jq -e . >/dev/null 2>&1; then
     result='{"status":"error","message":"internal_error"}'
   fi
+  
+  # Metric: processing duration
+  local end_ms duration_ms
+  end_ms="$(date +%s%3N 2>/dev/null || echo 0)"
+  duration_ms=$((end_ms - start_ms))
+  nx_metric_histogram "workflow.events.duration_ms" "$duration_ms" "kind=$kind,status=$(echo "$result" | jq -r '.status // "unknown"')" 2>/dev/null || true
+  
+  # Metric: by status
+  nx_metric_count "workflow.events.by_status" "status=$(echo "$result" | jq -r '.status // "unknown"')" 2>/dev/null || true
+  
   local output
   output="$(jq -c -n \
     --arg opId "$op_id" \

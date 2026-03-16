@@ -11,9 +11,40 @@ NX_AUDIT_DIR="$NX_STORAGE_DIR/audit"
 NX_IDEMPOTENCY_DIR="$NX_STORAGE_DIR/idempotency"
 NX_OPS_DIR="$NX_STORAGE_DIR/ops"
 NX_INDICES_DIR="$NX_CANONICAL_DIR/indices"
+NX_METRICS_FILE="$NX_OPS_DIR/metrics.ndjson"
 
 nx_now_iso() {
   date -Iseconds
+}
+
+# ─── Metrics ──────────────────────────────────────────────────────────────────
+
+nx_metric_emit() {
+  local name="$1"
+  local value="$2"
+  local tags="${3:-}"
+  local payload
+  payload="$(jq -c -n \
+    --arg ts "$(nx_now_iso)" \
+    --arg name "$name" \
+    --argjson value "$value" \
+    --arg tags "$tags" \
+    '{timestamp:$ts,metric:$name,value:$value,tags:$tags}')"
+  mkdir -p "$NX_OPS_DIR" 2>/dev/null || true
+  printf "%s\n" "$payload" >> "$NX_METRICS_FILE"
+}
+
+nx_metric_count() {
+  local name="$1"
+  local tags="${2:-}"
+  nx_metric_emit "$name" 1 "$tags"
+}
+
+nx_metric_histogram() {
+  local name="$1"
+  local value="$2"
+  local tags="${3:-}"
+  nx_metric_emit "$name" "$value" "$tags"
 }
 
 nx_op_id() {
