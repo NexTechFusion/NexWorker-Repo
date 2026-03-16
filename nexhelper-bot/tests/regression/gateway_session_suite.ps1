@@ -195,6 +195,39 @@ try {
     Add-Result "runtime_set_reminder_available" "fail" "nexhelper-set-reminder missing or not executable"
   }
 
+  # --- Cron assertion: no duplicate job names ---
+  $ErrorActionPreference = "Continue"
+  $cronRaw = docker exec $instanceName sh -lc "openclaw cron list --json 2>/dev/null || echo '{}'" 2>&1
+  $cronText = ($cronRaw | Where-Object { $_ -is [string] -or $_.GetType().Name -ne 'ErrorRecord' }) -join "`n"
+  $cronText = $cronText.Trim()
+  $ErrorActionPreference = "Stop"
+  $cronParsed = $null
+  try { $cronParsed = $cronText | ConvertFrom-Json } catch {}
+  if ($null -ne $cronParsed -and $null -ne $cronParsed.jobs) {
+    $jobNames = @($cronParsed.jobs | ForEach-Object { $_.name })
+    $uniqueNames = @($jobNames | Sort-Object -Unique)
+    if ($jobNames.Count -eq $uniqueNames.Count) {
+      Add-Result "cron_names_unique" "pass" "jobs=$($jobNames.Count)"
+    } else {
+      $dupes = @($jobNames | Group-Object | Where-Object { $_.Count -gt 1 } | ForEach-Object { $_.Name })
+      Add-Result "cron_names_unique" "fail" "duplicate names: $($dupes -join ', ')"
+    }
+  } else {
+    Add-Result "cron_names_unique" "warn" "could not parse cron list"
+  }
+
+  # --- Cron assertion: daily-summary absent by default ---
+  if ($null -ne $cronParsed -and $null -ne $cronParsed.jobs) {
+    $hasDailySummary = $cronParsed.jobs | Where-Object { $_.name -eq "daily-summary" }
+    if (-not $hasDailySummary) {
+      Add-Result "cron_daily_summary_absent" "pass"
+    } else {
+      Add-Result "cron_daily_summary_absent" "fail" "daily-summary should not be registered by default"
+    }
+  } else {
+    Add-Result "cron_daily_summary_absent" "warn" "could not parse cron list"
+  }
+
   $messages = @(
     "Hallo, antworte nur mit OK und einem kurzen Satz.",
     "Wir testen die Session-Stabilitaet. Bitte bestaetige Test Schritt 2.",
@@ -267,24 +300,12 @@ try {
     try {
       $listData = $listStr | ConvertFrom-Json
       $cronListed = @($listData.jobs | Where-Object { $_.id -eq $cronJobId }).Count -gt 0
-      $scheduledJobNames = @("check-reminders", "budget-check", "daily-summary", "retention-job")
-      $scheduledJobs = @($listData.jobs | Where-Object { $_.name -in $scheduledJobNames })
-      if ($scheduledJobs.Count -eq $scheduledJobNames.Count) {
+      # All startup cron jobs now use --no-deliver; verify they exist (no delivery-to check)
+      $expectedStartupJobs = @("reminder-auditor", "check-reminders", "budget-check", "retention-job")
+      $foundStartupJobs = @($listData.jobs | Where-Object { $_.name -in $expectedStartupJobs } | ForEach-Object { $_.name })
+      $missingStartupJobs = @($expectedStartupJobs | Where-Object { $_ -notin $foundStartupJobs })
+      if ($missingStartupJobs.Count -eq 0) {
         $scheduledCronTargetsOk = $true
-        foreach ($job in $scheduledJobs) {
-          $target = ""
-          if ($job.PSObject.Properties.Name -contains "to") {
-            $target = [string]$job.to
-          } elseif ($job.PSObject.Properties.Name -contains "delivery" -and $job.delivery) {
-            if ($job.delivery.PSObject.Properties.Name -contains "to") {
-              $target = [string]$job.delivery.to
-            }
-          }
-          if ([string]::IsNullOrWhiteSpace($target) -or ($target -ne $defaultDeliveryTo)) {
-            $scheduledCronTargetsOk = $false
-            break
-          }
-        }
       }
     } catch {}
     if ($cronListed) {
@@ -293,9 +314,9 @@ try {
       Add-Result "cron_listed" "fail" "job not found in cron list"
     }
     if ($scheduledCronTargetsOk) {
-      Add-Result "cron_delivery_targets" "pass" "scheduled jobs use expected to=$defaultDeliveryTo"
+      Add-Result "cron_startup_jobs_present" "pass" "all startup cron jobs registered"
     } else {
-      Add-Result "cron_delivery_targets" "fail" "scheduled cron jobs are missing or have invalid delivery.to"
+      Add-Result "cron_startup_jobs_present" "fail" "some startup cron jobs missing"
     }
 
     Write-Host "Waiting ~75s for cron job to fire..."
@@ -743,17 +764,15 @@ try {
   $ErrorActionPreference = "Stop"
   try {
     $cronAllJson = $cronListAllText | ConvertFrom-Json -ErrorAction Stop
-    $hasHealthMon = $cronAllJson.jobs.name -contains "health-monitor"
-    $hasRemAuditor = $cronAllJson.jobs.name -contains "reminder-auditor"
-    if ($hasHealthMon -and $hasRemAuditor) {
-      Add-Result "health_monitor_cron" "pass" "health-monitor and reminder-auditor crons registered"
-    } elseif ($hasHealthMon) {
-      Add-Result "health_monitor_cron" "warn" "health-monitor present but reminder-auditor missing"
+    $requiredJobs = @("reminder-auditor", "check-reminders", "budget-check", "retention-job")
+    $missingJobs = @($requiredJobs | Where-Object { $cronAllJson.jobs.name -notcontains $_ })
+    if ($missingJobs.Count -eq 0) {
+      Add-Result "startup_cron_registered" "pass" "all 4 startup jobs registered"
     } else {
-      Add-Result "health_monitor_cron" "fail" "health-monitor cron missing (reminder-auditor=$hasRemAuditor)"
+      Add-Result "startup_cron_registered" "fail" "missing: $($missingJobs -join ', ')"
     }
   } catch {
-    Add-Result "health_monitor_cron" "warn" "could not parse cron list"
+    Add-Result "startup_cron_registered" "warn" "could not parse cron list"
   }
 
   # --- Healthcheck includes liveness checks (use login shell for PATH) ---

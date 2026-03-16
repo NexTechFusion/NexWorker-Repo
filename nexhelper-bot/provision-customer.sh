@@ -161,7 +161,7 @@ if [ -z "$CUSTOMER_ID" ] || [ -z "$CUSTOMER_NAME" ]; then
     echo "  --no-start            Don't auto-start container"
     echo "  --consent-version <v> Consent text version (default: 1.0)"
     echo "  --base-dir <path>     Base directory (default: /opt/nexhelper/customers)"
-    echo "  --delivery-to <to>    Delivery target for announce cron jobs (e.g. telegram:579539601)"
+    echo "  --delivery-to <to>    Admin notification target used by scripts like nexhelper-notify (e.g. telegram:579539601)"
     echo ""
     echo "Provider selection (AI_PROVIDER=gemini | openrouter | openai | custom):"
     echo "  GEMINI_API_KEY=AIza... ./provision-customer.sh 001 'Acme GmbH' --telegram '123:ABC'"
@@ -626,15 +626,15 @@ services:
         mkdir -p /root/.openclaw/agents/main/agent
         cp /app/config/auth-profiles.json /root/.openclaw/agents/main/agent/auth-profiles.json 2>/dev/null || true
         rm -f /root/.openclaw/workspace/BOOTSTRAP.md
+        cp -r /app/skills /usr/local/nexhelper-skills
         while IFS= read -r -d '' f; do
-          sed -i 's/\r$//' "\$\$f" 2>/dev/null || true
-          chmod +x "\$\$f" 2>/dev/null || true
-        done < <(find /app/skills -type f \\( -name "*.sh" -o -name "nexhelper-*" \\) -print0)
+          tr -d '\r' < "\$\$f" > "\$\$f.tmp" && mv "\$\$f.tmp" "\$\$f" || rm -f "\$\$f.tmp"
+          chmod +x "\$\$f"
+        done < <(find /usr/local/nexhelper-skills -type f \\( -name "nexhelper-*" -o -name "*.sh" \\) -print0)
         while IFS= read -r -d '' f; do
           bn="\$\$(basename "\$\$f")"
-          printf '#!/bin/bash\nexec bash "%s" "\$@"\n' "\$\$f" > "/usr/local/bin/\$\$bn"
-          chmod +x "/usr/local/bin/\$\$bn"
-        done < <(find /app/skills -type f \\( -name "nexhelper-*" -o -path "*/scripts/*.sh" \\) -print0)
+          ln -sf "\$\$f" "/usr/local/bin/\$\$bn" 2>/dev/null || true
+        done < <(find /usr/local/nexhelper-skills -type f -name "nexhelper-*" -print0)
         ln -sf /usr/local/bin/nexhelper-reminder /usr/local/bin/nexhelper-remind 2>/dev/null || true
         command -v nexhelper-doc >/dev/null 2>&1 || echo "⚠️ nexhelper-doc missing on PATH"
         nexhelper-set-reminder --help >/dev/null 2>&1 || echo "⚠️ nexhelper-set-reminder missing or not executable"
@@ -643,20 +643,27 @@ services:
         openclaw gateway run --port $PORT --bind lan &
         GW_PID=\$\$!
         sleep 8
-        _NX_TO="\${DEFAULT_DELIVERY_TO:-}"
-        _nx_cron_add() {
-          if [ -n "\$\$_NX_TO" ]; then
-            openclaw cron add "\$\$@" --to "\$\$_NX_TO" 2>/dev/null || true
-          else
-            openclaw cron add "\$\$@" 2>/dev/null || true
-          fi
+        # Idempotent cron registration: skips if a job with the same name already exists.
+        # This prevents duplicate accumulation across container restarts.
+        _nx_ensure_cron() {
+          local _name="\$\$1"; shift
+          openclaw cron list --json 2>/dev/null \
+            | jq -e --arg n "\$\$_name" '.jobs[] | select(.name == \$n)' >/dev/null 2>&1 \
+            && return 0
+          openclaw cron add --name "\$\$_name" "\$\$@" 2>/dev/null || true
         }
-        openclaw cron add --name reminder-auditor --every 1m --message "Background: audit reminder cron jobs and sync any confirmed but unscheduled reminders. Use exec: nexhelper-reminder-auditor. No user response needed." --no-deliver --session isolated 2>/dev/null || true
-        openclaw cron add --name health-monitor --cron "0 */6 * * *" --message "Background: run nexhelper-healthcheck. If any checks are degraded, notify admin via nexhelper-notify. Stay silent if all ok." --no-deliver --session isolated 2>/dev/null || true
-        openclaw cron add --name check-reminders --every 5m --message "Background: run nexhelper-reminder check. If any reminders are due, send each one to the respective user with nexhelper-notify. If nothing is due, stay completely silent — do NOT send any message." --no-deliver --session isolated 2>/dev/null || true
-        _nx_cron_add --name budget-check --cron "0 * * * *" --message "Check entity budgets and send alerts if thresholds exceeded. Use exec: nexhelper-entity check" --announce --channel telegram --session isolated
-        openclaw cron add --name daily-summary --cron "0 18 * * *" --message "Generate daily summary of documents processed today including health status. If all ok, stay silent — do NOT broadcast unless something requires attention." --no-deliver --session isolated 2>/dev/null || true
-        _nx_cron_add --name retention-job --cron "0 2 * * *" --message "Run retention and purge deleted documents. Use exec: nexhelper-retention purge" --announce --channel telegram --session isolated
+        # All jobs use --no-deliver and --session isolated (no announce, scripts handle delivery).
+        # Ops jobs use short exec-forward prompts to minimise token cost.
+        _nx_ensure_cron reminder-auditor --every 1m \
+          --message "exec: nexhelper-reminder-auditor" --no-deliver --session isolated
+        _nx_ensure_cron check-reminders --every 5m \
+          --message "exec: nexhelper-reminder check" --no-deliver --session isolated
+        _nx_ensure_cron budget-check --cron "0 * * * *" \
+          --message "exec: nexhelper-entity check" --no-deliver --session isolated
+        _nx_ensure_cron retention-job --cron "0 2 * * *" \
+          --message "exec: nexhelper-retention" --no-deliver --session isolated
+        # health-monitor removed: covered by startup smoke and /health endpoint
+        # daily-summary removed: LLM cost without deterministic value
         wait \$\$GW_PID
     ports:
       - "$PORT:$PORT"
@@ -1638,14 +1645,6 @@ cd "$(dirname "$0")"
 docker-compose up -d
 echo "✅ Started $(basename $(pwd))"
 
-CRON_TO="${DEFAULT_DELIVERY_TO:-}"
-CRON_TO_ARGS=()
-if [ -n "$CRON_TO" ]; then
-  CRON_TO_ARGS=(--to "$CRON_TO")
-else
-  echo "⚠️ DEFAULT_DELIVERY_TO is not set; announce cron jobs may fail until a valid --to target is configured"
-fi
-
 if [ "${RUN_SMOKE_ON_START:-true}" = "true" ]; then
   echo "🧪 Running startup smoke check..."
   READY=false
@@ -1657,37 +1656,11 @@ if [ "${RUN_SMOKE_ON_START:-true}" = "true" ]; then
     sleep 2
   done
 
-  if [ "$READY" = true ]; then
+    if [ "$READY" = true ]; then
     if docker-compose exec -T nexhelper nexhelper-smoke >/dev/null 2>&1; then
       echo "✅ Startup smoke check passed"
-      
-      # Setup Cron Jobs (if not already present)
-      echo "⏰ Setting up scheduled jobs..."
-      docker-compose exec -T nexhelper openclaw cron add \
-        --name "check-reminders" \
-        --every "5m" \
-        --message "Background: run nexhelper-reminder check. If any reminders are due, send each one to the respective user with nexhelper-notify. If nothing is due, stay completely silent — do NOT send any message." \
-        --no-deliver --session isolated 2>/dev/null || true
-      
-      docker-compose exec -T nexhelper openclaw cron add \
-        --name "budget-check" \
-        --cron "0 * * * *" \
-        --message "Check entity budgets and send alerts if thresholds exceeded. Use exec: nexhelper-entity check" \
-        --announce --channel telegram --session isolated "${CRON_TO_ARGS[@]}" 2>/dev/null || true
-      
-      docker-compose exec -T nexhelper openclaw cron add \
-        --name "daily-summary" \
-        --cron "0 18 * * *" \
-        --message "Generate daily summary of documents processed today including health status. If all ok, stay silent — do NOT broadcast unless something requires attention." \
-        --no-deliver --session isolated 2>/dev/null || true
-      
-      docker-compose exec -T nexhelper openclaw cron add \
-        --name "retention-job" \
-        --cron "0 2 * * *" \
-        --message "Run retention and purge deleted documents. Use exec: nexhelper-retention purge" \
-        --announce --channel telegram --session isolated "${CRON_TO_ARGS[@]}" 2>/dev/null || true
-      
-      echo "✅ Scheduled jobs configured"
+      # Cron jobs are registered once inside the container entrypoint at gateway start.
+      # No duplicate registration here.
     else
       echo "⚠️ Startup smoke check failed (inspect with ./smoke.sh)"
       if [ "${SMOKE_REQUIRED_ON_START:-false}" = "true" ]; then
@@ -2112,40 +2085,8 @@ if [ "$AUTO_START" = true ]; then
     
     if docker ps | grep -q "$INSTANCE_NAME"; then
         STARTED=true
-        CRON_TO_ARGS=()
-        if [ -n "$DELIVERY_TO" ]; then
-            CRON_TO_ARGS=(--to "$DELIVERY_TO")
-        else
-            echo "⚠️  Delivery target not set. Use --delivery-to or edit jobs later with openclaw cron edit --to <channel:id>"
-        fi
-        
-        # Setup Cron Jobs (if not already present)
-        echo "⏰ Setting up scheduled jobs..."
-        docker exec -it "$INSTANCE_NAME" openclaw cron add \
-          --name "check-reminders" \
-          --every "5m" \
-          --message "Background: run nexhelper-reminder check. If any reminders are due, send each one to the respective user with nexhelper-notify. If nothing is due, stay completely silent — do NOT send any message." \
-          --no-deliver --session isolated 2>/dev/null || true
-        
-        docker exec -it "$INSTANCE_NAME" openclaw cron add \
-          --name "budget-check" \
-          --cron "0 * * * *" \
-          --message "Check entity budgets and send alerts if thresholds exceeded. Use exec: nexhelper-entity check" \
-          --announce --channel telegram --session isolated "${CRON_TO_ARGS[@]}" 2>/dev/null || true
-        
-        docker exec -it "$INSTANCE_NAME" openclaw cron add \
-          --name "daily-summary" \
-          --cron "0 18 * * *" \
-          --message "Generate daily summary of documents processed today including health status. If all ok, stay silent — do NOT broadcast unless something requires attention." \
-          --no-deliver --session isolated 2>/dev/null || true
-        
-        docker exec -it "$INSTANCE_NAME" openclaw cron add \
-          --name "retention-job" \
-          --cron "0 2 * * *" \
-          --message "Run retention and purge deleted documents. Use exec: nexhelper-retention purge" \
-          --announce --channel telegram --session isolated "${CRON_TO_ARGS[@]}" 2>/dev/null || true
-        
-        echo "✅ Scheduled jobs configured"
+        # Cron jobs are registered once inside the container entrypoint at gateway start.
+        # No duplicate registration here.
     else
         STARTED=false
         echo "⚠️  Container failed to start. Check logs:"
