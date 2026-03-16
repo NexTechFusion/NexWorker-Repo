@@ -47,10 +47,12 @@ case "$AI_PROVIDER" in
   gemini)
     AI_API_KEY="${GEMINI_API_KEY:-${AI_API_KEY:-}}"
     AI_BASE_URL="${AI_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai}"
-    DEFAULT_MODEL="${DEFAULT_MODEL:-gemini-3-flash-preview}"
-    IMAGE_MODEL="${IMAGE_MODEL:-gemini-3-flash-preview}"
-    PDF_MODEL="${PDF_MODEL:-gemini-3-flash-preview}"
-    MODEL_FALLBACKS="${MODEL_FALLBACKS:-[\"gemini-2.5-flash\",\"gemini-2.5-flash\"]}"
+    # OpenClaw requires provider/model format; bare names fall back to "anthropic/" incorrectly.
+    # "google/" routes to Google's native Gemini API using GEMINI_API_KEY.
+    DEFAULT_MODEL="${DEFAULT_MODEL:-google/gemini-3-flash-preview}"
+    IMAGE_MODEL="${IMAGE_MODEL:-google/gemini-3-flash-preview}"
+    PDF_MODEL="${PDF_MODEL:-google/gemini-3-flash-preview}"
+    MODEL_FALLBACKS="${MODEL_FALLBACKS:-[\"google/gemini-2.5-flash\",\"google/gemini-3-flash-preview-001\"]}"
     ;;
   openrouter)
     AI_API_KEY="${OPENROUTER_API_KEY:-${AI_API_KEY:-}}"
@@ -76,6 +78,26 @@ case "$AI_PROVIDER" in
     exit 1
     ;;
 esac
+
+# OpenClaw's internal provider identifier for model routing and auth-profile lookup.
+# The "gemini" AI_PROVIDER uses OpenClaw's "google" provider key (google/model-name format).
+case "$AI_PROVIDER" in
+  gemini)    OPENCLAW_PROVIDER="google" ;;
+  openrouter) OPENCLAW_PROVIDER="openrouter" ;;
+  *)         OPENCLAW_PROVIDER="$AI_PROVIDER" ;;
+esac
+
+# Pre-compute provider-specific key aliases used in docker-compose and .env.
+# When AI_PROVIDER matches a provider, ensure its canonical env var holds the key
+# so OpenClaw's native provider integration can find it alongside OPENAI_API_KEY.
+ENV_GEMINI_KEY="${GEMINI_API_KEY:-}"
+ENV_OPENROUTER_KEY="${OPENROUTER_API_KEY:-}"
+if [ "$AI_PROVIDER" = "gemini" ] && [ -z "$ENV_GEMINI_KEY" ]; then
+  ENV_GEMINI_KEY="$AI_API_KEY"
+fi
+if [ "$AI_PROVIDER" = "openrouter" ] && [ -z "$ENV_OPENROUTER_KEY" ]; then
+  ENV_OPENROUTER_KEY="$AI_API_KEY"
+fi
 
 # Whisper uses a separate provider (Gemini has no /audio/transcriptions compat endpoint).
 # Defaults to OpenRouter; override with WHISPER_PROVIDER=openai or custom WHISPER_* vars.
@@ -586,9 +608,9 @@ cat <<EOF > "$CUSTOMER_DIR/config/auth-profiles.json"
 {
   "version": 1,
   "profiles": {
-    "$AI_PROVIDER:default": {
+    "$OPENCLAW_PROVIDER:default": {
       "type": "api_key",
-      "provider": "$AI_PROVIDER",
+      "provider": "$OPENCLAW_PROVIDER",
       "key": "$AI_API_KEY"
     },
     "openai:whisper": {
@@ -598,7 +620,7 @@ cat <<EOF > "$CUSTOMER_DIR/config/auth-profiles.json"
     }
   },
   "lastGood": {
-    "$AI_PROVIDER": "$AI_PROVIDER:default",
+    "$OPENCLAW_PROVIDER": "$OPENCLAW_PROVIDER:default",
     "openai": "openai:whisper"
   }
 }
@@ -678,8 +700,8 @@ services:
       - AI_PROVIDER=$AI_PROVIDER
       - AI_API_KEY=$AI_API_KEY
       - AI_BASE_URL=$AI_BASE_URL
-      - GEMINI_API_KEY=\${GEMINI_API_KEY:-}
-      - OPENROUTER_API_KEY=\${OPENROUTER_API_KEY:-}
+      - GEMINI_API_KEY=$ENV_GEMINI_KEY
+      - OPENROUTER_API_KEY=$ENV_OPENROUTER_KEY
       - WHISPER_API_KEY=$WHISPER_API_KEY
       - WHISPER_BASE_URL=$WHISPER_BASE_URL
       - WHISPER_MODEL=$WHISPER_MODEL
@@ -735,8 +757,8 @@ AI_API_KEY=$AI_API_KEY
 AI_BASE_URL=$AI_BASE_URL
 OPENAI_API_KEY=$AI_API_KEY
 OPENAI_BASE_URL=$AI_BASE_URL
-GEMINI_API_KEY=${GEMINI_API_KEY:-}
-OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+GEMINI_API_KEY=${GEMINI_API_KEY:-$ENV_GEMINI_KEY}
+OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-$ENV_OPENROUTER_KEY}
 WHISPER_API_KEY=$WHISPER_API_KEY
 WHISPER_BASE_URL=$WHISPER_BASE_URL
 WHISPER_MODEL=$WHISPER_MODEL
