@@ -450,8 +450,10 @@ fi
 if [ "$WHATSAPP_MODE" = true ]; then
     CHANNELS_CONFIG+="  \"whatsapp\": {
     enabled: true,
-    dmPolicy: \"pairing\",
+    dmPolicy: \"open\",
+    allowFrom: [\"*\"],
     groupPolicy: \"allowlist\",
+    groups: { \"*\": { requireMention: true } },
   },
 "
 fi
