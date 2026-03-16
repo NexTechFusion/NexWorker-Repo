@@ -5,6 +5,46 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")" 2>/dev/null || dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../common/nexhelper-core.sh"
 
+# Convert relative time string (e.g., "2m", "1h", "30s", "1d") to absolute ISO timestamp
+# Returns the original value if already an ISO timestamp
+parse_relative_time() {
+  local input="$1"
+  
+  # Check if already an ISO timestamp (contains T or is a date)
+  if [[ "$input" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2} ]] || [[ "$input" =~ T ]]; then
+    echo "$input"
+    return 0
+  fi
+  
+  # Parse relative time: <number><unit> (e.g., "2m", "1h", "30s", "1d")
+  local num="${input%[smhd]}"
+  local unit="${input: -1}"
+  
+  if [[ ! "$num" =~ ^[0-9]+$ ]]; then
+    # Can't parse - return as-is (will likely fail later)
+    echo "$input"
+    return 1
+  fi
+  
+  local seconds
+  case "$unit" in
+    s) seconds="$num" ;;
+    m) seconds=$((num * 60)) ;;
+    h) seconds=$((num * 3600)) ;;
+    d) seconds=$((num * 86400)) ;;
+    *) 
+      # Unknown unit - return as-is
+      echo "$input"
+      return 1
+      ;;
+  esac
+  
+  # Calculate absolute timestamp
+  date -u -d "@$(($(date +%s) + seconds))" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || \
+    date -u -v+${seconds}S +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || \
+    echo "$input"
+}
+
 create_reminder() {
   local user_id="$1"
   local text="$2"
@@ -20,12 +60,18 @@ create_reminder() {
   reminder_id="$(nx_op_id rem)"
   local op_id
   op_id="$(nx_op_id remop)"
+  
+  # Convert relative time to absolute ISO timestamp
+  local absolute_datetime
+  absolute_datetime="$(parse_relative_time "$datetime")"
+  
   local payload
   payload="$(jq -c -n \
     --arg id "$reminder_id" \
     --arg userId "$user_id" \
     --arg text "$text" \
-    --arg datetime "$datetime" \
+    --arg datetime "$absolute_datetime" \
+    --arg originalDatetime "$datetime" \
     --arg channel "$channel" \
     --arg now "$(nx_now_iso)" \
     '{
@@ -33,6 +79,7 @@ create_reminder() {
       userId:$userId,
       text:$text,
       datetime:$datetime,
+      originalDatetime:$originalDatetime,
       channel:$channel,
       status:"scheduled",
       delivered:false,
@@ -107,6 +154,10 @@ mark_due() {
     fi
     local dt
     dt="$(echo "$r" | jq -r '.datetime')"
+    # Skip if datetime doesn't look like a valid ISO timestamp
+    if [[ ! "$dt" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T ]]; then
+      continue
+    fi
     if [ "$dt" \< "$now" ] || [ "$dt" = "$now" ]; then
       local updated
       updated="$(echo "$r" | jq -c --arg now "$(nx_now_iso)" '.status="delivered" | .delivered=true | .deliveredAt=$now | .updatedAt=$now')"
@@ -121,7 +172,8 @@ mark_due() {
 
 usage() {
   echo "NexHelper Reminder CLI"
-  echo "  create --user <id> --text <text> --datetime <iso> [--channel telegram] [--idempotency-key <key>]"
+  echo "  create --user <id> --text <text> --datetime <iso|relative> [--channel telegram] [--idempotency-key <key>]"
+  echo "    Relative time examples: 2m (minutes), 1h (hours), 30s (seconds), 1d (days)"
   echo "  list --user <id>"
   echo "  delete <reminder_id> [--actor <user_id>]"
   echo "  due"
