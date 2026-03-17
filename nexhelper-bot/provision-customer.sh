@@ -675,7 +675,7 @@ services:
         cp /app/config/openclaw.json /root/.openclaw/openclaw.json
         cp /app/config/auth-profiles.json /root/.openclaw/auth-profiles.json 2>/dev/null || true
         tmp_cfg=\$\$(mktemp)
-        jq 'if .tools and .tools.allow then .tools.allow |= map(select(. != "apply_patch")) else . end | .commands.text = false | .commands.native = false | .commands.nativeSkills = false' /root/.openclaw/openclaw.json > "\$\$tmp_cfg" 2>/dev/null && mv "\$\$tmp_cfg" /root/.openclaw/openclaw.json || rm -f "\$\$tmp_cfg"
+        jq 'if .tools and .tools.allow then .tools.allow |= map(select(. != "apply_patch")) | .tools.allow |= . + ["cron"] | .tools.allow |= unique else . end | .commands.text = false | .commands.native = false | .commands.nativeSkills = false' /root/.openclaw/openclaw.json > "\$\$tmp_cfg" 2>/dev/null && mv "\$\$tmp_cfg" /root/.openclaw/openclaw.json || rm -f "\$\$tmp_cfg"
         mkdir -p /root/.openclaw/agents/main/agent
         cp /app/config/auth-profiles.json /root/.openclaw/agents/main/agent/auth-profiles.json 2>/dev/null || true
         rm -f /root/.openclaw/workspace/BOOTSTRAP.md
