@@ -675,7 +675,7 @@ services:
         cp /app/config/openclaw.json /root/.openclaw/openclaw.json
         cp /app/config/auth-profiles.json /root/.openclaw/auth-profiles.json 2>/dev/null || true
         tmp_cfg=\$\$(mktemp)
-        jq 'if .tools and .tools.allow then .tools.allow |= map(select(. != "apply_patch" and . != "cron")) else . end | .commands.text = false | .commands.native = false | .commands.nativeSkills = false' /root/.openclaw/openclaw.json > "\$\$tmp_cfg" 2>/dev/null && mv "\$\$tmp_cfg" /root/.openclaw/openclaw.json || rm -f "\$\$tmp_cfg"
+        jq 'if .tools and .tools.allow then .tools.allow |= map(select(. != "apply_patch")) else . end | .commands.text = false | .commands.native = false | .commands.nativeSkills = false' /root/.openclaw/openclaw.json > "\$\$tmp_cfg" 2>/dev/null && mv "\$\$tmp_cfg" /root/.openclaw/openclaw.json || rm -f "\$\$tmp_cfg"
         mkdir -p /root/.openclaw/agents/main/agent
         cp /app/config/auth-profiles.json /root/.openclaw/agents/main/agent/auth-profiles.json 2>/dev/null || true
         rm -f /root/.openclaw/workspace/BOOTSTRAP.md
@@ -704,13 +704,9 @@ services:
         (while true; do sleep 60; nexhelper-reminder-auditor 2>/dev/null || true; nexhelper-reminder-sync 2>/dev/null || true; done) &
         (while true; do sleep 300; nexhelper-reminder due 2>/dev/null || true; done) &
         sleep 8
-        # Auto-approve dashboard device pairing requests so any browser with the correct
-        # GATEWAY_TOKEN can connect immediately without a manual approval step.
-        # Security boundary is the token itself (48-char hex); device pairing adds no value
-        # in a single-operator setup where you already control who has the token.
-        (while true; do sleep 5; openclaw devices list --json 2>/dev/null \
-          | jq -r '.pending[]?.requestId' 2>/dev/null \
-          | while read -r _rid; do [ -n "\$\$_rid" ] && openclaw devices approve "\$\$_rid" 2>/dev/null || true; done; done) &
+        # REMOVED: Auto-approve loop was causing CPU spin loops when gateway was unresponsive.
+        # Security is already the 48-char GATEWAY_TOKEN - device pairing adds no value
+        # in single-operator setups. Pair manually if needed: docker exec <container> openclaw devices approve <id>
         # Only retention-job runs as a scheduled cron — DSGVO compliance, 1 LLM turn/day.
         # budget-check removed: no notification was ever sent (--no-deliver + no nexhelper-notify
         # call in handler), yet it consumed 24 LLM turns/day. Budgets are now checked reactively

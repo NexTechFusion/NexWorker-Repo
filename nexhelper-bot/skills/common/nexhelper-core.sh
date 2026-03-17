@@ -368,9 +368,11 @@ nx_user_find_by_username() {
 
 # ─── Time Parsing Utilities ──────────────────────────────────────────────────
 
-# Convert relative time string (e.g., "2m", "1h", "30s", "1d") to absolute ISO timestamp
-# Returns the original value if already an ISO timestamp or date
-# Usage: nx_parse_relative_time "2m" -> "2026-03-16T17:05:00Z"
+# ─── Multilingual Time Parser ──────────────────────────────────────────────────
+# Convert natural language time expressions to absolute ISO timestamp
+# Supports: German, English, simple formats (2m, 1h), ISO timestamps
+# Handles typos and variations
+# Usage: nx_parse_relative_time "in 2 Minuten" -> "2026-03-16T17:07:00Z"
 nx_parse_relative_time() {
   local input="$1"
   
@@ -380,37 +382,132 @@ nx_parse_relative_time() {
     return 1
   fi
   
+  # Normalize: lowercase, trim whitespace, collapse multiple spaces
+  local normalized
+  normalized=$(echo "$input" | tr '[:upper:]' '[:lower:]' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr -s ' ')
+  
   # Check if already an ISO timestamp (contains T or starts with date pattern)
-  if [[ "$input" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2} ]] || [[ "$input" =~ T ]]; then
+  if [[ "$normalized" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2} ]] || [[ "$normalized" =~ T ]]; then
     echo "$input"
     return 0
   fi
   
-  # Parse relative time: <number><unit> (e.g., "2m", "1h", "30s", "1d")
-  local num="${input%[smhd]}"
-  local unit="${input: -1}"
+  local seconds=0
+  local found=0
   
-  # Validate number
-  if [[ ! "$num" =~ ^[0-9]+$ ]]; then
+  # ─── Simple formats: 2m, 1h, 30s, 1d ────────────────────────────────────────
+  if [[ "$normalized" =~ ^([0-9]+)([smhd])$ ]]; then
+    local num="${BASH_REMATCH[1]}"
+    local unit="${BASH_REMATCH[2]}"
+    case "$unit" in
+      s) seconds=$num ;;
+      m) seconds=$((num * 60)) ;;
+      h) seconds=$((num * 3600)) ;;
+      d) seconds=$((num * 86400)) ;;
+    esac
+    found=1
+  fi
+  
+  # ─── Pattern: "in X [unit]" (German/English) ─────────────────────────────────
+  if [[ $found -eq 0 ]]; then
+    # German: "in 2 minuten", "in 2 minute", "in 2 min", "in einer stunde"
+    # English: "in 2 minutes", "in 2 mins", "in an hour", "in 1 hour"
+    # Typos: "in 2min", "in2 minuten", "in 2minute"
+    
+    # Minutes patterns
+    if [[ "$normalized" =~ in[[:space:]]*([0-9]+)[[:space:]]*(min|minute|minutes|minuten|minute?n?|mins) ]]; then
+      seconds=$((${BASH_REMATCH[1]} * 60))
+      found=1
+    # Hours patterns
+    elif [[ "$normalized" =~ in[[:space:]]*([0-9]+)[[:space:]]*(stunde|stunden|hour|hours|std|h) ]]; then
+      seconds=$((${BASH_REMATCH[1]} * 3600))
+      found=1
+    # Days patterns
+    elif [[ "$normalized" =~ in[[:space:]]*([0-9]+)[[:space:]]*(tag|tage|tagen|day|days|d) ]]; then
+      seconds=$((${BASH_REMATCH[1]} * 86400))
+      found=1
+    # Seconds patterns
+    elif [[ "$normalized" =~ in[[:space:]]*([0-9]+)[[:space:]]*(sekunde|sekunden|second|seconds|sec|sek|s) ]]; then
+      seconds=${BASH_REMATCH[1]}
+      found=1
+    # "in einer/einem" (German indefinite article)
+    elif [[ "$normalized" =~ in[[:space:]]*(einer|einem)[[:space:]]*(stunde|hour) ]]; then
+      seconds=3600
+      found=1
+    elif [[ "$normalized" =~ in[[:space:]]*(einer|einem)[[:space:]]*(minute|min) ]]; then
+      seconds=60
+      found=1
+    # "in an hour", "in a minute" (English)
+    elif [[ "$normalized" =~ in[[:space:]]*(an|a)[[:space:]]*hour ]]; then
+      seconds=3600
+      found=1
+    elif [[ "$normalized" =~ in[[:space:]]*(an|a)[[:space:]]*minute ]]; then
+      seconds=60
+      found=1
+    fi
+  fi
+  
+  # ─── Pattern: "X [unit]" without "in" ───────────────────────────────────────
+  if [[ $found -eq 0 ]]; then
+    if [[ "$normalized" =~ ^([0-9]+)[[:space:]]*(min|minute|minutes|minuten|mins)$ ]]; then
+      seconds=$((${BASH_REMATCH[1]} * 60))
+      found=1
+    elif [[ "$normalized" =~ ^([0-9]+)[[:space:]]*(stunde|stunden|hour|hours|std|h)$ ]]; then
+      seconds=$((${BASH_REMATCH[1]} * 3600))
+      found=1
+    elif [[ "$normalized" =~ ^([0-9]+)[[:space:]]*(tag|tage|tagen|day|days|d)$ ]]; then
+      seconds=$((${BASH_REMATCH[1]} * 86400))
+      found=1
+    elif [[ "$normalized" =~ ^([0-9]+)[[:space:]]*(sekunde|sekunden|second|seconds|sec|sek|s)$ ]]; then
+      seconds=${BASH_REMATCH[1]}
+      found=1
+    fi
+  fi
+  
+  # ─── Special keywords: morgen, übermorgen, tomorrow ─────────────────────────
+  if [[ $found -eq 0 ]]; then
+    case "$normalized" in
+      morgen|tomorrow|tmrw|tmr|tom)
+        seconds=86400
+        found=1
+        ;;
+      übermorgen|uebermorgen|ubermorgen|day\ after\ tomorrow|in\ 2\ days|in\ two\ days)
+        seconds=$((86400 * 2))
+        found=1
+        ;;
+      heute|today)
+        seconds=0
+        found=1
+        ;;
+      "in einer woche"|"in one week"|"in 1 week"|"in einer woche")
+        seconds=$((86400 * 7))
+        found=1
+        ;;
+    esac
+  fi
+  
+  # ─── Pattern: "halbe stunde", "half an hour" ────────────────────────────────
+  if [[ $found -eq 0 ]]; then
+    if [[ "$normalized" =~ (halb|half).*?(stunde|hour) ]]; then
+      seconds=1800
+      found=1
+    elif [[ "$normalized" =~ (viertel|quarter).*?(stunde|hour) ]]; then
+      seconds=900
+      found=1
+    fi
+  fi
+  
+  # ─── Fallback: Could not parse ─────────────────────────────────────────────
+  if [[ $found -eq 0 ]]; then
     echo "$input"
     return 1
   fi
   
-  local seconds
-  case "$unit" in
-    s) seconds="$num" ;;
-    m) seconds=$((num * 60)) ;;
-    h) seconds=$((num * 3600)) ;;
-    d) seconds=$((num * 86400)) ;;
-    *) 
-      echo "$input"
-      return 1
-      ;;
-  esac
-  
-  # Calculate absolute timestamp (compatible with both GNU and BSD date)
-  local result
-  if date -u -d "@$(($(date +%s) + seconds))" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null; then
+  # ─── Calculate absolute timestamp ──────────────────────────────────────────
+  if [[ $seconds -eq 0 ]]; then
+    # "heute" / "today" - return current time
+    date -u +"%Y-%m-%dT%H:%M:%SZ"
+  elif date -u -d "@$(($(date +%s) + seconds))" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null; then
     return 0
   elif date -u -v+${seconds}S +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null; then
     return 0
