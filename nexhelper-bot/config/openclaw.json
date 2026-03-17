@@ -1,0 +1,40 @@
+{
+  "gateway": {
+    "port": 3000,
+    "mode": "local",
+    "auth": {
+      "token": "nexhelper-secret-2025"
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": "openrouter/google/gemini-2.0-flash"
+    }
+  },
+  "models": {
+    "providers": {
+      "openrouter": {
+        "baseUrl": "https://openrouter.ai/api/v1",
+        "models": []
+      },
+      "google": {
+        "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai",
+        "models": []
+      }
+    }
+  },
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "botToken": "${TELEGRAM_BOT_TOKEN}",
+      "dmPolicy": "open",
+      "groupPolicy": "open",
+      "allowFrom": ["*"]
+    }
+  },
+  "tools": {
+    "allow": [
+      "read", "write", "edit", "exec", "browser", "image", "pdf", "web_search", "web_fetch", "cron", "message"
+    ]
+  }
+}

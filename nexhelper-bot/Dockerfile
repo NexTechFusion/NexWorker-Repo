@@ -39,10 +39,13 @@ RUN npm install -g openclaw@latest
 WORKDIR /app
 
 # Create directories
-RUN mkdir -p /app/config /app/skills /app/exports /app/storage/{memory,consent,audit} /app/logs
+RUN mkdir -p /app/config /app/skills /app/exports /app/storage/{memory,consent,audit} /app/logs /root/.openclaw
 
 # Copy skills
 COPY skills/ /app/skills/
+
+# Copy config
+COPY config/openclaw.json /root/.openclaw/openclaw.json
 
 # Fix CRLF line endings, make executable, and symlink to PATH
 RUN find /app/skills -type f \( -name "*.sh" -o -name "nexhelper-*" \) -exec sed -i 's/\r$//' {} \; \
