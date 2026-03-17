@@ -707,16 +707,14 @@ services:
         # REMOVED: Auto-approve loop was causing CPU spin loops when gateway was unresponsive.
         # Security is already the 48-char GATEWAY_TOKEN - device pairing adds no value
         # in single-operator setups. Pair manually if needed: docker exec <container> openclaw devices approve <id>
-        # Only retention-job runs as a scheduled cron — DSGVO compliance, 1 LLM turn/day.
-        # budget-check removed: no notification was ever sent (--no-deliver + no nexhelper-notify
-        # call in handler), yet it consumed 24 LLM turns/day. Budgets are now checked reactively
-        # inside nexhelper-doc whenever a document is stored and a budget entity is tagged.
+        # Cron jobs via external gateway path (OpenClaw CLI bug workaround)
+        # Uses nexhelper-cron wrapper which routes through Docker bridge
         _nx_ensure_cron() {
           local _name="\$\$1"; shift
-          openclaw cron list --json 2>/dev/null \
+          nexhelper-cron list --json 2>/dev/null \
             | jq -e --arg n "\$\$_name" '.jobs[] | select(.name == \$n)' >/dev/null 2>&1 \
             && return 0
-          openclaw cron add --name "\$\$_name" "\$\$@" 2>/dev/null || true
+          nexhelper-cron add --name "\$\$_name" "\$\$@" 2>/dev/null || true
         }
         _nx_ensure_cron retention-job --cron "0 2 * * *" \
           --message "nexhelper:event:retention" --no-deliver --session isolated
@@ -756,6 +754,8 @@ services:
       - SMOKE_REQUIRED_ON_START=\${SMOKE_REQUIRED_ON_START:-false}
       - OPS_REPORT_DAYS=\${OPS_REPORT_DAYS:-30}
       - TZ=Europe/Berlin
+      - NEXHELPER_GATEWAY_URL=ws://10.0.0.1:$PORT
+      - NEXHELPER_GATEWAY_TOKEN=$GATEWAY_TOKEN
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:$PORT/health"]
       interval: 30s
