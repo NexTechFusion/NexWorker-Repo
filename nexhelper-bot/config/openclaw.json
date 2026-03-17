@@ -1,0 +1,40 @@
+{
+  "gateway": {
+    "port": 3000,
+    "mode": "local",
+    "auth": {
+      "token": "nexhelper-secret-2025"
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "google/gemini-2.0-flash",
+        "fallbacks": ["google/gemini-2.5-flash"]
+      }
+    }
+  },
+  "models": {
+    "providers": {
+      "google": {
+        "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai",
+        "apiKey": "AIzaSyC1dMTT0jpwNqcBLyr1_jmLl1bGOEhEtx8",
+        "models": []
+      }
+    }
+  },
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "botToken": "${TELEGRAM_BOT_TOKEN}",
+      "dmPolicy": "open",
+      "groupPolicy": "open",
+      "allowFrom": ["*"]
+    }
+  },
+  "tools": {
+    "allow": [
+      "read", "write", "edit", "exec", "browser", "image", "pdf", "web_search", "web_fetch", "cron", "message"
+    ]
+  }
+}

@@ -1,0 +1,328 @@
+#!/bin/bash
+
+# NexHelper User Memory - Per-User Session & Facts Storage
+# Storage: $NX_STORAGE_DIR/users/{user_id}/session.json
+
+set -euo pipefail
+
+# ─── Core Functions (from nexhelper-core.sh) ─────────────────────────────────
+
+NX_STORAGE_DIR="${STORAGE_DIR:-/root/.openclaw/workspace/storage}"
+NX_USER_MEMORY_DIR="$NX_STORAGE_DIR/users"
+
+nx_now_iso() {
+  date -Iseconds
+}
+
+nx_user_memory_path() {
+  local user_id="$1"
+  # Sanitize user_id (only alphanumeric, underscore, hyphen, at)
+  local safe_id
+  safe_id="$(echo "$user_id" | tr -cd 'a-zA-Z0-9_@-')"
+  echo "$NX_USER_MEMORY_DIR/$safe_id/session.json"
+}
+
+nx_require_safe_user_id() {
+  local user_id="$1"
+  local safe_id
+  safe_id="$(echo "$user_id" | tr -cd 'a-zA-Z0-9_@-')"
+  if [ "$safe_id" != "$user_id" ]; then
+    jq -c -n --arg id "$user_id" '{error:"invalid_user_id",userId:$id}'
+    return 1
+  fi
+  return 0
+}
+
+# ─── Session Management ─────────────────────────────────────────────────────
+
+nx_user_memory_load() {
+  local user_id="$1"
+  local file
+  file="$(nx_user_memory_path "$user_id")"
+  
+  if [ -f "$file" ]; then
+    cat "$file"
+  else
+    jq -c -n \
+      --arg id "$user_id" \
+      --arg ts "$(nx_now_iso)" \
+      '{userId:$id,messages:[],facts:{},createdAt:$ts,updatedAt:$ts}'
+  fi
+}
+
+nx_user_memory_save() {
+  local user_id="$1"
+  local payload="$2"
+  local file
+  file="$(nx_user_memory_path "$user_id")"
+  local dir
+  dir="$(dirname "$file")"
+  
+  mkdir -p "$dir"
+  printf "%s\n" "$payload" > "$file"
+}
+
+# ─── Commands ───────────────────────────────────────────────────────────────
+
+cmd_add_message() {
+  local user_id="${1:-}"
+  local role="${2:-}"
+  local content="${3:-}"
+  
+  if [ -z "$user_id" ] || [ -z "$role" ] || [ -z "$content" ]; then
+    jq -c -n '{error:"missing_args",usage:"add-message --user ID --role ROLE --content TEXT"}'
+    return 1
+  fi
+  
+  nx_require_safe_user_id "$user_id" || return 1
+  
+  local session
+  session="$(nx_user_memory_load "$user_id")"
+  
+  local now
+  now="$(nx_now_iso)"
+  
+  # Add message
+  local updated
+  updated="$(echo "$session" | jq -c \
+    --arg role "$role" \
+    --arg content "$content" \
+    --arg ts "$now" \
+    '.messages += [{role:$role,content:$content,timestamp:$ts}] | .updatedAt = $ts')"
+  
+  # Keep only last 50 messages
+  updated="$(echo "$updated" | jq -c '.messages = .messages[-50:]')"
+  
+  nx_user_memory_save "$user_id" "$updated"
+  
+  jq -c -n --arg id "$user_id" --arg role "$role" '{status:"added",userId:$id,role:$role}'
+}
+
+cmd_set_fact() {
+  local user_id="${1:-}"
+  local key="${2:-}"
+  local value="${3:-}"
+  
+  if [ -z "$user_id" ] || [ -z "$key" ] || [ -z "$value" ]; then
+    jq -c -n '{error:"missing_args",usage:"set-fact --user ID --key KEY --value VALUE"}'
+    return 1
+  fi
+  
+  nx_require_safe_user_id "$user_id" || return 1
+  
+  local session
+  session="$(nx_user_memory_load "$user_id")"
+  
+  local now
+  now="$(nx_now_iso)"
+  
+  # Set fact
+  local updated
+  updated="$(echo "$session" | jq -c \
+    --arg key "$key" \
+    --arg value "$value" \
+    --arg ts "$now" \
+    '.facts[$key] = $value | .updatedAt = $ts')"
+  
+  nx_user_memory_save "$user_id" "$updated"
+  
+  jq -c -n --arg id "$user_id" --arg key "$key" '{status:"set",userId:$id,key:$key}'
+}
+
+cmd_get_facts() {
+  local user_id="${1:-}"
+  
+  if [ -z "$user_id" ]; then
+    jq -c -n '{error:"missing_user_id"}'
+    return 1
+  fi
+  
+  nx_require_safe_user_id "$user_id" || return 1
+  
+  local session
+  session="$(nx_user_memory_load "$user_id")"
+  
+  echo "$session" | jq -c '{userId,facts}'
+}
+
+cmd_get_recent() {
+  local user_id="${1:-}"
+  local count="${2:-10}"
+  
+  if [ -z "$user_id" ]; then
+    jq -c -n '{error:"missing_user_id"}'
+    return 1
+  fi
+  
+  nx_require_safe_user_id "$user_id" || return 1
+  
+  local session
+  session="$(nx_user_memory_load "$user_id")"
+  
+  echo "$session" | jq -c --argjson n "$count" '{userId,messages:.messages[-$n:]}'
+}
+
+cmd_search() {
+  local user_id="${1:-}"
+  local query="${2:-}"
+  
+  if [ -z "$user_id" ] || [ -z "$query" ]; then
+    jq -c -n '{error:"missing_args",usage:"search --user ID --query TEXT"}'
+    return 1
+  fi
+  
+  nx_require_safe_user_id "$user_id" || return 1
+  
+  local session
+  session="$(nx_user_memory_load "$user_id")"
+  
+  # Search in messages (case-insensitive)
+  local lower_query
+  lower_query="$(echo "$query" | tr '[:upper:]' '[:lower:]')"
+  
+  echo "$session" | jq -c --arg q "$lower_query" '
+    {userId,results:[.messages[] | select(.content | ascii_downstream | contains($q))]}
+  '
+}
+
+cmd_delete() {
+  local user_id="${1:-}"
+  
+  if [ -z "$user_id" ]; then
+    jq -c -n '{error:"missing_user_id"}'
+    return 1
+  fi
+  
+  nx_require_safe_user_id "$user_id" || return 1
+  
+  local file
+  file="$(nx_user_memory_path "$user_id")"
+  local dir
+  dir="$(dirname "$file")"
+  
+  if [ -d "$dir" ]; then
+    rm -rf "$dir"
+    jq -c -n --arg id "$user_id" '{status:"deleted",userId:$id}'
+  else
+    jq -c -n --arg id "$user_id" '{status:"not_found",userId:$id}'
+  fi
+}
+
+cmd_export() {
+  local user_id="${1:-}"
+  
+  if [ -z "$user_id" ]; then
+    jq -c -n '{error:"missing_user_id"}'
+    return 1
+  fi
+  
+  nx_require_safe_user_id "$user_id" || return 1
+  
+  local session
+  session="$(nx_user_memory_load "$user_id")"
+  
+  echo "$session" | jq -c '. + {exportedAt:"'"$(nx_now_iso)"'"}'
+}
+
+# ─── CLI Entry Point ────────────────────────────────────────────────────────
+
+usage() {
+  cat <<EOF
+NexHelper User Memory
+
+Commands:
+  add-message  --user ID --role ROLE --content TEXT   Add message to session
+  set-fact     --user ID --key KEY --value VALUE       Set user fact
+  get-facts    --user ID                               Get all facts
+  get-recent   --user ID [--count N]                   Get recent messages (default: 10)
+  search       --user ID --query TEXT                  Search in messages
+  delete       --user ID                               Delete all user data
+  export       --user ID                               Export user data
+
+EOF
+}
+
+# Parse args
+CMD=""
+USER_ID=""
+ROLE=""
+CONTENT=""
+KEY=""
+VALUE=""
+QUERY=""
+COUNT="10"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    add-message|set-fact|get-facts|get-recent|search|delete|export)
+      CMD="$1"
+      shift
+      ;;
+    --user)
+      USER_ID="$2"
+      shift 2
+      ;;
+    --role)
+      ROLE="$2"
+      shift 2
+      ;;
+    --content)
+      CONTENT="$2"
+      shift 2
+      ;;
+    --key)
+      KEY="$2"
+      shift 2
+      ;;
+    --value)
+      VALUE="$2"
+      shift 2
+      ;;
+    --query)
+      QUERY="$2"
+      shift 2
+      ;;
+    --count)
+      COUNT="$2"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+
+# Execute command
+case "$CMD" in
+  add-message)
+    cmd_add_message "$USER_ID" "$ROLE" "$CONTENT"
+    ;;
+  set-fact)
+    cmd_set_fact "$USER_ID" "$KEY" "$VALUE"
+    ;;
+  get-facts)
+    cmd_get_facts "$USER_ID"
+    ;;
+  get-recent)
+    cmd_get_recent "$USER_ID" "$COUNT"
+    ;;
+  search)
+    cmd_search "$USER_ID" "$QUERY"
+    ;;
+  delete)
+    cmd_delete "$USER_ID"
+    ;;
+  export)
+    cmd_export "$USER_ID"
+    ;;
+  "")
+    usage
+    ;;
+  *)
+    jq -c -n --arg cmd "$CMD" '{error:"unknown_command",command:$cmd}'
+    ;;
+esac

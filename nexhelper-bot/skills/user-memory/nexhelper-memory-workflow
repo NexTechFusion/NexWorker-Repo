@@ -1,0 +1,141 @@
+#!/bin/bash
+
+# NexHelper Memory Workflow
+# Wird aufgerufen vom OpenClaw Agent nach Intent-Classification
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")" 2>/dev/null || dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../common/nexhelper-core.sh"
+
+MEMORY_SCRIPT="$SCRIPT_DIR/../user-memory/nexhelper-user-memory"
+CLASSIFIER_SCRIPT="$SCRIPT_DIR/../classifier/nexhelper-classify"
+
+# ─── Memory Intent Handler ───────────────────────────────────────────────────
+
+# Called when classifier returns intent=memory_set
+# Extracts key/value from classified intent and stores fact
+handle_memory_set() {
+  local user_id="$1"
+  local text="$2"
+  local memory_key="$3"
+  local memory_value="$4"
+  
+  # If classifier didn't extract key/value, try to extract from text
+  if [ -z "$memory_key" ] || [ -z "$memory_value" ]; then
+    # Simple extraction: "Merke dass ich X mag" → key=X, value=X
+    local extracted
+    extracted="$(echo "$text" | grep -oE '(?:merke|ich mag|ich hasse|remember|i like|i hate)\s+(.+)' | sed 's/.*\(merke\|ich mag\|ich hasse\|remember\|i like\|i hate\)\s*//' | head -1 || true)"
+    if [ -n "$extracted" ]; then
+      memory_key="$(echo "$extracted" | tr '[:upper:]' '[:lower:]' | tr ' ' '_' | cut -c1-50)"
+      memory_value="$extracted"
+    fi
+  fi
+  
+  if [ -z "$memory_key" ] || [ -z "$memory_value" ]; then
+    jq -c -n '{status:"error",message:"Could not extract fact from message"}'
+    return 1
+  fi
+  
+  "$MEMORY_SCRIPT" set-fact --user "$user_id" --key "$memory_key" --value "$memory_value"
+}
+
+# Called when classifier returns intent=memory_get
+# Returns stored facts for context
+handle_memory_get() {
+  local user_id="$1"
+  
+  "$MEMORY_SCRIPT" get-facts --user "$user_id"
+}
+
+# Called after every user message to store in session
+handle_message_store() {
+  local user_id="$1"
+  local role="$2"
+  local content="$3"
+  
+  "$MEMORY_SCRIPT" add-message --user "$user_id" --role "$role" --content "$content"
+}
+
+# Get context for LLM (facts + recent messages)
+handle_get_context() {
+  local user_id="$1"
+  local count="${2:-10}"
+  
+  local facts
+  facts="$("$MEMORY_SCRIPT" get-facts --user "$user_id")"
+  
+  local messages
+  messages="$("$MEMORY_SCRIPT" get-recent --user "$user_id" --count "$count")"
+  
+  jq -c -n --argjson facts "$facts" --argjson messages "$messages" \
+    '{facts:$facts.facts,messages:$messages.messages}'
+}
+
+# ─── CLI Entry Point ────────────────────────────────────────────────────────
+
+usage() {
+  cat <<EOF
+NexHelper Memory Workflow
+
+Commands:
+  memory-set        --user ID --text TEXT [--key KEY --value VALUE]
+                    Store a fact for user
+
+  memory-get        --user ID
+                    Get all stored facts
+
+  store-message     --user ID --role ROLE --content TEXT
+                    Store message in session
+
+  get-context       --user ID [--count N]
+                    Get facts + recent messages for LLM context
+
+EOF
+}
+
+CMD="${1:-}"
+shift || true
+
+USER_ID=""
+TEXT=""
+ROLE=""
+CONTENT=""
+KEY=""
+VALUE=""
+COUNT="10"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --user) USER_ID="$2"; shift 2 ;;
+    --text) TEXT="$2"; shift 2 ;;
+    --role) ROLE="$2"; shift 2 ;;
+    --content) CONTENT="$2"; shift 2 ;;
+    --key) KEY="$2"; shift 2 ;;
+    --value) VALUE="$2"; shift 2 ;;
+    --count) COUNT="$2"; shift 2 ;;
+    -h|--help) usage; exit 0 ;;
+    *) shift ;;
+  esac
+done
+
+case "$CMD" in
+  memory-set)
+    handle_memory_set "$USER_ID" "$TEXT" "$KEY" "$VALUE"
+    ;;
+  memory-get)
+    handle_memory_get "$USER_ID"
+    ;;
+  store-message)
+    handle_message_store "$USER_ID" "$ROLE" "$CONTENT"
+    ;;
+  get-context)
+    handle_get_context "$USER_ID" "$COUNT"
+    ;;
+  "")
+    usage
+    ;;
+  *)
+    jq -c -n --arg cmd "$CMD" '{error:"unknown_command",command:$cmd}'
+    ;;
+esac

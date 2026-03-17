@@ -54,7 +54,7 @@ case "$AI_PROVIDER" in
     DEFAULT_MODEL="${DEFAULT_MODEL:-google/gemini-3-flash-preview}"
     IMAGE_MODEL="${IMAGE_MODEL:-google/gemini-3-flash-preview}"
     PDF_MODEL="${PDF_MODEL:-google/gemini-3-flash-preview}"
-    MODEL_FALLBACKS="${MODEL_FALLBACKS:-[\"google/gemini-2.5-flash\",\"google/gemini-3-flash-preview\"]}"
+    MODEL_FALLBACKS="${MODEL_FALLBACKS:-[\"google/gemini-3.1-flash-lite-preview\",\"google/gemini-2.5-flash\"]}"
     ;;
   openrouter)
     AI_API_KEY="${OPENROUTER_API_KEY:-${AI_API_KEY:-}}"
@@ -481,7 +481,7 @@ if [ "$WHATSAPP_MODE" = true ]; then
     enabled: true,
     dmPolicy: \"open\",
     allowFrom: [\"*\"],
-    groupPolicy: \"allowlist\",
+    groupPolicy: \"open\",
     groups: { \"*\": { requireMention: true } },
   },
 "
