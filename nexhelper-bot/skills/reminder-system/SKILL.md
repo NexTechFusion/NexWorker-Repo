@@ -8,11 +8,22 @@ This skill enables OpenClaw to create, manage, and trigger reminders for importa
 
 ## Features
 
-- ✅ Create reminders via natural language
+- ✅ Create reminders via natural language (German/English)
 - ✅ List upcoming reminders
 - ✅ Delete/cancel reminders
 - ✅ Automatic notifications when triggered
-- ✅ Integration with OpenClaw cron system
+- ✅ Multilingual time parsing
+
+## Important: OpenClaw Cron Bug Workaround
+
+**Problem:** OpenClaw v2026.x has a known bug where the CLI cannot connect to the gateway via WebSocket for `cron` operations (timeout after 10-30 seconds).
+
+**Related Issues:**
+- [GitHub #7667](https://github.com/openclaw/openclaw/issues/7667) - Cron tool operations timeout after 10s
+- [GitHub #6902](https://github.com/openclaw/openclaw/issues/6902) - Cron tool timeout after gateway restart  
+- [GitHub #19874](https://github.com/openclaw/openclaw/issues/19874) - Cron CLI times out on gateway WebSocket
+
+**Workaround:** `nexhelper-set-reminder` writes directly to `~/.openclaw/cron/jobs.json` instead of using `openclaw cron add`. The gateway automatically picks up changes to this file.
 
 ## Actions
 
@@ -45,77 +56,106 @@ Bot:  "🗑️ Erinnerung gelöscht: Meeting mit Müller"
 
 ## Storage
 
-Reminders are stored in canonical storage:
+Reminders are stored in two places:
 
-```
-storage/canonical/reminders/<id>.json
-```
-
-## Cron Integration
-
-Uses OpenClaw's native cron system:
-
-```yaml
-cron:
-  - name: "reminder-check"
-    schedule: "every 1 minute"
-    action: "check_reminders"
-```
-
-## Implementation
-
-### Memory Structure
-
-```json
-{
-  "reminders": [
-    {
-      "id": "rem_abc123",
-      "userId": "12345678",
-      "text": "Meeting mit Müller",
-      "datetime": "2026-03-10T14:00:00",
-      "timezone": "Europe/Berlin",
-      "created": "2026-03-09T10:30:00",
-      "delivered": false,
-      "cancelled": false
-    }
-  ]
-}
-```
-
-### Cron Job
-
-Checks every minute for due reminders, marks delivery state, and avoids duplicate sends via idempotency keys.
+1. **Cron Jobs:** `~/.openclaw/cron/jobs.json` (for triggering)
+2. **Canonical Storage:** `storage/canonical/reminders/<id>.json` (for listing/management)
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `/remind <text>` | Create reminder (natural language) |
-| `/remind list` | List all reminders |
-| `/remind delete <id>` | Delete reminder |
-| `/remind clear` | Delete all reminders |
+| `nexhelper-set-reminder --text "..." --time "..." --user ID` | Create reminder |
+| `nexhelper-reminder list --user ID` | List all reminders |
+| `nexhelper-reminder delete --id ID` | Delete reminder |
 
-## Natural Language Patterns
+## Natural Language Time Parsing
 
-OpenClaw should recognize:
+`nexhelper-set-reminder` supports multilingual time parsing via `nx_parse_relative_time`:
 
+### Simple Formats
 ```
-"Erinnere mich [zeit] an [text]"
-"Weck mich [zeit] für [text]"
-"Vergiss nicht: [text] am [zeit]"
-"Termin [zeit]: [text]"
+"5m"  → in 5 minutes
+"1h"  → in 1 hour
+"30s" → in 30 seconds
+"1d"  → in 1 day
 ```
 
-### Time Patterns
-
+### German
 ```
-"morgen" → next day
-"übermorgen" → day after tomorrow
-"nächste Woche" → next week
-"in X Stunden" → in X hours
-"am X.Y." → specific date
-"um X Uhr" → specific time
+"in 5 Minuten"      → in 5 minutes
+"in einer Stunde"   → in 1 hour
+"in 2 Stunden"      → in 2 hours
+"morgen"            → tomorrow
+"übermorgen"        → day after tomorrow
+"in einer Woche"    → in 1 week
+"halbe Stunde"      → in 30 minutes
+```
+
+### English
+```
+"in 5 minutes"     → in 5 minutes
+"in an hour"        → in 1 hour
+"tomorrow"          → tomorrow
+"day after tomorrow" → in 2 days
+"in one week"       → in 7 days
+"half an hour"       → in 30 minutes
+```
+
+### ISO Timestamp
+```
+"2026-03-17T15:00:00"  → specific time
+"2026-03-17T15:00:00Z" → UTC time
+```
+
+## Implementation
+
+### Job JSON Structure (jobs.json)
+
+```json
+{
+  "version": 1,
+  "jobs": [
+    {
+      "id": "uuid-here",
+      "name": "reminder-uuid",
+      "createdAtMs": 1773779889000,
+      "updatedAtMs": 1773779889000,
+      "schedule": {
+        "kind": "at",
+        "at": "2026-03-17T14:00:00Z"
+      },
+      "sessionTarget": "isolated",
+      "wakeMode": "now",
+      "payload": {
+        "kind": "agentTurn",
+        "message": "⏰ ERINNERUNG: Meeting mit Müller"
+      },
+      "delivery": {
+        "mode": "announce",
+        "channel": "telegram",
+        "to": "579539601"
+      }
+    }
+  ]
+}
+```
+
+### Canonical Reminder Structure
+
+```json
+{
+  "reminder": {
+    "id": "rem_abc123",
+    "userId": "579539601",
+    "text": "Meeting mit Müller",
+    "datetime": "2026-03-10T14:00:00",
+    "timezone": "Europe/Berlin",
+    "created": "2026-03-09T10:30:00",
+    "delivered": false,
+    "cancelled": false
+  }
+}
 ```
 
 ## DSGVO Compliance
@@ -123,3 +163,4 @@ OpenClaw should recognize:
 - ✅ Reminders stored per customer (isolated)
 - ✅ Can be deleted by user
 - ✅ Audit trail for reminder actions
+- ✅ Automatic retention (via cron retention-job)

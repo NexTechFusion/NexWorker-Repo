@@ -1,4 +1,13 @@
 #!/bin/bash
+# nexhelper-set-reminder - Schedule a reminder by writing directly to jobs.json
+#
+# WORKAROUND for OpenClaw bug: CLI WebSocket connection times out for cron operations.
+# Instead of using `openclaw cron add`, we write directly to ~/.openclaw/cron/jobs.json
+# which the gateway picks up automatically.
+#
+# See: https://github.com/openclaw/openclaw/issues/7667
+#      https://github.com/openclaw/openclaw/issues/6902
+#      https://github.com/openclaw/openclaw/issues/19874
 
 set -euo pipefail
 
@@ -19,18 +28,25 @@ while [[ $# -gt 0 ]]; do
     --channel) CHANNEL="${2:-last}"; shift 2 ;;
     --idempotency-key) IDEMPOTENCY_KEY="$2"; shift 2 ;;
     -h|--help)
-      echo "nexhelper-set-reminder - Schedule a reminder via OpenClaw cron + canonical store"
+      echo "nexhelper-set-reminder - Schedule a reminder via direct jobs.json write"
       echo ""
       echo "Usage:"
       echo "  nexhelper-set-reminder --text 'Meeting' --time '2026-03-14T09:00:00' --user 579539601"
       echo "  nexhelper-set-reminder --text 'Call' --time '5m' --user 579539601"
+      echo "  nexhelper-set-reminder --text 'Boss callen' --time 'in 10 Minuten' --user 579539601"
       echo ""
       echo "Options:"
       echo "  --text <text>        Reminder text (required)"
-      echo "  --time <iso|dur>     ISO timestamp or duration like 5m, 1h, 30m (required)"
+      echo "  --time <iso|dur>     ISO timestamp, duration (5m, 1h), or natural language (required)"
       echo "  --user <id>          Recipient user/chat ID (required)"
       echo "  --channel <ch>       Delivery channel (default: last)"
       echo "  --idempotency-key <k> Idempotency key"
+      echo ""
+      echo "Supported time formats:"
+      echo "  - Simple: 5m, 1h, 30s, 1d"
+      echo "  - German: 'in 5 Minuten', 'in einer Stunde', 'morgen', 'übermorgen'"
+      echo "  - English: 'in 5 minutes', 'in an hour', 'tomorrow', 'day after tomorrow'"
+      echo "  - ISO: 2026-03-17T15:00:00"
       exit 0
       ;;
     *) shift ;;
@@ -42,56 +58,87 @@ if [ -z "$TEXT" ] || [ -z "$TIME_ARG" ] || [ -z "$USER_ID" ]; then
   exit 1
 fi
 
-# Convert relative time to absolute ISO timestamp
+# Convert relative time to absolute ISO timestamp using multilingual parser
 ABSOLUTE_TIME="$(nx_parse_relative_time "$TIME_ARG")"
 
-cron_name="reminder-$(date +%s)-$$"
-message_text="⏰ ERINNERUNG: $TEXT"
-
-cron_result="$(openclaw cron add \
-  --name "$cron_name" \
-  --at "$ABSOLUTE_TIME" \
-  --message "$message_text" \
-  --to "$USER_ID" \
-  --channel "$CHANNEL" \
-  --announce \
-  --json 2>&1 || true)"
-
-cron_id="$(echo "$cron_result" | jq -r '.id // empty' 2>/dev/null || echo "")"
-
-if [ -z "$cron_id" ]; then
-  jq -c -n \
-    --arg status "error" \
-    --arg phase "cron_add" \
-    --arg raw "$cron_result" \
-    '{status:$status, phase:$phase, raw:$raw}'
+if [[ ! "$ABSOLUTE_TIME" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T ]]; then
+  echo "{\"status\":\"error\",\"message\":\"Failed to parse time: $TIME_ARG\"}" >&2
   exit 1
 fi
 
-canonical_result=""
-if command -v nexhelper-reminder >/dev/null 2>&1; then
-  canonical_args=(create --user "$USER_ID" --text "$TEXT" --datetime "$TIME_ARG" --channel "$CHANNEL")
-  if [ -n "$IDEMPOTENCY_KEY" ]; then
-    canonical_args+=(--idempotency-key "$IDEMPOTENCY_KEY")
-  fi
-  canonical_result="$(nexhelper-reminder "${canonical_args[@]}" 2>/dev/null || echo "{}")"
-elif [ -x "$SCRIPT_DIR/nexhelper-reminder" ]; then
-  canonical_args=(create --user "$USER_ID" --text "$TEXT" --datetime "$TIME_ARG" --channel "$CHANNEL")
-  if [ -n "$IDEMPOTENCY_KEY" ]; then
-    canonical_args+=(--idempotency-key "$IDEMPOTENCY_KEY")
-  fi
-  canonical_result="$("$SCRIPT_DIR/nexhelper-reminder" "${canonical_args[@]}" 2>/dev/null || echo "{}")"
+# Generate job ID and timestamps
+JOB_ID="$(cat /proc/sys/kernel/random/uuid 2>/dev/null || uuidgen 2>/dev/null | tr '[:upper:]' '[:lower:]' || echo "job-$(date +%s)-$$")"
+NOW_MS="$(($(date +%s) * 1000))"
+MESSAGE_TEXT="⏰ ERINNERUNG: $TEXT"
+
+# Path to jobs.json
+JOBS_FILE="$HOME/.openclaw/cron/jobs.json"
+JOBS_DIR="$(dirname "$JOBS_FILE")"
+
+# Ensure directory exists
+mkdir -p "$JOBS_DIR" 2>/dev/null || true
+
+# Read existing jobs or create empty structure
+if [ -f "$JOBS_FILE" ]; then
+  EXISTING_JOBS="$(cat "$JOBS_FILE" 2>/dev/null || echo '{"version":1,"jobs":[]}')"
+else
+  EXISTING_JOBS='{"version":1,"jobs":[]}'
 fi
 
-canonical_id="$(echo "$canonical_result" | jq -r '.reminder.id // empty' 2>/dev/null || echo "")"
+# Create new job object
+NEW_JOB="$(jq -c -n \
+  --arg id "$JOB_ID" \
+  --arg name "reminder-$JOB_ID" \
+  --argjson createdAtMs "$NOW_MS" \
+  --argjson updatedAtMs "$NOW_MS" \
+  --arg atTime "$ABSOLUTE_TIME" \
+  --arg message "$MESSAGE_TEXT" \
+  --arg channel "$CHANNEL" \
+  --arg toUser "$USER_ID" \
+  '{
+    id: $id,
+    name: $name,
+    createdAtMs: $createdAtMs,
+    updatedAtMs: $updatedAtMs,
+    schedule: {
+      kind: "at",
+      at: $atTime
+    },
+    sessionTarget: "isolated",
+    wakeMode: "now",
+    payload: {
+      kind: "agentTurn",
+      message: $message
+    },
+    delivery: {
+      mode: "announce",
+      channel: $channel,
+      to: $toUser
+    }
+  }')"
 
+# Merge new job with existing jobs
+UPDATED_JOBS="$(echo "$EXISTING_JOBS" | jq --argjson newJob "$NEW_JOB" '.jobs += [$newJob]')"
+
+# Write back to jobs.json
+echo "$UPDATED_JOBS" > "$JOBS_FILE"
+
+# Also create canonical reminder if nexhelper-reminder is available
+CANONICAL_ID=""
+if command -v nexhelper-reminder >/dev/null 2>&1; then
+  CANONICAL_RESULT="$(nexhelper-reminder create --user "$USER_ID" --text "$TEXT" --datetime "$TIME_ARG" --channel "$CHANNEL" 2>/dev/null || echo "{}")"
+  CANONICAL_ID="$(echo "$CANONICAL_RESULT" | jq -r '.reminder.id // empty' 2>/dev/null || echo "")"
+fi
+
+# Output result
 jq -c -n \
   --arg status "ok" \
-  --arg cronId "$cron_id" \
-  --arg cronName "$cron_name" \
-  --arg canonicalId "$canonical_id" \
+  --arg jobId "$JOB_ID" \
+  --arg jobName "reminder-$JOB_ID" \
+  --arg canonicalId "$CANONICAL_ID" \
   --arg text "$TEXT" \
   --arg time "$ABSOLUTE_TIME" \
   --arg originalTime "$TIME_ARG" \
   --arg user "$USER_ID" \
-  '{status:$status, cronId:$cronId, cronName:$cronName, canonicalId:$canonicalId, text:$text, time:$time, originalTime:$originalTime, user:$user}'
+  --arg channel "$CHANNEL" \
+  '{status:$status, jobId:$jobId, jobName:$jobName, canonicalId:$canonicalId, text:$text, time:$time, originalTime:$originalTime, user:$user, channel:$channel}'
