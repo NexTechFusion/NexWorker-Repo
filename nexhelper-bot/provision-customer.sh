@@ -54,15 +54,15 @@ case "$AI_PROVIDER" in
     DEFAULT_MODEL="${DEFAULT_MODEL:-google/gemini-3-flash-preview}"
     IMAGE_MODEL="${IMAGE_MODEL:-google/gemini-3-flash-preview}"
     PDF_MODEL="${PDF_MODEL:-google/gemini-3-flash-preview}"
-    MODEL_FALLBACKS="${MODEL_FALLBACKS:-[\"google/gemini-2.5-flash\",\"google/gemini-3-flash-preview-001\"]}"
+    MODEL_FALLBACKS="${MODEL_FALLBACKS:-[\"google/gemini-2.5-flash\",\"google/gemini-3-flash-preview\"]}"
     ;;
   openrouter)
     AI_API_KEY="${OPENROUTER_API_KEY:-${AI_API_KEY:-}}"
     AI_BASE_URL="${AI_BASE_URL:-https://openrouter.ai/api/v1}"
     DEFAULT_MODEL="${DEFAULT_MODEL:-openrouter/google/gemini-3-flash-preview}"
     IMAGE_MODEL="${IMAGE_MODEL:-openrouter/google/gemini-3-flash-preview}"
-    PDF_MODEL="${PDF_MODEL:-openrouter/google/gemini-3-flash-preview-001}"
-    MODEL_FALLBACKS="${MODEL_FALLBACKS:-[\"openrouter/google/gemini-2.5-flash\",\"openrouter/google/gemini-3-flash-preview-001\"]}"
+    PDF_MODEL="${PDF_MODEL:-openrouter/google/gemini-3-flash-preview}"
+    MODEL_FALLBACKS="${MODEL_FALLBACKS:-[\"openrouter/google/gemini-2.5-flash\",\"openrouter/google/gemini-3-flash-preview\"]}"
     ;;
   openai)
     AI_API_KEY="${OPENAI_API_KEY:-${AI_API_KEY:-}}"

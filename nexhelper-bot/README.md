@@ -24,12 +24,12 @@ NexHelper runs on top of OpenClaw and is optimized for chat-first operations (Te
 
 ### Tenant isolation
 
-```
+```text
 1 customer  →  1 bot token  →  1 Docker container  →  1 storage root
 ```
 
 | Layer | Detail |
-|---|---|
+| --- | --- |
 | Container | `nexhelper:latest` image, `docker compose` per customer |
 | Storage | `storage/canonical/{documents,reminders}/` — source of truth |
 | Config | `config/openclaw.json` + `config/auth-profiles.json` |
@@ -41,14 +41,14 @@ NexHelper runs on top of OpenClaw and is optimized for chat-first operations (Te
 High-frequency ops are **native shell loops** inside the container entrypoint — zero LLM tokens consumed:
 
 | Loop | Interval | Purpose |
-|---|---|---|
+| --- | --- | --- |
 | `nexhelper-reminder-auditor` + `nexhelper-reminder-sync` | 60 s | Scan sessions for missed exec calls; reconcile canonical reminders with cron |
 | `nexhelper-reminder due` | 300 s | Mark and deliver due canonical reminders |
 
 Low-frequency, LLM-appropriate jobs are registered as OpenClaw cron jobs on gateway start:
 
 | Cron job | Schedule | Purpose |
-|---|---|---|
+| --- | --- | --- |
 | `budget-check` | `0 * * * *` (hourly) | Token `nexhelper:event:budget-check` → `nexhelper-entity check` |
 | `retention-job` | `0 2 * * *` (2 AM daily) | Token `nexhelper:event:retention` → `nexhelper-retention` |
 
@@ -58,7 +58,7 @@ All cron registrations are **idempotent** (`_nx_ensure_cron` — skips if job na
 
 The workflow router (`nexhelper-workflow`) uses structured token matching first, then legacy substring fallback for backward compatibility:
 
-```
+```text
 nexhelper:event:reminder-audit  →  reminder_due handler
 nexhelper:event:budget-check    →  budget_check handler
 nexhelper:event:retention       →  retention handler
@@ -68,11 +68,11 @@ nexhelper:event:health-check    →  health_monitor handler
 ### Primary skills
 
 | Script | Purpose |
-|---|---|
+| --- | --- |
 | `skills/document-handler/nexhelper-doc` | Document intake, dedup, CRUD, DATEV export |
-| `skills/document-handler/nexhelper-doc-core.sh` | Pure utility functions (normalize_float, build_fingerprint) — independently testable |
+| `skills/document-handler/nexhelper-doc-core.sh` | Pure utility functions (`normalize_float`, `build_fingerprint`) — independently testable |
 | `skills/reminder-system/nexhelper-reminder` | Canonical reminder CRUD |
-| `skills/reminder-system/nexhelper-set-reminder` | Atomic wrapper: create canonical + schedule cron |
+| `skills/reminder-system/nexhelper-set-reminder` | Atomic wrapper: create canonical record + schedule cron |
 | `skills/reminder-system/nexhelper-reminder-auditor` | Scan sessions for text-based exec calls, execute missed commands |
 | `skills/reminder-system/nexhelper-reminder-sync` | Reconcile canonical reminders → cron schedule |
 | `skills/common/nexhelper-workflow` | Event router (structured tokens + legacy fallback) |
@@ -103,7 +103,8 @@ nexhelper:event:health-check    →  health_monitor handler
 ./manage.sh monitor nexhelper-acme-001  # Run nexhelper-monitor
 ./manage.sh summary                     # Aggregate health (JSON)
 ./manage.sh provision 001 "Acme" ...    # Delegate to provision-customer.sh
-./manage.sh start | stop <instance>     # Container lifecycle
+./manage.sh start nexhelper-acme-001    # Start container
+./manage.sh stop  nexhelper-acme-001    # Stop container
 ```
 
 ---
@@ -126,7 +127,7 @@ docker build -t nexhelper:latest nexhelper-bot/
 export GEMINI_API_KEY="AIza..."
 ```
 
-> OpenClaw model format for Gemini: `google/gemini-3-flash-preview` (the `google/` prefix is required — bare model names fall back to `anthropic/` incorrectly).
+> OpenClaw model format for Gemini: `google/gemini-3-flash-preview`. The `google/` prefix is required — bare model names fall back to `anthropic/` incorrectly inside OpenClaw's model router.
 
 **OpenRouter:**
 
@@ -165,26 +166,25 @@ export DEFAULT_MODEL="provider/model-name"
 ./provision-customer.sh 002 "Mueller Bau" --whatsapp
 ```
 
-**With Cloudflare tunnel (opens dashboard immediately):**
+**With Cloudflare tunnel (opens dashboard immediately after start):**
 
 ```bash
 ./provision-customer.sh 001 "Acme GmbH" --telegram "123:ABC" --cloudflare-tunnel
 ```
 
-Full options:
+**Full options:**
 
-```
-Options:
-  --telegram <token>       Telegram bot token (required unless --whatsapp)
-  --whatsapp               Enable WhatsApp channel
-  --api-key <key>          LLM API key (or set GEMINI_API_KEY / AI_API_KEY)
-  --model <model>          Override default model
-  --no-start               Do not auto-start the container
-  --cloudflare-tunnel      Launch Cloudflare Quick Tunnel after provisioning
-  --delivery-to <to>       Admin notification target (e.g. telegram:579539601)
-  --initial-admin <id>     Promote this user ID to admin on first start
-  --base-dir <path>        Customer directory base (default: /opt/nexhelper/customers)
-  --consent-version <v>    Consent text version (default: 1.0)
+```text
+--telegram <token>       Telegram bot token (required unless --whatsapp)
+--whatsapp               Enable WhatsApp channel
+--api-key <key>          LLM API key (or set GEMINI_API_KEY / AI_API_KEY)
+--model <model>          Override default model
+--no-start               Do not auto-start the container
+--cloudflare-tunnel      Launch Cloudflare Quick Tunnel after provisioning
+--delivery-to <to>       Admin notification target (e.g. telegram:579539601)
+--initial-admin <id>     Promote this user ID to admin on first start
+--base-dir <path>        Customer directory base (default: /opt/nexhelper/customers)
+--consent-version <v>    Consent text version (default: 1.0)
 ```
 
 ### 4. Customer directory layout
@@ -241,16 +241,21 @@ cd /opt/nexhelper/customers/<slug>
 3. Inject the URL into the container's `openclaw.json` CORS allowlist at runtime
 4. Print the full dashboard URL including the auth token:
 
-```
+```text
 📋 Open this in your browser:
    https://xyz.trycloudflare.com/?token=b4dc3a8274fe...
 ```
 
-5. Watch every 5 s for pending device pairing requests and print the approve command
+1. Watch every 5 s for pending device pairing requests and print the approve command
 
 > **Requires:** `cloudflared` CLI installed on the host. Install instructions are shown if missing.
 
-The dashboard token (`GATEWAY_TOKEN`) is a 48-char hex value generated at provisioning time, stored in `.env` and baked into `config/openclaw.json` under `gateway.auth.token`. The CORS allowlist pre-permits `*.trycloudflare.com`.
+The dashboard token (`GATEWAY_TOKEN`) is a 48-char hex value generated at provisioning time. It is stored in `.env` and baked into `config/openclaw.json` under `gateway.auth.token`. The CORS allowlist pre-permits `*.trycloudflare.com`.
+
+```bash
+# Read the token any time:
+grep GATEWAY_TOKEN /opt/nexhelper/customers/<slug>/.env
+```
 
 ---
 
@@ -259,10 +264,10 @@ The dashboard token (`GATEWAY_TOKEN`) is a 48-char hex value generated at provis
 Reminders are implemented in three layers:
 
 | Layer | Mechanism | LLM cost |
-|---|---|---|
-| **1. Direct tool** | Agent calls `exec command="nexhelper-set-reminder ..."` | 1 turn (the user's request) |
-| **2. Canonical store** | `nexhelper-set-reminder` writes JSON + schedules cron | 0 |
-| **3. Ops safety net** | `nexhelper-reminder-auditor` + `nexhelper-reminder-sync` in native loops | 0 |
+| --- | --- | --- |
+| 1. Direct tool | Agent calls `exec command="nexhelper-set-reminder ..."` | 1 turn (the user's request) |
+| 2. Canonical store | `nexhelper-set-reminder` writes JSON record + schedules cron | 0 |
+| 3. Ops safety net | `nexhelper-reminder-auditor` + `nexhelper-reminder-sync` in native loops | 0 |
 
 The auditor state cursor is stored at `storage/ops/auditor-cursor` (durable across container restarts). It was previously `/tmp/` which reset on every restart.
 
@@ -273,16 +278,16 @@ The auditor state cursor is stored at `storage/ops/auditor-cursor` (durable acro
 NexHelper enforces a two-tier role model per tenant:
 
 | Role | Permissions |
-|---|---|
-| **member** (default) | Store, search, list documents; create and delete own reminders |
-| **admin** | All member permissions + delete any document, hard-delete, purge, export, manage RBAC |
+| --- | --- |
+| member (default) | Store, search, list documents; create and delete own reminders |
+| admin | All member permissions + delete any document, hard-delete, purge, export, manage RBAC |
 
 Role state is stored in `storage/policy.json` per tenant.
 
 **How a user becomes admin:**
 
 ```bash
-# Promote (requires --initial-admin flag at provision time, or manually):
+# Promote (or use --initial-admin at provision time):
 docker exec -i nexhelper-<slug> nexhelper-policy add-admin <USER_ID> <PROMOTED_BY>
 
 # Remove:
@@ -291,8 +296,6 @@ docker exec -i nexhelper-<slug> nexhelper-policy remove-admin <USER_ID>
 # List:
 docker exec -i nexhelper-<slug> nexhelper-policy list-admins
 ```
-
-Or via the `--initial-admin <USER_ID>` flag at provisioning time.
 
 ---
 
@@ -331,7 +334,7 @@ docker logs nexhelper-<slug> --since 1h
 # Audit event log
 docker exec nexhelper-<slug> cat /root/.openclaw/workspace/storage/audit/events.ndjson | jq -c '.'
 
-# Tool/error diagnostics
+# Tool / error diagnostics
 docker logs nexhelper-<slug> 2>&1 | grep -E '\[tools\]|\[diagnostic\]'
 ```
 
@@ -349,19 +352,19 @@ docker logs nexhelper-<slug> 2>&1 | grep -E '\[tools\]|\[diagnostic\]'
 ### Test suite entry points
 
 | Script | Environment | Coverage |
-|---|---|---|
+| --- | --- | --- |
 | `tests/regression/full_live_suite.sh` | Ubuntu container (no gateway) | F01–F41 deterministic tests |
 | `tests/regression/gateway_session_suite.ps1` | Live provisioned container | End-to-end with real LLM |
 
 ### full_live_suite.sh — F01–F41
 
 | Range | Area |
-|---|---|
+| --- | --- |
 | F01–F16 | Core: health, AI classification, document lifecycle, reminder lifecycle, workflow, DATEV, email, migration, retention, path safety, restart semantics, startup gate |
-| F17–F25 | Advanced: entity detect/tag/budget, set-reminder wrapper, auditor/sync integration, error paths, OCR negative-path, cross-script idempotency |
+| F17–F25 | Advanced: entity detect/tag/budget, set-reminder wrapper, auditor/sync, error paths, OCR negative-path, cross-script idempotency |
 | F26–F30 | RBAC, soft-delete, document retrieve, admin report, notify script |
 | F31–F36 | Structured event routing (all 4 tokens + unknown + legacy fallback) |
-| F37 | `nexhelper-doc-core.sh` unit (normalize_float, fingerprint determinism) |
+| F37 | `nexhelper-doc-core.sh` unit (`normalize_float`, fingerprint determinism) |
 | F38 | `manage.sh help` command |
 | F39 | `nexhelper-monitor errors` JSON output |
 | F40 | Auditor cursor written to durable `storage/ops/auditor-cursor` (not `/tmp`) |
@@ -387,18 +390,20 @@ docker run --rm \
 
 ```powershell
 # Gemini
-powershell -ExecutionPolicy Bypass -File nexhelper-bot/tests/regression/gateway_session_suite.ps1 `
+powershell -ExecutionPolicy Bypass `
+  -File nexhelper-bot/tests/regression/gateway_session_suite.ps1 `
   -GeminiApiKey "AIza..."
 
 # OpenRouter
-powershell -ExecutionPolicy Bypass -File nexhelper-bot/tests/regression/gateway_session_suite.ps1 `
+powershell -ExecutionPolicy Bypass `
+  -File nexhelper-bot/tests/regression/gateway_session_suite.ps1 `
   -OpenRouterApiKey "sk-or-..."
 ```
 
-Key assertions (in addition to F01–F41 coverage):
+Key assertions:
 
 | Test | Validates |
-|---|---|
+| --- | --- |
 | `provision_customer` | `provision-customer.sh` runs clean |
 | `gateway_health` | Container reaches healthy state |
 | `runtime_tools_allowlist_clean` | `openclaw.json` has no unknown tool entries |
@@ -407,17 +412,20 @@ Key assertions (in addition to F01–F41 coverage):
 | `cron_names_unique` | No duplicate cron job names |
 | `cron_daily_summary_absent` | `daily-summary` job not registered by default |
 | `cron_startup_jobs_present` | `budget-check` and `retention-job` registered |
-| `ops_loops_not_in_cron` | `reminder-auditor` and `check-reminders` absent from cron (they run as native loops) |
+| `ops_loops_not_in_cron` | `reminder-auditor` and `check-reminders` absent from cron (native loops) |
 | `startup_cron_registered` | Only low-frequency jobs in cron scheduler |
-| `structured_event_routing` | All 4 `nexhelper:event:*` tokens route to correct handlers |
+| `structured_event_routing` | All 4 `nexhelper:event:*` tokens route correctly |
 | `monitor_available` | `nexhelper-monitor errors` returns valid JSON |
 | `agent_reminder_cron_created` | Agent calls `exec` tool (warn-level — residual LLM variability) |
 
 ### Smoke on startup
 
 ```bash
-RUN_SMOKE_ON_START=false     # disable
-SMOKE_REQUIRED_ON_START=true # fail startup if smoke fails
+# Disable startup smoke:
+RUN_SMOKE_ON_START=false
+
+# Require smoke to pass before accepting traffic:
+SMOKE_REQUIRED_ON_START=true
 ```
 
 ---
@@ -425,20 +433,20 @@ SMOKE_REQUIRED_ON_START=true # fail startup if smoke fails
 ## Provider Reference
 
 | `AI_PROVIDER` | Base URL | Model prefix | Auth env var |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `gemini` | `https://generativelanguage.googleapis.com/v1beta/openai` | `google/` | `GEMINI_API_KEY` |
 | `openrouter` | `https://openrouter.ai/api/v1` | `openrouter/google/` etc. | `OPENROUTER_API_KEY` |
 | `openai` | `https://api.openai.com/v1` | `openai/` | `OPENAI_API_KEY` |
 | `custom` | Your `AI_BASE_URL` | As configured | `AI_API_KEY` |
 
-> **Note:** OpenClaw requires the `provider/model` format. A bare model name (e.g. `gemini-3-flash-preview` without `google/`) is resolved incorrectly to `anthropic/` and will fail.
+> OpenClaw requires the `provider/model` format. A bare model name (e.g. `gemini-3-flash-preview` without `google/`) is resolved incorrectly to `anthropic/` and will fail with `Unknown model`.
 
 ---
 
 ## Security and Compliance
 
 | Feature | Detail |
-|---|---|
+| --- | --- |
 | Tenant path guardrails | File operations are sandboxed to `$STORAGE_DIR` |
 | Audit logging | Every op written to `storage/audit/events.ndjson` |
 | Consent management | Per-user consent gate; revocable via `consent.sh` |
@@ -446,6 +454,7 @@ SMOKE_REQUIRED_ON_START=true # fail startup if smoke fails
 | RBAC | `nexhelper-policy` enforces admin / member separation |
 | Idempotency | Operation keys stored in `storage/idempotency/` |
 | LF line endings | `.gitattributes` enforces LF for all scripts, preventing CRLF-in-container bugs |
+| Gateway auth | `GATEWAY_TOKEN` required for dashboard access (48-char hex, per customer) |
 
 ---
 
@@ -468,35 +477,31 @@ docker exec nexhelper-<slug> openclaw cron edit --id <JOB_ID> --to telegram:<CHA
 ### Verify AI provider routing
 
 ```bash
-docker exec nexhelper-<slug> sh -lc 'env | grep -E "AI_PROVIDER|OPENAI_BASE_URL|GEMINI_API_KEY"'
+docker exec nexhelper-<slug> sh -lc \
+  'env | grep -E "AI_PROVIDER|OPENAI_BASE_URL|GEMINI_API_KEY|OPENROUTER_API_KEY"'
 ```
 
 ### Check OpenClaw version
 
 ```bash
+# Installed in container:
 docker exec nexhelper-<slug> openclaw --version
-# Check registry:
+
+# Latest on registry:
 npm view openclaw version
 ```
 
 Rebuild to update: `docker build --no-cache -t nexhelper:latest nexhelper-bot/`
 
-### Rebuild after config changes
+### Restart a customer container
 
 ```bash
+cd /opt/nexhelper/customers/<slug>
 docker compose down && docker compose up -d
-# or via manage.sh:
+# or:
 ./manage.sh stop nexhelper-<slug>
 ./manage.sh start nexhelper-<slug>
 ```
-
-### Verify dashboard token
-
-```bash
-grep GATEWAY_TOKEN /opt/nexhelper/customers/<slug>/.env
-```
-
-Use it as `?token=<value>` in the dashboard URL, or run `./tunnel.sh` for a public Cloudflare URL.
 
 ---
 
@@ -526,6 +531,13 @@ cp -r <CUSTOMER_DIR>/storage/audit     ./backup-$(date +%Y%m%d)
 
 ```bash
 <CUSTOMER_DIR>/consent.sh revoke <USER_ID>
+```
+
+### Audit log retrieval
+
+```bash
+docker exec nexhelper-<slug> \
+  cat /root/.openclaw/workspace/storage/audit/events.ndjson | jq -c '.'
 ```
 
 ---
@@ -575,11 +587,12 @@ nexhelper-bot/
 ## Known Edges
 
 | Area | Status | Notes |
-|---|---|---|
+| --- | --- | --- |
 | `agent_reminder_cron_created` | warn | LLM prompt compliance gap — agent sometimes describes instead of calling `exec`. The ops loop safety net catches these. |
 | Email delivery (F11) | skip | Requires a live Python SMTP mock server; skipped in container test runs. |
 | AI classification (F02/F03) | skip | Requires API key; skipped in offline test runs. |
-| `gemini-3-flash-preview` model | requires `google/` prefix | Bare model name falls to `anthropic/` inside OpenClaw's model router. |
-| Auditor cursor | durable since v4.0 | Previously stored in `/tmp` (lost on restart); now at `storage/ops/auditor-cursor`. |
-| Native ops loops | zero LLM cost | `reminder-auditor` and `check-reminders` run as shell background loops, not cron. |
-| CRLF on Windows | enforced by `.gitattributes` | Scripts authored on Windows get CRLF stripped at container startup via `tr -d '\r'`. |
+| Gemini model prefix | required | `google/gemini-3-flash-preview` — bare name falls to `anthropic/` inside OpenClaw. |
+| Auditor cursor | durable since v4 | Previously `/tmp/` (lost on restart); now `storage/ops/auditor-cursor`. |
+| Native ops loops | zero LLM cost | `reminder-auditor` and `check-reminders` run as shell loops, not cron. |
+| CRLF on Windows | enforced | `.gitattributes` + container startup `tr -d '\r'` eliminates shebang corruption. |
+| Cloudflare tunnel CORS | pre-permitted | `*.trycloudflare.com` allowlisted in `openclaw.json`; exact URL injected at tunnel start. |
