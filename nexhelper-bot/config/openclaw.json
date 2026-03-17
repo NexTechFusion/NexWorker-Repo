@@ -8,17 +8,17 @@
   },
   "agents": {
     "defaults": {
-      "model": "openrouter/google/gemini-2.0-flash"
+      "model": {
+        "primary": "google/gemini-2.0-flash",
+        "fallbacks": ["google/gemini-2.5-flash"]
+      }
     }
   },
   "models": {
     "providers": {
-      "openrouter": {
-        "baseUrl": "https://openrouter.ai/api/v1",
-        "models": []
-      },
       "google": {
         "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai",
+        "apiKey": "AIzaSyC1dMTT0jpwNqcBLyr1_jmLl1bGOEhEtx8",
         "models": []
       }
     }
