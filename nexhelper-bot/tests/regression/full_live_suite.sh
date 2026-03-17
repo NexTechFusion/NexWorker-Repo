@@ -683,27 +683,47 @@ else
   run_skip "F40" "auditor_cursor_durable_path" "nexhelper-reminder-auditor not found"
 fi
 
-# F41 provision-customer.sh entrypoint uses native loops for reminder-auditor and check-reminders,
-# and does NOT register them as cron jobs
+# F41 provision-customer.sh: native loops for reminder ops, budget-check and reminder-auditor NOT in cron
 PROVISION_SCRIPT="$ROOT_DIR/provision-customer.sh"
 if [ -f "$PROVISION_SCRIPT" ]; then
   f41_has_loop="false"
   f41_no_auditor_cron="true"
+  f41_no_budget_cron="true"
   if grep -q "nexhelper-reminder-auditor.*2>/dev/null" "$PROVISION_SCRIPT"; then
     f41_has_loop="true"
   fi
   if grep -qP "_nx_ensure_cron\s+reminder-auditor" "$PROVISION_SCRIPT"; then
     f41_no_auditor_cron="false"
   fi
-  if [ "$f41_has_loop" = "true" ] && [ "$f41_no_auditor_cron" = "true" ]; then
-    record "F41" "provision_native_loops" "pass" "native loops present, no reminder-auditor cron"
+  if grep -qP "_nx_ensure_cron\s+budget-check" "$PROVISION_SCRIPT"; then
+    f41_no_budget_cron="false"
+  fi
+  if [ "$f41_has_loop" = "true" ] && [ "$f41_no_auditor_cron" = "true" ] && [ "$f41_no_budget_cron" = "true" ]; then
+    record "F41" "provision_native_loops" "pass" "native loops present, no reminder-auditor or budget-check cron"
   elif [ "$f41_has_loop" = "false" ]; then
     record "F41" "provision_native_loops" "fail" "native loop for reminder-auditor not found in provision-customer.sh"
-  else
+  elif [ "$f41_no_auditor_cron" = "false" ]; then
     record "F41" "provision_native_loops" "fail" "reminder-auditor still registered as cron job"
+  else
+    record "F41" "provision_native_loops" "fail" "budget-check still registered as cron job"
   fi
 else
   run_skip "F41" "provision_native_loops" "provision-customer.sh not found"
+fi
+
+# F42 nexhelper-doc contains reactive budget check (grep for entity check call after spend)
+DOC_SCRIPT="$ROOT_DIR/skills/document-handler/nexhelper-doc"
+if [ -f "$DOC_SCRIPT" ]; then
+  # Check separately: notify call may span multiple lines in the script
+  if grep -q 'nexhelper-notify\|nexhelper_notify' "$DOC_SCRIPT" && \
+     grep -q 'admin-only' "$DOC_SCRIPT" && \
+     grep -q 'ENTITIES_SCRIPT.*check\|\$ENTITIES_SCRIPT.*check' "$DOC_SCRIPT"; then
+    record "F42" "doc_reactive_budget_check" "pass" "reactive budget alert present in nexhelper-doc"
+  else
+    record "F42" "doc_reactive_budget_check" "fail" "reactive budget check missing from nexhelper-doc"
+  fi
+else
+  run_skip "F42" "doc_reactive_budget_check" "nexhelper-doc not found"
 fi
 
 report_file="$REPORT_DIR/full-live-suite-$(date +%Y%m%d_%H%M%S).json"

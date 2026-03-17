@@ -147,6 +147,18 @@ store_document() {
 
   if [ "$type" = "rechnung" ] && [ "$safe_entity" != "default" ]; then
     "$ENTITIES_SCRIPT" spend "$safe_entity" "$amount" >/dev/null 2>&1 || true
+    # Reactive budget threshold check — runs in shell, zero LLM cost.
+    # Replaces the hourly budget-check cron that consumed 24 LLM turns/day without notifying anyone.
+    local budget_alerts
+    budget_alerts="$("$ENTITIES_SCRIPT" check 2>/dev/null || echo '[]')"
+    if [ "$(echo "$budget_alerts" | jq 'length')" -gt 0 ]; then
+      local alert_msg
+      alert_msg="$(echo "$budget_alerts" | jq -r \
+        '.[] | "⚠️ Budget \(.entity): \(.threshold)% erreicht (\(.spent)/\(.budget) €)"' \
+        | head -5 | tr '\n' ' ')"
+      "$SCRIPT_DIR/../common/nexhelper-notify" send \
+        --audience admin-only --message "$alert_msg" 2>/dev/null || true
+    fi
   fi
 
   local suggest_project="false"

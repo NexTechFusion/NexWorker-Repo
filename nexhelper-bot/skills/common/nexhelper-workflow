@@ -74,6 +74,12 @@ route_message() {
     return
   fi
 
+  # /stats — deterministic shortcut, bypasses classifier; never routes to OpenClaw /status
+  if [[ "$text" =~ ^/stats([[:space:]]|$) ]] || [[ "$text" =~ ^/status([[:space:]]|$) ]]; then
+    "$DOC_SCRIPT" stats
+    return
+  fi
+
   # /whois @username — admin user-ID lookup
   if [[ "$text" =~ ^/whois[[:space:]] ]] || [[ "$text" =~ ^whois[[:space:]] ]]; then
     local query="${text#*whois }"

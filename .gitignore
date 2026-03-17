@@ -1,1 +1,4 @@
 .tmp
+config
+node_modules
+/nexhelper-bot/customers

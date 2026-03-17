@@ -9,31 +9,40 @@ LABEL version="2.0"
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    # Build essentials
     build-essential \
+    cmake \
     python3 \
-    # OCR dependencies
     tesseract-ocr \
     tesseract-ocr-deu \
     tesseract-ocr-eng \
     tesseract-ocr-fra \
-    # PDF processing
     poppler-utils \
-    # JSON processing
     jq \
-    # HTTP client
     curl \
     wget \
-    # Email utilities
     sendmail \
-    # Git (for updates)
     git \
-    # Cleanup
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Install OpenClaw globally
 RUN npm install -g openclaw@latest
+
+# Fix execute permissions on OpenClaw's bundled skill scripts — npm strips +x bits.
+RUN find /usr/local/lib/node_modules/openclaw -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
+
+# Build and install whisper-cli (whisper.cpp) for local audio transcription.
+# Static link so the binary has no runtime .so dependency — no library install needed.
+# WHISPER_CPP_MODEL env var in the container points at the mounted model file.
+RUN git clone --depth=1 https://github.com/ggerganov/whisper.cpp.git /tmp/whisper.cpp \
+    && cmake -S /tmp/whisper.cpp -B /tmp/whisper.cpp/build \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DGGML_METAL=OFF \
+        -DWHISPER_BUILD_TESTS=OFF \
+        -DBUILD_SHARED_LIBS=OFF \
+    && cmake --build /tmp/whisper.cpp/build --config Release --target whisper-cli -j$(nproc) \
+    && cp /tmp/whisper.cpp/build/bin/whisper-cli /usr/local/bin/ \
+    && rm -rf /tmp/whisper.cpp
 
 # Create app directory
 WORKDIR /app

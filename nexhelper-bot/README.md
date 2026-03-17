@@ -12,6 +12,7 @@ NexHelper runs on top of OpenClaw and is optimized for chat-first operations (Te
 - Extract structured fields (supplier, amount, date, invoice number, category)
 - Detect duplicates via fingerprint (`number|supplier|amount|date`)
 - Soft-delete / restore with RBAC enforcement
+- Transcribe voice notes locally via `whisper-cli` (no cloud dependency)
 - Create and fire time-based reminders without any agent round-trip for low-level ops
 - Export accounting data (DATEV CSV, SAP, Lexware)
 - Per-tenant storage, audit trails, consent management, and retention controls
@@ -21,46 +22,204 @@ NexHelper runs on top of OpenClaw and is optimized for chat-first operations (Te
 
 ---
 
-## User Memory
+## Quick Start
 
-NexHelper can remember user-specific information across sessions:
-
-### Storage
-
-```
-storage/users/{user_id}/session.json
-```
-
-Each user has a single JSON file containing:
-- `messages`: Last 50 chat messages
-- `facts`: Key-value pairs (preferences, info user shared)
-
-### Usage
+### 1. Build the image
 
 ```bash
-# Store a fact (triggered by "Merke dir dass ich X mag")
-./skills/user-memory/nexhelper-user-memory set-fact --user "12345" --key "food" --value "Pizza"
-
-# Get context for LLM (facts + recent messages)
-./skills/user-memory/nexhelper-memory-workflow get-context --user "12345"
-# → {"facts":{"food":"Pizza"},"messages":[...]}
-
-# Search in user's chat history
-./skills/user-memory/nexhelper-user-memory search --user "12345" --query "rechnung"
+cd nexhelper-bot/
+docker build -t nexhelper:latest .
 ```
 
-### Integration
+> To always pick up the latest OpenClaw version: `docker build --no-cache -t nexhelper:latest .`
 
-1. **Classifier** detects `memory_set` intent when user says "Merke dir..."
-2. **Workflow** stores fact via `nexhelper-user-memory set-fact`
-3. **LLM Context** loads facts + recent messages via `get-context`
+### 2. Provision a customer
 
-### Intents
+Run `provision-customer.sh` from inside `nexhelper-bot/`. Pass your API key and bot token inline:
 
-| Intent | Trigger | Action |
-|--------|---------|--------|
-| `memory_set` | "Merke dir dass ich X mag" | Store fact |
-| `memory_get` | "Was weißt du über mich?" | Return facts |
+**Gemini + Telegram (most common):**
+
+```bash
+GEMINI_API_KEY="AIza..." \
+BASE_DIR="$(pwd)/customers" \
+bash provision-customer.sh 001 "Acme GmbH" \
+  --telegram "123456789:ABC-DEF..." \
+  --delivery-to "telegram:YOUR_CHAT_ID"
+```
+
+**OpenRouter + Telegram:**
+
+```bash
+AI_PROVIDER=openrouter \
+OPENROUTER_API_KEY="sk-or-..." \
+BASE_DIR="$(pwd)/customers" \
+bash provision-customer.sh 001 "Acme GmbH" \
+  --telegram "123456789:ABC-DEF..."
+```
+
+**OpenAI + Telegram:**
+
+```bash
+AI_PROVIDER=openai \
+OPENAI_API_KEY="sk-..." \
+BASE_DIR="$(pwd)/customers" \
+bash provision-customer.sh 001 "Acme GmbH" \
+  --telegram "123456789:ABC-DEF..."
+```
+
+**With WhatsApp (QR scan required on first start):**
+
+```bash
+GEMINI_API_KEY="AIza..." \
+BASE_DIR="$(pwd)/customers" \
+bash provision-customer.sh 002 "Mueller Bau" \
+  --telegram "123456789:ABC-DEF..." \
+  --whatsapp \
+  --delivery-to "whatsapp:+49..."
+```
+
+> **`BASE_DIR`** controls where customer directories are created. Defaults to `/opt/nexhelper/customers`. Set it to `$(pwd)/customers` to keep everything inside the repo during development.
+
+> **Audio transcription (whisper-cli):** The script automatically downloads `ggml-medium.bin` (~1.5 GB) to `WHISPER_MODEL_DIR` (default: `/opt/whisper-models`, override on Windows: `WHISPER_MODEL_DIR=$HOME/whisper-models`). The model is shared across all customer containers on the same host — downloaded once, mounted read-only into each container.
+
+### 3. What happens
+
+```
+provision-customer.sh
+  ├── Validates Telegram token
+  ├── Creates customers/<slug>/
+  │   ├── config/openclaw.json       ← Agent config
+  │   ├── config/auth-profiles.json  ← API key bindings
+  │   ├── docker-compose.yaml
+  │   └── .env
+  ├── Downloads ggml-medium.bin if not present (non-openai providers)
+  ├── Starts the container (unless --no-start)
+  └── Runs startup smoke check
+```
+
+The container is named `nexhelper-<slug>` and bound to port `3000 + <customer-id>` (e.g. `001` → `3001`).
+
+### 4. All provisioning options
+
+```text
+Arguments:
+  <id>                     Numeric customer ID (e.g. 001). Port = 3000 + id.
+  <name>                   Customer display name (quoted if spaces)
+
+Options:
+  --telegram <token>       Telegram bot token (required unless --whatsapp only)
+  --whatsapp               Enable WhatsApp channel (QR scan on first start)
+  --delivery-to <target>   Admin notification target: telegram:<id> or whatsapp:<number>
+  --initial-admin <id>     Promote this user to admin on first start
+  --api-key <key>          LLM API key (or set GEMINI_API_KEY / AI_API_KEY env var)
+  --model <model>          Override default model
+  --no-start               Generate files only; do not start the container
+  --cloudflare-tunnel      Launch Cloudflare Quick Tunnel after provisioning
+  --base-dir <path>        Customer directory base (default: /opt/nexhelper/customers)
+  --consent-version <v>    Consent text version (default: 1.0)
+  --force                  Overwrite existing customer directory in-place
+
+Environment variables:
+  AI_PROVIDER              gemini (default) | openrouter | openai | custom
+  GEMINI_API_KEY           Gemini API key (picked up automatically when AI_PROVIDER=gemini)
+  OPENROUTER_API_KEY       OpenRouter API key
+  OPENAI_API_KEY           OpenAI API key
+  WHISPER_MODEL_DIR        Host path for whisper model files (default: /opt/whisper-models)
+  WHISPER_CPP_MODEL        Container path to model file (default: /models/ggml-medium.bin)
+```
+
+---
+
+## Audio / Voice Notes
+
+NexHelper transcribes voice messages before the agent sees them. The transcript is echoed back to the user and used as the message body so slash commands still work.
+
+### How it works
+
+| Provider | Transcription method |
+| --- | --- |
+| `openai` | Auto-detection — picks up the OpenAI key and uses `gpt-4o-mini-transcribe` directly |
+| `gemini` / `openrouter` / `custom` | Local `whisper-cli` (whisper.cpp) with `ggml-medium.bin` mounted at `/models` |
+
+### Model
+
+`ggml-large-v3-turbo.bin` (1.6 GB) — best accuracy, multilingual, optimised for speed (faster than large-v3 at near-identical quality).
+
+The model lives on the host at `WHISPER_MODEL_DIR` and is mounted read-only into every container as `/models`. All customers on the same host share one copy.
+
+### First-time setup
+
+The provisioning script downloads the model automatically if not already present:
+
+```bash
+# Manual download (if you prefer to pre-stage it):
+WHISPER_MODEL_DIR=$HOME/whisper-models
+mkdir -p $WHISPER_MODEL_DIR
+curl -L -o $WHISPER_MODEL_DIR/ggml-medium.bin \
+  "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin"
+```
+
+### Swapping the model
+
+Override `WHISPER_CPP_MODEL` at provision time (or in the customer's `.env` after the fact):
+
+```bash
+WHISPER_CPP_MODEL=/models/ggml-large-v3-turbo.bin \
+bash provision-customer.sh 001 "Acme GmbH" --telegram "..."
+```
+
+> `whisper-cli` must be installed inside `nexhelper:latest` for non-openai providers. The binary is bundled with a tiny fallback model; `WHISPER_CPP_MODEL` points it at the better mounted model.
+
+---
+
+## Provider Reference
+
+| `AI_PROVIDER` | Base URL | Model prefix | Auth env var |
+| --- | --- | --- | --- |
+| `gemini` | `https://generativelanguage.googleapis.com/v1beta/openai` | `google/` | `GEMINI_API_KEY` |
+| `openrouter` | `https://openrouter.ai/api/v1` | `openrouter/google/` etc. | `OPENROUTER_API_KEY` |
+| `openai` | `https://api.openai.com/v1` | `openai/` | `OPENAI_API_KEY` |
+| `custom` | Your `AI_BASE_URL` | As configured | `AI_API_KEY` |
+
+> OpenClaw requires the `provider/model` format. A bare model name (e.g. `gemini-3-flash-preview` without `google/`) resolves incorrectly to `anthropic/` and will fail with `Unknown model`.
+
+---
+
+## Customer Directory Layout
+
+Provisioning generates a self-contained directory per customer:
+
+```text
+customers/<slug>/
+├── docker-compose.yaml
+├── .env                      ← API keys, PORT, GATEWAY_TOKEN, WHISPER_CPP_MODEL
+├── config/
+│   ├── openclaw.json         ← Agent config (model, tools, CORS, auth token)
+│   └── auth-profiles.json    ← Provider API key bindings
+├── storage/                  ← Persisted data (mounted into container)
+│   ├── canonical/
+│   │   ├── documents/        ← Source-of-truth document records
+│   │   └── reminders/        ← Source-of-truth reminder records
+│   ├── ops/
+│   │   └── auditor-cursor    ← Durable auditor position (survives restarts)
+│   ├── consent/
+│   ├── audit/
+│   └── idempotency/
+├── start.sh
+├── stop.sh
+├── status.sh
+├── logs.sh
+├── health.sh
+├── smoke.sh
+├── report.sh                 ← JSON ops report (./report.sh html for browser)
+├── migrate.sh
+├── retention.sh
+├── consent.sh
+├── onboard.sh                ← Founder handover guide
+├── tunnel.sh                 ← Cloudflare Quick Tunnel + dashboard URL + pairing watcher
+├── admin-quickstart.sh       ← Admin verification after pairing
+└── remove.sh                 ← Export-first offboarding
+```
 
 ---
 
@@ -78,6 +237,7 @@ Each user has a single JSON file containing:
 | Storage | `storage/canonical/{documents,reminders}/` — source of truth |
 | Config | `config/openclaw.json` + `config/auth-profiles.json` |
 | Skills | Mounted read-only at `/app/skills`, CRLF-fixed and symlinked at startup |
+| Whisper model | Mounted read-only at `/models` from host `WHISPER_MODEL_DIR` |
 | Sessions | OpenClaw agent sessions in `/root/.openclaw/agents/main/sessions/` |
 
 ### Background job model
@@ -89,18 +249,17 @@ High-frequency ops are **native shell loops** inside the container entrypoint �
 | `nexhelper-reminder-auditor` + `nexhelper-reminder-sync` | 60 s | Scan sessions for missed exec calls; reconcile canonical reminders with cron |
 | `nexhelper-reminder due` | 300 s | Mark and deliver due canonical reminders |
 
-Low-frequency, LLM-appropriate jobs are registered as OpenClaw cron jobs on gateway start:
+Only one low-frequency job runs as a scheduled OpenClaw cron:
 
 | Cron job | Schedule | Purpose |
 | --- | --- | --- |
-| `budget-check` | `0 * * * *` (hourly) | Token `nexhelper:event:budget-check` → `nexhelper-entity check` |
-| `retention-job` | `0 2 * * *` (2 AM daily) | Token `nexhelper:event:retention` → `nexhelper-retention` |
+| `retention-job` | `0 2 * * *` (2 AM daily) | Token `nexhelper:event:retention` → `nexhelper-retention` (DSGVO compliance) |
 
-All cron registrations are **idempotent** (`_nx_ensure_cron` — skips if job name already exists) to prevent duplicate accumulation across container restarts.
+The cron registration is **idempotent** (`_nx_ensure_cron` — skips if job name already exists) to prevent duplicate accumulation across container restarts.
+
+> **budget-check removed from cron.** It was consuming 24 LLM turns/day without ever notifying anyone (`--no-deliver` + no `nexhelper-notify` call). Budget threshold alerts now fire **reactively** inside `nexhelper-doc` the moment a `rechnung` document is stored and a budget entity is updated — zero scheduled LLM cost.
 
 ### Structured workflow event routing
-
-The workflow router (`nexhelper-workflow`) uses structured token matching first, then legacy substring fallback for backward compatibility:
 
 ```text
 nexhelper:event:reminder-audit  →  reminder_due handler
@@ -113,10 +272,8 @@ nexhelper:event:health-check    →  health_monitor handler
 
 | Script | Purpose |
 | --- | --- |
-| `skills/user-memory/nexhelper-user-memory` | Per-user session & facts storage (memory between chats) |
-| `skills/user-memory/nexhelper-memory-workflow` | Memory integration workflow (context for LLM) |
 | `skills/document-handler/nexhelper-doc` | Document intake, dedup, CRUD, DATEV export |
-| `skills/document-handler/nexhelper-doc-core.sh` | Pure utility functions (`normalize_float`, `build_fingerprint`) — independently testable |
+| `skills/document-handler/nexhelper-doc-core.sh` | Pure utility functions (`normalize_float`, `build_fingerprint`) |
 | `skills/reminder-system/nexhelper-reminder` | Canonical reminder CRUD |
 | `skills/reminder-system/nexhelper-set-reminder` | Atomic wrapper: create canonical record + schedule cron |
 | `skills/reminder-system/nexhelper-reminder-auditor` | Scan sessions for text-based exec calls, execute missed commands |
@@ -148,125 +305,8 @@ nexhelper:event:health-check    →  health_monitor handler
 ./manage.sh crons  nexhelper-acme-001   # List cron jobs
 ./manage.sh monitor nexhelper-acme-001  # Run nexhelper-monitor
 ./manage.sh summary                     # Aggregate health (JSON)
-./manage.sh provision 001 "Acme" ...    # Delegate to provision-customer.sh
 ./manage.sh start nexhelper-acme-001    # Start container
 ./manage.sh stop  nexhelper-acme-001    # Stop container
-```
-
----
-
-## Quick Start
-
-### 1. Build the image
-
-```bash
-docker build -t nexhelper:latest nexhelper-bot/
-```
-
-> To always pick up the latest OpenClaw version: `docker build --no-cache -t nexhelper:latest nexhelper-bot/`
-
-### 2. Set your API key
-
-**Gemini (default):**
-
-```bash
-export GEMINI_API_KEY="AIza..."
-```
-
-> OpenClaw model format for Gemini: `google/gemini-3-flash-preview`. The `google/` prefix is required — bare model names fall back to `anthropic/` incorrectly inside OpenClaw's model router.
-
-**OpenRouter:**
-
-```bash
-export AI_PROVIDER=openrouter
-export OPENROUTER_API_KEY="sk-or-..."
-```
-
-**OpenAI:**
-
-```bash
-export AI_PROVIDER=openai
-export OPENAI_API_KEY="sk-..."
-```
-
-**Custom / any OpenAI-compatible endpoint:**
-
-```bash
-export AI_PROVIDER=custom
-export AI_API_KEY="your-key"
-export AI_BASE_URL="https://your-endpoint/v1"
-export DEFAULT_MODEL="provider/model-name"
-```
-
-### 3. Provision a customer
-
-**Telegram:**
-
-```bash
-./provision-customer.sh 001 "Acme GmbH" --telegram "123456789:ABC-DEF..."
-```
-
-**WhatsApp:**
-
-```bash
-./provision-customer.sh 002 "Mueller Bau" --whatsapp
-```
-
-**With Cloudflare tunnel (opens dashboard immediately after start):**
-
-```bash
-./provision-customer.sh 001 "Acme GmbH" --telegram "123:ABC" --cloudflare-tunnel
-```
-
-**Full options:**
-
-```text
---telegram <token>       Telegram bot token (required unless --whatsapp)
---whatsapp               Enable WhatsApp channel
---api-key <key>          LLM API key (or set GEMINI_API_KEY / AI_API_KEY)
---model <model>          Override default model
---no-start               Do not auto-start the container
---cloudflare-tunnel      Launch Cloudflare Quick Tunnel after provisioning
---delivery-to <to>       Admin notification target (e.g. telegram:579539601)
---initial-admin <id>     Promote this user ID to admin on first start
---base-dir <path>        Customer directory base (default: /opt/nexhelper/customers)
---consent-version <v>    Consent text version (default: 1.0)
-```
-
-### 4. Customer directory layout
-
-Provisioning generates a self-contained customer directory:
-
-```text
-/opt/nexhelper/customers/<slug>/
-├── docker-compose.yaml
-├── .env                      ← API keys, PORT, GATEWAY_TOKEN, etc.
-├── config/
-│   ├── openclaw.json         ← Agent config (model, tools, CORS, auth token)
-│   └── auth-profiles.json    ← Provider API key bindings
-├── storage/                  ← Persisted data (mounted into container)
-│   ├── canonical/
-│   │   ├── documents/        ← Source-of-truth document records
-│   │   └── reminders/        ← Source-of-truth reminder records
-│   ├── ops/
-│   │   └── auditor-cursor    ← Durable auditor position (survives restarts)
-│   ├── consent/
-│   ├── audit/
-│   └── idempotency/
-├── start.sh
-├── stop.sh
-├── status.sh
-├── logs.sh
-├── health.sh
-├── smoke.sh
-├── report.sh                 ← JSON ops report (./report.sh html for browser)
-├── migrate.sh
-├── retention.sh
-├── consent.sh
-├── onboard.sh                ← Founder handover guide
-├── tunnel.sh                 ← Cloudflare Quick Tunnel + dashboard URL + pairing watcher
-├── admin-quickstart.sh       ← Admin verification after pairing
-└── remove.sh                 ← Export-first offboarding
 ```
 
 ---
@@ -276,7 +316,7 @@ Provisioning generates a self-contained customer directory:
 Expose the OpenClaw dashboard securely over the internet without opening firewall ports:
 
 ```bash
-cd /opt/nexhelper/customers/<slug>
+cd customers/<slug>
 ./tunnel.sh
 ```
 
@@ -292,22 +332,19 @@ cd /opt/nexhelper/customers/<slug>
    https://xyz.trycloudflare.com/?token=b4dc3a8274fe...
 ```
 
-1. Watch every 5 s for pending device pairing requests and print the approve command
+5. Watch every 5 s for pending device pairing requests and print the approve command
 
 > **Requires:** `cloudflared` CLI installed on the host. Install instructions are shown if missing.
 
-The dashboard token (`GATEWAY_TOKEN`) is a 48-char hex value generated at provisioning time. It is stored in `.env` and baked into `config/openclaw.json` under `gateway.auth.token`. The CORS allowlist pre-permits `*.trycloudflare.com`.
+The dashboard token (`GATEWAY_TOKEN`) is a 48-char hex value generated at provisioning time, stored in `.env` and baked into `config/openclaw.json`.
 
 ```bash
-# Read the token any time:
-grep GATEWAY_TOKEN /opt/nexhelper/customers/<slug>/.env
+grep GATEWAY_TOKEN customers/<slug>/.env
 ```
 
 ---
 
 ## Reminder System
-
-Reminders are implemented in three layers:
 
 | Layer | Mechanism | LLM cost |
 | --- | --- | --- |
@@ -315,25 +352,19 @@ Reminders are implemented in three layers:
 | 2. Canonical store | `nexhelper-set-reminder` writes JSON record + schedules cron | 0 |
 | 3. Ops safety net | `nexhelper-reminder-auditor` + `nexhelper-reminder-sync` in native loops | 0 |
 
-The auditor state cursor is stored at `storage/ops/auditor-cursor` (durable across container restarts). It was previously `/tmp/` which reset on every restart.
+The auditor state cursor is stored at `storage/ops/auditor-cursor` (durable across container restarts).
 
 ---
 
 ## Role-Based Access Control
-
-NexHelper enforces a two-tier role model per tenant:
 
 | Role | Permissions |
 | --- | --- |
 | member (default) | Store, search, list documents; create and delete own reminders |
 | admin | All member permissions + delete any document, hard-delete, purge, export, manage RBAC |
 
-Role state is stored in `storage/policy.json` per tenant.
-
-**How a user becomes admin:**
-
 ```bash
-# Promote (or use --initial-admin at provision time):
+# Promote a user (or use --initial-admin at provision time):
 docker exec -i nexhelper-<slug> nexhelper-policy add-admin <USER_ID> <PROMOTED_BY>
 
 # Remove:
@@ -347,76 +378,36 @@ docker exec -i nexhelper-<slug> nexhelper-policy list-admins
 
 ## Observability
 
-### Health check
-
 ```bash
-docker exec nexhelper-<slug> openclaw health --json
-# or from host:
+# Health endpoint
 curl -f http://localhost:<PORT>/health
-```
 
-### Monitor script
-
-```bash
-# Full report
+# Full monitor report
 docker exec nexhelper-<slug> sh -lc "nexhelper-monitor report"
 
 # Recent errors only
 docker exec nexhelper-<slug> sh -lc "nexhelper-monitor errors"
 
-# Cron job health
-docker exec nexhelper-<slug> sh -lc "nexhelper-monitor cron-health"
-
-# Alert if degraded (for host-side monitoring scripts)
-docker exec nexhelper-<slug> sh -lc "nexhelper-monitor alert"
-```
-
-### Log lookup
-
-```bash
 # Container logs
 docker logs nexhelper-<slug> --since 1h
 
 # Audit event log
 docker exec nexhelper-<slug> cat /root/.openclaw/workspace/storage/audit/events.ndjson | jq -c '.'
 
-# Tool / error diagnostics
-docker logs nexhelper-<slug> 2>&1 | grep -E '\[tools\]|\[diagnostic\]'
-```
-
-### Admin ops report
-
-```bash
-<CUSTOMER_DIR>/report.sh           # JSON
-<CUSTOMER_DIR>/report.sh html      # HTML (redirect to .html file)
+# Ops report (HTML)
+customers/<slug>/report.sh html
 ```
 
 ---
 
 ## Testing and Quality Gates
 
-### Test suite entry points
-
 | Script | Environment | Coverage |
 | --- | --- | --- |
 | `tests/regression/full_live_suite.sh` | Ubuntu container (no gateway) | F01–F41 deterministic tests |
 | `tests/regression/gateway_session_suite.ps1` | Live provisioned container | End-to-end with real LLM |
 
-### full_live_suite.sh — F01–F41
-
-| Range | Area |
-| --- | --- |
-| F01–F16 | Core: health, AI classification, document lifecycle, reminder lifecycle, workflow, DATEV, email, migration, retention, path safety, restart semantics, startup gate |
-| F17–F25 | Advanced: entity detect/tag/budget, set-reminder wrapper, auditor/sync, error paths, OCR negative-path, cross-script idempotency |
-| F26–F30 | RBAC, soft-delete, document retrieve, admin report, notify script |
-| F31–F36 | Structured event routing (all 4 tokens + unknown + legacy fallback) |
-| F37 | `nexhelper-doc-core.sh` unit (`normalize_float`, fingerprint determinism) |
-| F38 | `manage.sh help` command |
-| F39 | `nexhelper-monitor errors` JSON output |
-| F40 | Auditor cursor written to durable `storage/ops/auditor-cursor` (not `/tmp`) |
-| F41 | `provision-customer.sh` generates native loops, not cron, for ops jobs |
-
-Run inside Ubuntu container (no API key needed for most tests):
+### full_live_suite.sh
 
 ```bash
 docker run --rm \
@@ -432,60 +423,56 @@ docker run --rm \
   "
 ```
 
-### gateway_session_suite.ps1 — live container tests
+| Range | Area |
+| --- | --- |
+| F01–F16 | Core: health, AI classification, document lifecycle, reminder lifecycle, workflow, DATEV, email, migration, retention, path safety, restart semantics, startup gate |
+| F17–F25 | Advanced: entity detect/tag/budget, set-reminder wrapper, auditor/sync, error paths, OCR negative-path, cross-script idempotency |
+| F26–F30 | RBAC, soft-delete, document retrieve, admin report, notify script |
+| F31–F36 | Structured event routing (all 4 tokens + unknown + legacy fallback) |
+| F37 | `nexhelper-doc-core.sh` unit (`normalize_float`, fingerprint determinism) |
+| F38–F41 | `manage.sh help`, monitor JSON, auditor cursor durability, native ops loops |
+
+### gateway_session_suite.ps1
 
 ```powershell
-# Gemini
 powershell -ExecutionPolicy Bypass `
   -File nexhelper-bot/tests/regression/gateway_session_suite.ps1 `
   -GeminiApiKey "AIza..."
-
-# OpenRouter
-powershell -ExecutionPolicy Bypass `
-  -File nexhelper-bot/tests/regression/gateway_session_suite.ps1 `
-  -OpenRouterApiKey "sk-or-..."
-```
-
-Key assertions:
-
-| Test | Validates |
-| --- | --- |
-| `provision_customer` | `provision-customer.sh` runs clean |
-| `gateway_health` | Container reaches healthy state |
-| `runtime_tools_allowlist_clean` | `openclaw.json` has no unknown tool entries |
-| `runtime_set_reminder_available` | `nexhelper-set-reminder` on PATH and executable |
-| `runtime_log_lookup` | No critical errors in container logs |
-| `cron_names_unique` | No duplicate cron job names |
-| `cron_daily_summary_absent` | `daily-summary` job not registered by default |
-| `cron_startup_jobs_present` | `budget-check` and `retention-job` registered |
-| `ops_loops_not_in_cron` | `reminder-auditor` and `check-reminders` absent from cron (native loops) |
-| `startup_cron_registered` | Only low-frequency jobs in cron scheduler |
-| `structured_event_routing` | All 4 `nexhelper:event:*` tokens route correctly |
-| `monitor_available` | `nexhelper-monitor errors` returns valid JSON |
-| `agent_reminder_cron_created` | Agent calls `exec` tool (warn-level — residual LLM variability) |
-
-### Smoke on startup
-
-```bash
-# Disable startup smoke:
-RUN_SMOKE_ON_START=false
-
-# Require smoke to pass before accepting traffic:
-SMOKE_REQUIRED_ON_START=true
 ```
 
 ---
 
-## Provider Reference
+## Ops Runbook
 
-| `AI_PROVIDER` | Base URL | Model prefix | Auth env var |
-| --- | --- | --- | --- |
-| `gemini` | `https://generativelanguage.googleapis.com/v1beta/openai` | `google/` | `GEMINI_API_KEY` |
-| `openrouter` | `https://openrouter.ai/api/v1` | `openrouter/google/` etc. | `OPENROUTER_API_KEY` |
-| `openai` | `https://api.openai.com/v1` | `openai/` | `OPENAI_API_KEY` |
-| `custom` | Your `AI_BASE_URL` | As configured | `AI_API_KEY` |
+### Check cron jobs
 
-> OpenClaw requires the `provider/model` format. A bare model name (e.g. `gemini-3-flash-preview` without `google/`) is resolved incorrectly to `anthropic/` and will fail with `Unknown model`.
+```bash
+docker exec nexhelper-<slug> openclaw cron list --json
+```
+
+Expected: only `retention-job`. `reminder-auditor` and `check-reminders` run as native background loops — they should **not** appear here.
+
+### Verify AI provider routing
+
+```bash
+docker exec nexhelper-<slug> sh -lc \
+  'env | grep -E "AI_PROVIDER|OPENAI_BASE_URL|GEMINI_API_KEY|OPENROUTER_API_KEY|WHISPER_CPP_MODEL"'
+```
+
+### Check OpenClaw version
+
+```bash
+docker exec nexhelper-<slug> openclaw --version
+# Rebuild to update:
+docker build --no-cache -t nexhelper:latest nexhelper-bot/
+```
+
+### Restart a customer container
+
+```bash
+cd customers/<slug>
+docker compose down && docker compose up -d
+```
 
 ---
 
@@ -498,92 +485,23 @@ SMOKE_REQUIRED_ON_START=true
 | Consent management | Per-user consent gate; revocable via `consent.sh` |
 | Retention | Configurable archive (`RETENTION_DAYS`) and purge (`PURGE_DELETED_AFTER_DAYS`) |
 | RBAC | `nexhelper-policy` enforces admin / member separation |
+| Audio transcription | Runs locally via `whisper-cli` — voice data never leaves the host for non-openai providers |
 | Idempotency | Operation keys stored in `storage/idempotency/` |
 | LF line endings | `.gitattributes` enforces LF for all scripts, preventing CRLF-in-container bugs |
 | Gateway auth | `GATEWAY_TOKEN` required for dashboard access (48-char hex, per customer) |
 
----
-
-## Ops Runbook
-
-### Check cron jobs
-
-```bash
-docker exec nexhelper-<slug> openclaw cron list --json
-```
-
-Expected: only `budget-check` and `retention-job`. `reminder-auditor` and `check-reminders` run as native background loops — they should **not** appear here.
-
-### Repair a cron delivery target
-
-```bash
-docker exec nexhelper-<slug> openclaw cron edit --id <JOB_ID> --to telegram:<CHAT_ID>
-```
-
-### Verify AI provider routing
-
-```bash
-docker exec nexhelper-<slug> sh -lc \
-  'env | grep -E "AI_PROVIDER|OPENAI_BASE_URL|GEMINI_API_KEY|OPENROUTER_API_KEY"'
-```
-
-### Check OpenClaw version
-
-```bash
-# Installed in container:
-docker exec nexhelper-<slug> openclaw --version
-
-# Latest on registry:
-npm view openclaw version
-```
-
-Rebuild to update: `docker build --no-cache -t nexhelper:latest nexhelper-bot/`
-
-### Restart a customer container
-
-```bash
-cd /opt/nexhelper/customers/<slug>
-docker compose down && docker compose up -d
-# or:
-./manage.sh stop nexhelper-<slug>
-./manage.sh start nexhelper-<slug>
-```
-
----
-
-## Compliance and Offboarding
-
-### Data retention defaults
-
-- Documents older than `RETENTION_DAYS` (default: 365) are archived automatically
-- Soft-deleted documents are purged after `PURGE_DELETED_AFTER_DAYS` (default: 30)
-
 ### Offboarding
 
-Always use `./remove.sh` — it performs an export-first confirmation:
-
-1. Creates `offboarding-export-<timestamp>/` with `canonical/`, `consent/`, `audit/`, `policy.json`
-2. Prompts you to type `DELETE` before removing the container and directory
-
-Manual export without deletion:
+Always use `./remove.sh` — it performs an export-first confirmation before deleting anything.
 
 ```bash
-cp -r <CUSTOMER_DIR>/storage/canonical ./backup-$(date +%Y%m%d)
-cp -r <CUSTOMER_DIR>/storage/consent   ./backup-$(date +%Y%m%d)
-cp -r <CUSTOMER_DIR>/storage/audit     ./backup-$(date +%Y%m%d)
-```
+# Manual backup without deletion:
+cp -r customers/<slug>/storage/canonical ./backup-$(date +%Y%m%d)
+cp -r customers/<slug>/storage/consent   ./backup-$(date +%Y%m%d)
+cp -r customers/<slug>/storage/audit     ./backup-$(date +%Y%m%d)
 
-### Consent withdrawal
-
-```bash
-<CUSTOMER_DIR>/consent.sh revoke <USER_ID>
-```
-
-### Audit log retrieval
-
-```bash
-docker exec nexhelper-<slug> \
-  cat /root/.openclaw/workspace/storage/audit/events.ndjson | jq -c '.'
+# Consent withdrawal:
+customers/<slug>/consent.sh revoke <USER_ID>
 ```
 
 ---
@@ -593,39 +511,21 @@ docker exec nexhelper-<slug> \
 ```text
 nexhelper-bot/
 ├── provision-customer.sh        ← Customer provisioning (all-in-one)
-├── manage.sh                    ← Control plane CLI (list/status/logs/monitor/...)
+├── manage.sh                    ← Control plane CLI
 ├── Dockerfile
 ├── .gitattributes               ← LF enforcement for all scripts
-├── config/
-│   └── config.yaml.template
+├── customers/                   ← Generated per-customer directories (git-ignored)
 ├── skills/
-│   ├── common/
-│   │   ├── nexhelper-workflow       ← Event router
-│   │   ├── nexhelper-healthcheck
-│   │   ├── nexhelper-smoke
-│   │   ├── nexhelper-monitor        ← Observability (cron health, errors, alerts)
-│   │   ├── nexhelper-policy         ← RBAC
-│   │   ├── nexhelper-notify         ← Proactive notifications
-│   │   ├── nexhelper-admin-report   ← Ops read model
-│   │   ├── nexhelper-retention
-│   │   └── nexhelper-migrate
-│   ├── classifier/
-│   │   └── nexhelper-classify       ← AI intent/entity classification
-│   ├── document-handler/
-│   │   ├── nexhelper-doc            ← Document CRUD
-│   │   └── nexhelper-doc-core.sh    ← Pure utility functions (SRP)
-│   ├── document-export/
-│   ├── document-ocr/
-│   ├── entity-system/
-│   │   └── nexhelper-entity
-│   └── reminder-system/
-│       ├── nexhelper-reminder
-│       ├── nexhelper-set-reminder
-│       ├── nexhelper-reminder-auditor
-│       └── nexhelper-reminder-sync
+│   ├── common/                  ← nexhelper-workflow, policy, notify, report, retention, migrate
+│   ├── classifier/              ← nexhelper-classify (AI intent/entity, no regex)
+│   ├── document-handler/        ← nexhelper-doc, nexhelper-doc-core.sh
+│   ├── document-export/         ← DATEV CSV, email
+│   ├── document-ocr/            ← Tesseract OCR (image + PDF)
+│   ├── entity-system/           ← nexhelper-entity (budgets, spend tracking)
+│   └── reminder-system/         ← nexhelper-reminder, set-reminder, auditor, sync
 └── tests/regression/
-    ├── full_live_suite.sh           ← F01–F41 deterministic tests
-    └── gateway_session_suite.ps1    ← Live end-to-end with real LLM
+    ├── full_live_suite.sh        ← F01–F41 deterministic tests (no API key needed)
+    └── gateway_session_suite.ps1 ← Live end-to-end with real LLM
 ```
 
 ---
@@ -642,3 +542,4 @@ nexhelper-bot/
 | Native ops loops | zero LLM cost | `reminder-auditor` and `check-reminders` run as shell loops, not cron. |
 | CRLF on Windows | enforced | `.gitattributes` + container startup `tr -d '\r'` eliminates shebang corruption. |
 | Cloudflare tunnel CORS | pre-permitted | `*.trycloudflare.com` allowlisted in `openclaw.json`; exact URL injected at tunnel start. |
+| whisper-cli on Windows | path issue | Default `WHISPER_MODEL_DIR=/opt/whisper-models` requires sudo on Git Bash. Override: `WHISPER_MODEL_DIR=$HOME/whisper-models`. |

@@ -29,6 +29,7 @@ WHATSAPP_MODE=false
 ENABLE_WHATSAPP=false
 AUTO_START=true
 CLOUDFLARE_TUNNEL=false
+FORCE_OVERWRITE=false
 CONSENT_VERSION="1.0"
 ENTITIES="${ENTITIES:-default}"
 BUDGETS="${BUDGETS:-}"
@@ -101,11 +102,11 @@ if [ "$AI_PROVIDER" = "openrouter" ] && [ -z "$ENV_OPENROUTER_KEY" ]; then
   ENV_OPENROUTER_KEY="$AI_API_KEY"
 fi
 
-# Whisper uses a separate provider (Gemini has no /audio/transcriptions compat endpoint).
-# Defaults to OpenRouter; override with WHISPER_PROVIDER=openai or custom WHISPER_* vars.
-WHISPER_API_KEY="${WHISPER_API_KEY:-${OPENROUTER_API_KEY:-${AI_API_KEY:-}}}"
-WHISPER_BASE_URL="${WHISPER_BASE_URL:-https://openrouter.ai/api/v1}"
-WHISPER_MODEL="${WHISPER_MODEL:-openai/whisper-large-v3-turbo}"
+# whisper-cli (whisper.cpp) is used for local audio transcription.
+# For openai provider, auto-detection handles it; no model dir needed.
+# For all others, whisper-cli reads WHISPER_CPP_MODEL from the environment.
+WHISPER_MODEL_DIR="${WHISPER_MODEL_DIR:-/opt/whisper-models}"
+WHISPER_CPP_MODEL="${WHISPER_CPP_MODEL:-/models/ggml-large-v3-turbo.bin}"
 
 # ============================================
 # Parse Arguments
@@ -159,6 +160,10 @@ while [[ $# -gt 0 ]]; do
         --initial-admin)
             INITIAL_ADMIN_ID="$2"
             shift 2
+            ;;
+        --force)
+            FORCE_OVERWRITE=true
+            shift
             ;;
         -*)
             echo "❌ Unknown option: $1"
@@ -302,14 +307,18 @@ echo ""
 # ============================================
 if [ -d "$CUSTOMER_DIR" ]; then
     echo "⚠️  Customer directory already exists: $CUSTOMER_DIR"
-    read -p "Overwrite? (y/n) " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo "❌ Aborted"
-        exit 1
+    if [ "$FORCE_OVERWRITE" = "true" ]; then
+        echo "🔄 --force: overwriting files in-place (skipping rm -rf)..."
+    else
+        read -p "Overwrite? (y/n) " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            echo "❌ Aborted"
+            exit 1
+        fi
+        echo "🗑️  Removing existing directory..."
+        rm -rf "$CUSTOMER_DIR"
     fi
-    echo "🗑️  Removing existing directory..."
-    rm -rf "$CUSTOMER_DIR"
 fi
 
 # ============================================
@@ -577,20 +586,11 @@ cat <<EOF > "$CUSTOMER_DIR/config/openclaw.json"
     "media": {
       "audio": {
         "enabled": true,
-        // Transcription is done before the agent sees the message — no exec needed.
-        // Echo the transcript back so the user knows it was understood.
+        // Auto-detection picks up whisper-cli (+ WHISPER_CPP_MODEL) for local providers,
+        // or the OpenAI key (gpt-4o-mini-transcribe) when AI_PROVIDER=openai.
+        // No explicit models array — letting OpenClaw handle format conversion natively.
         "echoTranscript": true,
         "echoFormat": "📝 \"{transcript}\"",
-        "models": [
-          {
-            // Uses openai:whisper auth profile (baked into auth-profiles.json).
-            // For Gemini provider, this routes to OpenRouter's Whisper endpoint.
-            // For OpenRouter provider, it uses the same key as the main provider.
-            "provider": "openai",
-            "model": "$WHISPER_MODEL",
-            "baseUrl": "$WHISPER_BASE_URL",
-          },
-        ],
       },
     },
   },
@@ -598,8 +598,14 @@ cat <<EOF > "$CUSTOMER_DIR/config/openclaw.json"
 
   "commands": {
     "native": false,
-    "nativeSkills": true,
+    "nativeSkills": false,
+    "text": false,
     "restart": false,
+    "config": false,
+    "debug": false,
+    "mcp": false,
+    "plugins": false,
+    "bash": false,
   },
 
   "session": {
@@ -626,22 +632,33 @@ cat <<EOF > "$CUSTOMER_DIR/config/auth-profiles.json"
       "type": "api_key",
       "provider": "$OPENCLAW_PROVIDER",
       "key": "$AI_API_KEY"
-    },
-    "openai:whisper": {
-      "type": "api_key",
-      "provider": "openai",
-      "key": "$WHISPER_API_KEY"
     }
   },
   "lastGood": {
-    "$OPENCLAW_PROVIDER": "$OPENCLAW_PROVIDER:default",
-    "openai": "openai:whisper"
+    "$OPENCLAW_PROVIDER": "$OPENCLAW_PROVIDER:default"
   }
 }
 EOF
 
 # ============================================
-# 5. Generate docker-compose.yaml
+# 5. Ensure whisper-cli model is present (non-openai providers only)
+# ============================================
+if [ "$AI_PROVIDER" != "openai" ]; then
+  _WHISPER_MODEL_FILE="$WHISPER_MODEL_DIR/ggml-large-v3-turbo.bin"
+  if [ ! -f "$_WHISPER_MODEL_FILE" ]; then
+    echo "⬇️  Downloading whisper medium model to $WHISPER_MODEL_DIR (~1.5 GB)..."
+    mkdir -p "$WHISPER_MODEL_DIR"
+    curl -L --progress-bar \
+      -o "$_WHISPER_MODEL_FILE" \
+      "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin"
+    echo "✅ whisper model ready at $_WHISPER_MODEL_FILE"
+  else
+    echo "✅ whisper model already present at $_WHISPER_MODEL_FILE"
+  fi
+fi
+
+# ============================================
+# 6. Generate docker-compose.yaml
 # ============================================
 echo "🐳 Generating docker-compose.yaml..."
 
@@ -658,7 +675,7 @@ services:
         cp /app/config/openclaw.json /root/.openclaw/openclaw.json
         cp /app/config/auth-profiles.json /root/.openclaw/auth-profiles.json 2>/dev/null || true
         tmp_cfg=\$\$(mktemp)
-        jq 'if .tools and .tools.allow then .tools.allow |= map(select(. != "apply_patch" and . != "cron")) else . end' /root/.openclaw/openclaw.json > "\$\$tmp_cfg" 2>/dev/null && mv "\$\$tmp_cfg" /root/.openclaw/openclaw.json || rm -f "\$\$tmp_cfg"
+        jq 'if .tools and .tools.allow then .tools.allow |= map(select(. != "apply_patch" and . != "cron")) else . end | .commands.text = false | .commands.native = false | .commands.nativeSkills = false' /root/.openclaw/openclaw.json > "\$\$tmp_cfg" 2>/dev/null && mv "\$\$tmp_cfg" /root/.openclaw/openclaw.json || rm -f "\$\$tmp_cfg"
         mkdir -p /root/.openclaw/agents/main/agent
         cp /app/config/auth-profiles.json /root/.openclaw/agents/main/agent/auth-profiles.json 2>/dev/null || true
         rm -f /root/.openclaw/workspace/BOOTSTRAP.md
@@ -675,6 +692,9 @@ services:
         command -v nexhelper-doc >/dev/null 2>&1 || echo "⚠️ nexhelper-doc missing on PATH"
         nexhelper-set-reminder --help >/dev/null 2>&1 || echo "⚠️ nexhelper-set-reminder missing or not executable"
         [ -n "\${OPENAI_BASE_URL:-}" ] || echo "⚠️ OPENAI_BASE_URL is unset; LLM API calls may fail"
+        # Pre-create memory file so agent memory_get tool never returns ENOENT on first turn.
+        mkdir -p /root/.openclaw/workspace/memory
+        touch /root/.openclaw/workspace/MEMORY.md 2>/dev/null || true
         openclaw doctor --fix >/dev/null 2>&1 || true
         openclaw gateway run --port $PORT --bind lan &
         GW_PID=\$\$!
@@ -684,8 +704,17 @@ services:
         (while true; do sleep 60; nexhelper-reminder-auditor 2>/dev/null || true; nexhelper-reminder-sync 2>/dev/null || true; done) &
         (while true; do sleep 300; nexhelper-reminder due 2>/dev/null || true; done) &
         sleep 8
-        # Idempotent cron registration for low-frequency, LLM-appropriate jobs only.
-        # These are --no-deliver; scripts handle their own notification via nexhelper-notify.
+        # Auto-approve dashboard device pairing requests so any browser with the correct
+        # GATEWAY_TOKEN can connect immediately without a manual approval step.
+        # Security boundary is the token itself (48-char hex); device pairing adds no value
+        # in a single-operator setup where you already control who has the token.
+        (while true; do sleep 5; openclaw devices list --json 2>/dev/null \
+          | jq -r '.pending[]?.requestId' 2>/dev/null \
+          | while read -r _rid; do [ -n "\$\$_rid" ] && openclaw devices approve "\$\$_rid" 2>/dev/null || true; done; done) &
+        # Only retention-job runs as a scheduled cron — DSGVO compliance, 1 LLM turn/day.
+        # budget-check removed: no notification was ever sent (--no-deliver + no nexhelper-notify
+        # call in handler), yet it consumed 24 LLM turns/day. Budgets are now checked reactively
+        # inside nexhelper-doc whenever a document is stored and a budget entity is tagged.
         _nx_ensure_cron() {
           local _name="\$\$1"; shift
           openclaw cron list --json 2>/dev/null \
@@ -693,12 +722,11 @@ services:
             && return 0
           openclaw cron add --name "\$\$_name" "\$\$@" 2>/dev/null || true
         }
-        _nx_ensure_cron budget-check --cron "0 * * * *" \
-          --message "nexhelper:event:budget-check" --no-deliver --session isolated
         _nx_ensure_cron retention-job --cron "0 2 * * *" \
           --message "nexhelper:event:retention" --no-deliver --session isolated
-        # health-monitor removed: covered by startup smoke and /health endpoint
-        # daily-summary disabled by default: LLM cost without deterministic value
+        # health-monitor: covered by /health endpoint + startup smoke
+        # daily-summary: LLM cost without deterministic value
+        # budget-check: moved to reactive check in nexhelper-doc on document store
         wait \$\$GW_PID
     ports:
       - "$PORT:$PORT"
@@ -708,6 +736,7 @@ services:
       - ./storage:/root/.openclaw/workspace
       - ./logs:/app/logs
       - nexhelper-data-${SLUG}:/root/.openclaw
+      - ${WHISPER_MODEL_DIR}:/models:ro
     environment:
       - OPENAI_API_KEY=$AI_API_KEY
       - OPENAI_BASE_URL=$AI_BASE_URL
@@ -716,9 +745,7 @@ services:
       - AI_BASE_URL=$AI_BASE_URL
       - GEMINI_API_KEY=$ENV_GEMINI_KEY
       - OPENROUTER_API_KEY=$ENV_OPENROUTER_KEY
-      - WHISPER_API_KEY=$WHISPER_API_KEY
-      - WHISPER_BASE_URL=$WHISPER_BASE_URL
-      - WHISPER_MODEL=$WHISPER_MODEL
+      - WHISPER_CPP_MODEL=$WHISPER_CPP_MODEL
       - STORAGE_DIR=/root/.openclaw/workspace
       - EMBEDDING_MODEL=\${EMBEDDING_MODEL:-$EMBEDDING_MODEL}
       - DEFAULT_DELIVERY_TO=\${DEFAULT_DELIVERY_TO:-$DELIVERY_TO}
@@ -759,7 +786,7 @@ networks:
 EOF
 
 # ============================================
-# 6. Generate .env file
+# 7. Generate .env file
 # ============================================
 echo "🔐 Generating .env file..."
 cat <<EOF > "$CUSTOMER_DIR/.env"
@@ -774,9 +801,8 @@ OPENAI_BASE_URL=$AI_BASE_URL
 GEMINI_API_KEY=${GEMINI_API_KEY:-$ENV_GEMINI_KEY}
 OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-$ENV_OPENROUTER_KEY}
 GATEWAY_TOKEN=$GATEWAY_TOKEN
-WHISPER_API_KEY=$WHISPER_API_KEY
-WHISPER_BASE_URL=$WHISPER_BASE_URL
-WHISPER_MODEL=$WHISPER_MODEL
+WHISPER_MODEL_DIR=$WHISPER_MODEL_DIR
+WHISPER_CPP_MODEL=$WHISPER_CPP_MODEL
 EMBEDDING_MODEL=$EMBEDDING_MODEL
 DEFAULT_DELIVERY_TO=$DELIVERY_TO
 TELEGRAM_BOT_TOKEN=${TELEGRAM_TOKEN:-}
@@ -794,7 +820,7 @@ STORAGE_DIR=/root/.openclaw/workspace
 EOF
 
 # ============================================
-# 7. Generate Workspace Files
+# 8. Generate Workspace Files
 # ============================================
 echo "📝 Generating workspace files..."
 
@@ -854,7 +880,7 @@ Du hast folgende Skills verfügbar:
 | /export | Export starten |
 | /remind [text] | Erinnerung setzen |
 | /remind list | Erinnerungen anzeigen |
-| /status | Statistiken |
+| /stats | Statistiken |
 | /widerruf | Consent widerrufen |
 
 ---
@@ -1224,7 +1250,7 @@ Ablauf:
 ### 6. Statistiken & Übersicht
 
 ```
-User: "/status"
+User: "/stats"
 User: "Wie viele Rechnungen diesen Monat?"
 
 Bot: "📊 Statistiken - März 2026
@@ -1655,7 +1681,7 @@ NexHelper für $CUSTOMER_NAME
 EOF
 
 # ============================================
-# 8. Create Utility Scripts
+# 9. Create Utility Scripts
 # ============================================
 echo "🛠️  Creating utility scripts..."
 
@@ -2206,13 +2232,13 @@ Bei technischen Problemen wende dich an deinen Admin.
 UGEOF
 
 # ============================================
-# 9. Create Docker network if not exists
+# 10. Create Docker network if not exists
 # ============================================
 echo "🌐 Ensuring Docker network exists..."
 docker network create nexhelper-network 2>/dev/null || true
 
 # ============================================
-# 10. Check for nexhelper image
+# 11. Check for nexhelper image
 # ============================================
 if ! docker image inspect nexhelper:latest &> /dev/null; then
     echo ""
@@ -2227,7 +2253,7 @@ if ! docker image inspect nexhelper:latest &> /dev/null; then
 fi
 
 # ============================================
-# 11. Start the container (if auto-start)
+# 12. Start the container (if auto-start)
 # ============================================
 if [ "$AUTO_START" = true ]; then
     echo ""
@@ -2252,7 +2278,7 @@ else
 fi
 
 # ============================================
-# 12. Display Summary
+# 13. Display Summary
 # ============================================
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -2348,7 +2374,7 @@ fi
 echo ""
 
 # ============================================
-# 13. Launch Cloudflare tunnel (if requested)
+# 14. Launch Cloudflare tunnel (if requested)
 # ============================================
 if [ "$CLOUDFLARE_TUNNEL" = true ]; then
     if [ "$STARTED" = true ]; then

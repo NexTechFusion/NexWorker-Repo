@@ -8,6 +8,8 @@ param(
   [string]$OpenRouterBaseUrl,
   [string]$GeminiApiKey = $env:GEMINI_API_KEY,
   [string]$TelegramBotToken = $env:TELEGRAM_BOT_TOKEN,
+  # Optional: override the default notification delivery target (e.g. "whatsapp:+447575435104")
+  [string]$DeliveryTo   = $env:DEFAULT_DELIVERY_TO,
   [switch]$KeepCustomer
 )
 
@@ -29,7 +31,7 @@ $customerDir = Join-Path $baseDir $slug
 $customerName = "Gateway Session Suite"
 $customerId = "991"
 $instanceName = "nexhelper-gateway-session-suite"
-$defaultDeliveryTo = "telegram:579539601"
+$defaultDeliveryTo = if ($DeliveryTo) { $DeliveryTo } else { "telegram:579539601" }
 $bashPath = "C:\Program Files\Git\bin\bash.exe"
 
 if (-not (Test-Path $bashPath)) {
@@ -300,9 +302,10 @@ try {
     try {
       $listData = $listStr | ConvertFrom-Json
       $cronListed = @($listData.jobs | Where-Object { $_.id -eq $cronJobId }).Count -gt 0
-      # reminder-auditor and check-reminders now run as native shell background loops (zero LLM cost).
-      # Only budget-check and retention-job remain in the cron scheduler.
-      $expectedStartupJobs = @("budget-check", "retention-job")
+      # Only retention-job remains in the cron scheduler.
+      # budget-check removed: was consuming 24 LLM turns/day with no notification sent.
+      # Budget alerts are now triggered reactively in nexhelper-doc on document store.
+      $expectedStartupJobs = @("retention-job")
       $foundStartupJobs = @($listData.jobs | Where-Object { $_.name -in $expectedStartupJobs } | ForEach-Object { $_.name })
       $missingStartupJobs = @($expectedStartupJobs | Where-Object { $_ -notin $foundStartupJobs })
       if ($missingStartupJobs.Count -eq 0) {
@@ -766,20 +769,20 @@ try {
   $ErrorActionPreference = "Stop"
   try {
     $cronAllJson = $cronListAllText | ConvertFrom-Json -ErrorAction Stop
-    $requiredCronJobs = @("budget-check", "retention-job")
+    $requiredCronJobs = @("retention-job")
     $missingJobs = @($requiredCronJobs | Where-Object { $cronAllJson.jobs.name -notcontains $_ })
     if ($missingJobs.Count -eq 0) {
-      Add-Result "startup_cron_registered" "pass" "both low-frequency jobs registered"
+      Add-Result "startup_cron_registered" "pass" "retention-job registered"
     } else {
       Add-Result "startup_cron_registered" "fail" "missing: $($missingJobs -join ', ')"
     }
-    # Verify ops background-loop jobs are NOT in cron (they should run as native loops)
-    $opsLoopJobs = @("reminder-auditor", "check-reminders")
+    # Verify ops/budget jobs are NOT in cron (native loops or reactive)
+    $opsLoopJobs = @("reminder-auditor", "check-reminders", "budget-check")
     $unexpectedInCron = @($opsLoopJobs | Where-Object { $cronAllJson.jobs.name -contains $_ })
     if ($unexpectedInCron.Count -eq 0) {
-      Add-Result "ops_loops_not_in_cron" "pass" "reminder-auditor and check-reminders correctly absent from cron"
+      Add-Result "ops_loops_not_in_cron" "pass" "reminder-auditor, check-reminders and budget-check correctly absent from cron"
     } else {
-      Add-Result "ops_loops_not_in_cron" "fail" "ops jobs should not be in cron: $($unexpectedInCron -join ', ')"
+      Add-Result "ops_loops_not_in_cron" "fail" "these jobs should not be in cron: $($unexpectedInCron -join ', ')"
     }
   } catch {
     Add-Result "startup_cron_registered" "warn" "could not parse cron list"
