@@ -481,7 +481,7 @@ if [ "$WHATSAPP_MODE" = true ]; then
     enabled: true,
     dmPolicy: \"open\",
     allowFrom: [\"*\"],
-    groupPolicy: \"allowlist\",
+    groupPolicy: \"open\",
     groups: { \"*\": { requireMention: true } },
   },
 "
