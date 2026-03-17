@@ -119,12 +119,18 @@ Message: $text
 
 Return JSON object:
 {
-  "intent": "document_store|document_search|document_edit|document_delete|reminder_create|reminder_list|reminder_delete|export|email_send|consent|status|unknown",
+  "intent": "document_store|document_search|document_edit|document_delete|reminder_create|reminder_list|reminder_delete|export|email_send|consent|status|memory_set|memory_get|unknown",
   "confidence": 0.0,
   "action": "execute|confirm|clarify",
   "entity": "string-or-null",
-  "normalizedTime": "ISO-8601-or-null"
+  "normalizedTime": "ISO-8601-or-null",
+  "memoryKey": "string-or-null",
+  "memoryValue": "string-or-null"
 }
+
+Memory intents:
+- memory_set: User wants to store a fact ("Merke dir dass ich X mag", "Ich mag X")
+- memory_get: User asks about stored info ("Was weißt du über mich?", "Was habe ich dir erzählt?")
 EOF
 )"
   local response
@@ -138,7 +144,9 @@ EOF
     confidence:(.confidence // 0),
     action:(.action // "clarify"),
     entity:(.entity // null),
-    normalizedTime:(.normalizedTime // null)
+    normalizedTime:(.normalizedTime // null),
+    memoryKey:(.memoryKey // null),
+    memoryValue:(.memoryValue // null)
   }'
 }
 

@@ -17,6 +17,50 @@ NexHelper runs on top of OpenClaw and is optimized for chat-first operations (Te
 - Per-tenant storage, audit trails, consent management, and retention controls
 - Proactive notifications via `nexhelper-notify` (single / admin-only / broadcast)
 - Admin ops reports (JSON + HTML)
+- **User Memory**: Per-user session history & facts storage for context between chats
+
+---
+
+## User Memory
+
+NexHelper can remember user-specific information across sessions:
+
+### Storage
+
+```
+storage/users/{user_id}/session.json
+```
+
+Each user has a single JSON file containing:
+- `messages`: Last 50 chat messages
+- `facts`: Key-value pairs (preferences, info user shared)
+
+### Usage
+
+```bash
+# Store a fact (triggered by "Merke dir dass ich X mag")
+./skills/user-memory/nexhelper-user-memory set-fact --user "12345" --key "food" --value "Pizza"
+
+# Get context for LLM (facts + recent messages)
+./skills/user-memory/nexhelper-memory-workflow get-context --user "12345"
+# → {"facts":{"food":"Pizza"},"messages":[...]}
+
+# Search in user's chat history
+./skills/user-memory/nexhelper-user-memory search --user "12345" --query "rechnung"
+```
+
+### Integration
+
+1. **Classifier** detects `memory_set` intent when user says "Merke dir..."
+2. **Workflow** stores fact via `nexhelper-user-memory set-fact`
+3. **LLM Context** loads facts + recent messages via `get-context`
+
+### Intents
+
+| Intent | Trigger | Action |
+|--------|---------|--------|
+| `memory_set` | "Merke dir dass ich X mag" | Store fact |
+| `memory_get` | "Was weißt du über mich?" | Return facts |
 
 ---
 
@@ -69,6 +113,8 @@ nexhelper:event:health-check    →  health_monitor handler
 
 | Script | Purpose |
 |---|---|
+| `skills/user-memory/nexhelper-user-memory` | Per-user session & facts storage (memory between chats) |
+| `skills/user-memory/nexhelper-memory-workflow` | Memory integration workflow (context for LLM) |
 | `skills/document-handler/nexhelper-doc` | Document intake, dedup, CRUD, DATEV export |
 | `skills/document-handler/nexhelper-doc-core.sh` | Pure utility functions (normalize_float, build_fingerprint) — independently testable |
 | `skills/reminder-system/nexhelper-reminder` | Canonical reminder CRUD |
