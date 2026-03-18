@@ -28,7 +28,6 @@ TELEGRAM_TOKEN=""
 WHATSAPP_MODE=false
 ENABLE_WHATSAPP=false
 AUTO_START=true
-CLOUDFLARE_TUNNEL=false
 FORCE_OVERWRITE=false
 CONSENT_VERSION="1.0"
 ENTITIES="${ENTITIES:-default}"
@@ -133,10 +132,6 @@ while [[ $# -gt 0 ]]; do
             AUTO_START=false
             shift
             ;;
-        --cloudflare-tunnel)
-            CLOUDFLARE_TUNNEL=true
-            shift
-            ;;
         --consent-version)
             CONSENT_VERSION="$2"
             shift 2
@@ -192,8 +187,7 @@ if [ -z "$CUSTOMER_ID" ] || [ -z "$CUSTOMER_NAME" ]; then
     echo "  --api-key <key>       LLM API key (or set GEMINI_API_KEY / AI_API_KEY)"
     echo "  --model <model>       Default model (default depends on AI_PROVIDER)"
     echo "  --no-start            Don't auto-start container"
-  echo "  --cloudflare-tunnel   Launch Cloudflare Quick Tunnel after provisioning and print dashboard URL"
-    echo "  --consent-version <v> Consent text version (default: 1.0)"
+  echo "  --consent-version <v> Consent text version (default: 1.0)"
     echo "  --base-dir <path>     Base directory (default: /opt/nexhelper/customers)"
     echo "  --delivery-to <to>    Admin notification target used by scripts like nexhelper-notify (e.g. telegram:579539601)"
     echo ""
@@ -508,12 +502,9 @@ cat <<EOF > "$CUSTOMER_DIR/config/openclaw.json"
     "bind": "lan",
     "reload": { "mode": "hybrid" },
     "auth": { "token": "$GATEWAY_TOKEN" },
-    "cors": {
-      "origins": [
-        "https://*.trycloudflare.com",
-        "http://localhost:$PORT",
-      ],
-    },
+    "controlUi": {
+      "dangerouslyAllowHostHeaderOriginFallback": true
+    }
   },
 
   "agents": {
@@ -2018,138 +2009,6 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 SCRIPT
 chmod +x "$CUSTOMER_DIR/onboard.sh"
 
-# tunnel.sh — Cloudflare Quick Tunnel + dashboard URL + pairing watcher
-cat <<'TUNNELSCRIPT' > "$CUSTOMER_DIR/tunnel.sh"
-#!/bin/bash
-# NexHelper Cloudflare Quick Tunnel
-# Usage: ./tunnel.sh
-# Starts a free cloudflared tunnel, prints the full dashboard URL with token,
-# then watches for incoming device pairing requests.
-set -euo pipefail
-cd "$(dirname "$0")"
-
-# Load env
-source .env 2>/dev/null || true
-PORT="${PORT:-3000}"
-GATEWAY_TOKEN="${GATEWAY_TOKEN:-}"
-INSTANCE_NAME="$(grep 'container_name:' docker-compose.yaml 2>/dev/null | awk '{print $2}' | tr -d '\r')"
-INSTANCE_NAME="${INSTANCE_NAME:-nexhelper}"
-
-if ! command -v cloudflared >/dev/null 2>&1; then
-  echo ""
-  echo "❌  cloudflared not found. Install it first:"
-  echo ""
-  echo "   # Linux (amd64):"
-  echo "   curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \\"
-  echo "     -o /usr/local/bin/cloudflared && chmod +x /usr/local/bin/cloudflared"
-  echo ""
-  echo "   # macOS:"
-  echo "   brew install cloudflared"
-  echo ""
-  echo "   # Windows (scoop):"
-  echo "   scoop install cloudflared"
-  echo ""
-  exit 1
-fi
-
-if ! docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${INSTANCE_NAME}$"; then
-  echo "❌  Container '${INSTANCE_NAME}' is not running. Start it first:"
-  echo "   docker compose up -d"
-  exit 1
-fi
-
-TMP_LOG="$(mktemp /tmp/cf-tunnel-XXXX.log)"
-cleanup() { kill "$CF_PID" 2>/dev/null || true; rm -f "$TMP_LOG"; }
-trap cleanup EXIT INT TERM
-
-echo ""
-echo "🌐 Starting Cloudflare Quick Tunnel → http://localhost:${PORT}..."
-echo "   (this may take up to 30 seconds)"
-echo ""
-
-cloudflared tunnel --url "http://localhost:${PORT}" >"$TMP_LOG" 2>&1 &
-CF_PID=$!
-
-# Poll for the generated trycloudflare.com URL
-TUNNEL_URL=""
-for i in $(seq 1 40); do
-  TUNNEL_URL="$(grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' "$TMP_LOG" 2>/dev/null | head -1 || true)"
-  [ -n "$TUNNEL_URL" ] && break
-  sleep 1
-done
-
-if [ -z "$TUNNEL_URL" ]; then
-  echo "❌  Tunnel URL not detected within 40 s. cloudflared output:"
-  cat "$TMP_LOG"
-  exit 1
-fi
-
-# Inject the exact tunnel URL into openclaw's CORS allowlist so the dashboard
-# can connect via WebSocket without CORS errors.
-docker exec "$INSTANCE_NAME" bash -c "
-  CFG=/root/.openclaw/openclaw.json
-  if command -v jq >/dev/null 2>&1 && [ -f \"\$CFG\" ]; then
-    TMP=\$(mktemp)
-    jq --arg u '${TUNNEL_URL}' '
-      .gateway.cors.origins |= (. + [\$u] | unique)
-    ' \"\$CFG\" > \"\$TMP\" 2>/dev/null && mv \"\$TMP\" \"\$CFG\" || rm -f \"\$TMP\"
-  fi
-" 2>/dev/null || true
-
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "✅  OpenClaw Dashboard — ${INSTANCE_NAME}"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "   🔗 Base URL:    ${TUNNEL_URL}"
-echo "   🔑 Token:       ${GATEWAY_TOKEN}"
-echo ""
-echo "   📋 Open this in your browser:"
-echo "      ${TUNNEL_URL}/?token=${GATEWAY_TOKEN}"
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "📱 Watching for device & channel pairing requests (Ctrl+C to stop)..."
-echo ""
-
-# Watch for pending device pairing requests and auto-approve
-LAST_DEVICES=""
-LAST_CODES=""
-while kill -0 "$CF_PID" 2>/dev/null; do
-  # Watch for device pairing requests (dashboard access)
-  DEVICE_PENDING="$(docker exec "$INSTANCE_NAME" openclaw devices list --json 2>/dev/null \
-    | jq -r '.pending[]? | "\(.requestId)"' 2>/dev/null || true)"
-  if [ -n "$DEVICE_PENDING" ] && [ "$DEVICE_PENDING" != "$LAST_DEVICES" ]; then
-    LAST_DEVICES="$DEVICE_PENDING"
-    echo ""
-    echo "🖥️  New device pairing request(s):"
-    for req_id in $DEVICE_PENDING; do
-      echo "   Approve: docker exec -it ${INSTANCE_NAME} openclaw devices approve $req_id"
-    done
-    echo "   Auto-approving..."
-    for req_id in $DEVICE_PENDING; do
-      docker exec "$INSTANCE_NAME" openclaw devices approve "$req_id" 2>/dev/null || true
-    done
-    echo ""
-  fi
-  # Watch for channel pairing requests (WhatsApp/Telegram)
-  PENDING="$(docker exec "$INSTANCE_NAME" openclaw pairing list --json 2>/dev/null \
-    | jq -r '.[] | select(.status == "pending") | "\(.channel)|\(.code)"' 2>/dev/null || true)"
-  if [ -n "$PENDING" ] && [ "$PENDING" != "$LAST_CODES" ]; then
-    LAST_CODES="$PENDING"
-    echo ""
-    echo "🔔  New channel pairing request(s):"
-    while IFS='|' read -r ch code; do
-      echo "   Channel: $ch   Code: $code"
-      echo "   Approve: docker exec -it ${INSTANCE_NAME} openclaw pairing approve $ch $code"
-    done <<< "$PENDING"
-    echo ""
-  fi
-  sleep 5
-done
-
-echo ""
-echo "⚠️  Tunnel closed."
-TUNNELSCRIPT
-chmod +x "$CUSTOMER_DIR/tunnel.sh"
 
 # admin-quickstart.sh
 cat <<AQSCRIPT > "$CUSTOMER_DIR/admin-quickstart.sh"
@@ -2347,7 +2206,6 @@ echo "   Smoke:   $CUSTOMER_DIR/smoke.sh"
 echo "   Report:  $CUSTOMER_DIR/report.sh  (./report.sh html for browser view)"
 echo "   Consent: $CUSTOMER_DIR/consent.sh"
 echo "   Onboard: $CUSTOMER_DIR/onboard.sh"
-echo "   Tunnel:  $CUSTOMER_DIR/tunnel.sh  ← Cloudflare Quick Tunnel + dashboard URL"
 echo "   Admin:   $CUSTOMER_DIR/admin-quickstart.sh"
 echo "   Remove:  $CUSTOMER_DIR/remove.sh"
 echo ""
@@ -2355,7 +2213,6 @@ echo "🌐 Dashboard Reachability:"
 echo "   Local health:   curl -f http://localhost:$PORT/health"
 echo "   Port mapping:   docker port $INSTANCE_NAME"
 echo "   LAN test:       curl -f http://<HOST_IP>:$PORT/health"
-echo "   Cloudflare:     $CUSTOMER_DIR/tunnel.sh"
 echo "   Gateway token:  ${GATEWAY_TOKEN:0:12}...  (full: .env → GATEWAY_TOKEN)"
 echo ""
 
@@ -2385,15 +2242,3 @@ fi
 echo ""
 
 # ============================================
-# 14. Launch Cloudflare tunnel (if requested)
-# ============================================
-if [ "$CLOUDFLARE_TUNNEL" = true ]; then
-    if [ "$STARTED" = true ]; then
-        echo "🌐 Launching Cloudflare Quick Tunnel..."
-        echo ""
-        exec "$CUSTOMER_DIR/tunnel.sh"
-    else
-        echo "⚠️  --cloudflare-tunnel requested but container is not running."
-        echo "   Start it first, then run: $CUSTOMER_DIR/tunnel.sh"
-    fi
-fi

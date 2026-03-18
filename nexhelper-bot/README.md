@@ -114,7 +114,6 @@ Options:
   --api-key <key>          LLM API key (or set GEMINI_API_KEY / AI_API_KEY env var)
   --model <model>          Override default model
   --no-start               Generate files only; do not start the container
-  --cloudflare-tunnel      Launch Cloudflare Quick Tunnel after provisioning
   --base-dir <path>        Customer directory base (default: /opt/nexhelper/customers)
   --consent-version <v>    Consent text version (default: 1.0)
   --force                  Overwrite existing customer directory in-place
@@ -216,7 +215,6 @@ customers/<slug>/
 ├── retention.sh
 ├── consent.sh
 ├── onboard.sh                ← Founder handover guide
-├── tunnel.sh                 ← Cloudflare Quick Tunnel + dashboard URL + pairing watcher
 ├── admin-quickstart.sh       ← Admin verification after pairing
 └── remove.sh                 ← Export-first offboarding
 ```
@@ -307,39 +305,6 @@ nexhelper:event:health-check    →  health_monitor handler
 ./manage.sh summary                     # Aggregate health (JSON)
 ./manage.sh start nexhelper-acme-001    # Start container
 ./manage.sh stop  nexhelper-acme-001    # Stop container
-```
-
----
-
-## Cloudflare Quick Tunnel
-
-Expose the OpenClaw dashboard securely over the internet without opening firewall ports:
-
-```bash
-cd customers/<slug>
-./tunnel.sh
-```
-
-`tunnel.sh` will:
-
-1. Start `cloudflared tunnel --url http://localhost:<PORT>`
-2. Wait up to 40 s for the `trycloudflare.com` URL to appear
-3. Inject the URL into the container's `openclaw.json` CORS allowlist at runtime
-4. Print the full dashboard URL including the auth token:
-
-```text
-📋 Open this in your browser:
-   https://xyz.trycloudflare.com/?token=b4dc3a8274fe...
-```
-
-5. Watch every 5 s for pending device pairing requests and print the approve command
-
-> **Requires:** `cloudflared` CLI installed on the host. Install instructions are shown if missing.
-
-The dashboard token (`GATEWAY_TOKEN`) is a 48-char hex value generated at provisioning time, stored in `.env` and baked into `config/openclaw.json`.
-
-```bash
-grep GATEWAY_TOKEN customers/<slug>/.env
 ```
 
 ---
@@ -627,7 +592,6 @@ docker compose up -d
 | Auditor cursor | durable since v4 | Previously `/tmp/` (lost on restart); now `storage/ops/auditor-cursor`. |
 | Native ops loops | zero LLM cost | `reminder-auditor` and `check-reminders` run as shell loops, not cron. |
 | CRLF on Windows | enforced | `.gitattributes` + container startup `tr -d '\r'` eliminates shebang corruption. |
-| Cloudflare tunnel CORS | pre-permitted | `*.trycloudflare.com` allowlisted in `openclaw.json`; exact URL injected at tunnel start. |
 | whisper-cli on Windows | path issue | Default `WHISPER_MODEL_DIR=/opt/whisper-models` requires sudo on Git Bash. Override: `WHISPER_MODEL_DIR=$HOME/whisper-models`. |
 | OpenClaw CLI WebSocket | varies by host | `openclaw cron add/list` may time out on some deployments (WS handshake failure on `127.0.0.1:3434`). `nexhelper-set-reminder` tries CLI first, falls back to direct `jobs.json` write. Check `createdVia` in output: `cli` = healthy, `file` = fallback active. |
 | `/status` command leak | fixed | OpenClaw's built-in `/status` inline shortcut exposed internals to users. Fix: `commands.text = false` in `openclaw.json` + runtime `jq` patch in entrypoint. User-facing stats command renamed to `/stats`. |
