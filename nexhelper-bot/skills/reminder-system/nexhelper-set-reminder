@@ -62,6 +62,16 @@ if [[ ! "$ABSOLUTE_TIME" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T ]]; then
   exit 1
 fi
 
+# Auto-detect channel from user ID when set to "last" (isolated cron sessions
+# have no prior channel context, causing "Channel is required" errors).
+if [ "$CHANNEL" = "last" ]; then
+  if [[ "$USER_ID" == +* ]]; then
+    CHANNEL="whatsapp"
+  elif [[ "$USER_ID" =~ ^[0-9]+$ ]]; then
+    CHANNEL="telegram"
+  fi
+fi
+
 JOB_NAME="reminder-$(date +%s)-$$"
 MESSAGE_TEXT="⏰ ERINNERUNG: $TEXT"
 CREATED_VIA=""

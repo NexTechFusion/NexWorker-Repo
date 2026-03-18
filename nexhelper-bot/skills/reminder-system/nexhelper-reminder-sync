@@ -44,6 +44,15 @@ for f in $(nx_list_reminder_files); do
   channel="$(echo "$rem" | jq -r '.channel // "last"')"
   rem_id="$(echo "$rem" | jq -r '.id')"
 
+  # Resolve "last" → concrete channel (isolated cron has no channel context)
+  if [ "$channel" = "last" ]; then
+    if [[ "$user_id" == +* ]]; then
+      channel="whatsapp"
+    elif [[ "$user_id" =~ ^[0-9]+$ ]]; then
+      channel="telegram"
+    fi
+  fi
+
   if ! nx_is_iso_timestamp "$datetime"; then
     errors=$((errors + 1))
     continue
