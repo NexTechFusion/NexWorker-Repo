@@ -107,3 +107,14 @@ Expected output:
 
 ## Date
 March 16, 2026 — Resolved for NexHelper AL TG Bot (+447575435104)
+
+
+# Step 1: Logout from WhatsApp
+docker exec nexhelper-albert-group openclaw channels logout --channel whatsapp
+
+# Step 2: Delete all credential files
+docker exec nexhelper-albert-group sh -c "rm -rf /root/.openclaw/credentials/whatsapp/*"
+
+# Step 3: Generate fresh QR
+docker exec -it nexhelper-albert-group openclaw channels login --channel whatsapp
+

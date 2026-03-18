@@ -13,6 +13,9 @@ errors=0
 
 cron_jobs="$(openclaw cron list --json 2>/dev/null || echo '{"jobs":[]}')"
 cron_messages="$(echo "$cron_jobs" | jq -r '[.jobs[].payload.message // empty] | join("\n")')"
+cron_names="$(echo "$cron_jobs" | jq -r '[.jobs[].name // empty] | join("\n")')"
+
+now="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
 for f in $(nx_list_reminder_files); do
   rem="$(cat "$f")"
@@ -22,16 +25,27 @@ for f in $(nx_list_reminder_files); do
   text="$(echo "$rem" | jq -r '.text')"
   datetime="$(echo "$rem" | jq -r '.datetime')"
   user_id="$(echo "$rem" | jq -r '.userId')"
+  channel="$(echo "$rem" | jq -r '.channel // "last"')"
   rem_id="$(echo "$rem" | jq -r '.id')"
 
-  # Validate datetime is an ISO timestamp before syncing to cron
   if ! nx_is_iso_timestamp "$datetime"; then
     errors=$((errors + 1))
     continue
   fi
 
+  # Skip reminders whose time has already passed (avoids stale syncs)
+  if [ "$datetime" \< "$now" ]; then
+    skipped=$((skipped + 1))
+    continue
+  fi
+
+  # Dedup: check both message content and job name patterns
   marker="ERINNERUNG: $text"
   if echo "$cron_messages" | grep -qF "$marker"; then
+    skipped=$((skipped + 1))
+    continue
+  fi
+  if echo "$cron_names" | grep -qF "$rem_id"; then
     skipped=$((skipped + 1))
     continue
   fi
@@ -39,9 +53,12 @@ for f in $(nx_list_reminder_files); do
   cron_result="$(openclaw cron add \
     --name "sync-$rem_id" \
     --at "$datetime" \
+    --session isolated \
     --message "⏰ ERINNERUNG: $text" \
-    --to "$user_id" \
     --announce \
+    --channel "$channel" \
+    --to "$user_id" \
+    --delete-after-run \
     --json 2>/dev/null || echo "{}")"
 
   cron_id="$(echo "$cron_result" | jq -r '.id // empty' 2>/dev/null || echo "")"
