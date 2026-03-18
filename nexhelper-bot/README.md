@@ -534,14 +534,19 @@ nexhelper-bot/
 
 When you change skills, configs, or the provision template and need to push those changes to an already-running customer container.
 
-### Skills only (most common)
+### Skills updated (IMPORTANT: requires down/up, not just restart)
 
-Skills are mounted as a read-only volume from the host. Restart the container to pick up changes:
+Skills are mounted read-only at `/app/skills/`, but the container's entrypoint **copies** them to `/usr/local/nexhelper-skills/` at startup. This means:
+
+- `docker compose restart` → **NOT sufficient** (uses old copied version)
+- `docker compose down && docker compose up -d` → **Required** for skills changes
 
 ```bash
-cd customers/<slug>
-docker compose restart
+cd /opt/nexhelper/customers/<slug>
+docker compose down && docker compose up -d
 ```
+
+> **Why?** The entrypoint runs `cp -r /app/skills /usr/local/nexhelper-skills` once at container start. A restart doesn't re-trigger the copy.
 
 ### Config changes (openclaw.json, auth-profiles.json)
 
@@ -581,13 +586,19 @@ If you develop locally and deploy to a VPS:
 # 1. Push changes to git
 git add -A && git commit -m "fix: ..." && git push
 
-# 2. On the VPS: pull and restart
+# 2. On the VPS: pull and update
 cd /path/to/NexWorker-Repo/nexhelper-bot
 git pull
 cd customers/<slug>
-docker compose restart          # skills/config only
-# OR
-docker compose down && docker compose up -d   # if docker-compose.yaml/.env changed
+
+# For skills changes (reminder-system, document-handler, etc.):
+docker compose down && docker compose up -d
+
+# For config-only changes (openclaw.json, auth-profiles.json):
+docker compose restart
+
+# For docker-compose.yaml or .env changes:
+docker compose down && docker compose up -d
 ```
 
 ### Clearing stale OpenClaw state
@@ -620,3 +631,4 @@ docker compose up -d
 | whisper-cli on Windows | path issue | Default `WHISPER_MODEL_DIR=/opt/whisper-models` requires sudo on Git Bash. Override: `WHISPER_MODEL_DIR=$HOME/whisper-models`. |
 | OpenClaw CLI WebSocket | varies by host | `openclaw cron add/list` may time out on some deployments (WS handshake failure on `127.0.0.1:3434`). `nexhelper-set-reminder` tries CLI first, falls back to direct `jobs.json` write. Check `createdVia` in output: `cli` = healthy, `file` = fallback active. |
 | `/status` command leak | fixed | OpenClaw's built-in `/status` inline shortcut exposed internals to users. Fix: `commands.text = false` in `openclaw.json` + runtime `jq` patch in entrypoint. User-facing stats command renamed to `/stats`. |
+| Multi-channel reminders | fixed | When both Telegram and WhatsApp are configured, `--channel` must be explicit. `nexhelper-set-reminder` auto-detects from user ID format (`+` prefix → WhatsApp, numeric → Telegram). |
