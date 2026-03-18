@@ -77,8 +77,8 @@ MESSAGE_TEXT="⏰ ERINNERUNG: $TEXT"
 CREATED_VIA=""
 JOB_ID=""
 
-# --- Path 1: CLI (preferred — registers in Gateway memory) ---
-CRON_RESULT="$(timeout 10 openclaw cron add \
+# --- Path 1: CLI via nexhelper-cron wrapper (routes through Docker bridge) ---
+CRON_RESULT="$(timeout 10 nexhelper-cron add \
   --name "$JOB_NAME" \
   --at "$ABSOLUTE_TIME" \
   --session isolated \

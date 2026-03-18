@@ -12,7 +12,7 @@ skipped=0
 errors=0
 
 # Try CLI list with a timeout to detect WebSocket issues early.
-cron_jobs="$(timeout 8 openclaw cron list --json 2>/dev/null || echo "")"
+cron_jobs="$(timeout 8 nexhelper-cron list --json 2>/dev/null || echo "")"
 CLI_WORKS=true
 if [ -z "$cron_jobs" ] || ! echo "$cron_jobs" | jq -e '.jobs' >/dev/null 2>&1; then
   CLI_WORKS=false
@@ -85,7 +85,7 @@ for f in $(nx_list_reminder_files); do
     continue
   fi
 
-  cron_result="$(timeout 10 openclaw cron add \
+  cron_result="$(timeout 10 nexhelper-cron add \
     --name "sync-$rem_id" \
     --at "$datetime" \
     --session isolated \
