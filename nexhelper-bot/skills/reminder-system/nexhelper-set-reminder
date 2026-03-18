@@ -113,10 +113,12 @@ else
     '{
       id: $id,
       name: $name,
+      enabled: true,
       createdAtMs: $createdAtMs,
       updatedAtMs: $updatedAtMs,
       schedule: { kind: "at", at: $atTime },
       sessionTarget: "isolated",
+      wakeMode: "now",
       deleteAfterRun: true,
       payload: { kind: "agentTurn", message: $message, lightContext: true },
       delivery: { mode: "announce", channel: $channel, to: $toUser, bestEffort: true }
