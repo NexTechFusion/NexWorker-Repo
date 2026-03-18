@@ -11,9 +11,25 @@ synced=0
 skipped=0
 errors=0
 
-cron_jobs="$(openclaw cron list --json 2>/dev/null || echo '{"jobs":[]}')"
+# Try CLI list with a timeout to detect WebSocket issues early.
+cron_jobs="$(timeout 8 openclaw cron list --json 2>/dev/null || echo "")"
+CLI_WORKS=true
+if [ -z "$cron_jobs" ] || ! echo "$cron_jobs" | jq -e '.jobs' >/dev/null 2>&1; then
+  CLI_WORKS=false
+  cron_jobs='{"jobs":[]}'
+fi
+
 cron_messages="$(echo "$cron_jobs" | jq -r '[.jobs[].payload.message // empty] | join("\n")')"
 cron_names="$(echo "$cron_jobs" | jq -r '[.jobs[].name // empty] | join("\n")')"
+
+# Also check jobs.json directly for file-based fallback entries
+JOBS_FILE="$HOME/.openclaw/cron/jobs.json"
+file_messages=""
+file_names=""
+if [ -f "$JOBS_FILE" ]; then
+  file_messages="$(jq -r '[.jobs[]?.payload.message // empty] | join("\n")' "$JOBS_FILE" 2>/dev/null || echo "")"
+  file_names="$(jq -r '[.jobs[]?.name // empty] | join("\n")' "$JOBS_FILE" 2>/dev/null || echo "")"
+fi
 
 now="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
@@ -33,24 +49,34 @@ for f in $(nx_list_reminder_files); do
     continue
   fi
 
-  # Skip reminders whose time has already passed (avoids stale syncs)
   if [ "$datetime" \< "$now" ]; then
     skipped=$((skipped + 1))
     continue
   fi
 
-  # Dedup: check both message content and job name patterns
+  # Dedup against both CLI-listed jobs and direct file entries
   marker="ERINNERUNG: $text"
-  if echo "$cron_messages" | grep -qF "$marker"; then
-    skipped=$((skipped + 1))
-    continue
+  if echo "$cron_messages" | grep -qF "$marker" 2>/dev/null; then
+    skipped=$((skipped + 1)); continue
   fi
-  if echo "$cron_names" | grep -qF "$rem_id"; then
+  if echo "$file_messages" | grep -qF "$marker" 2>/dev/null; then
+    skipped=$((skipped + 1)); continue
+  fi
+  if echo "$cron_names" | grep -qF "$rem_id" 2>/dev/null; then
+    skipped=$((skipped + 1)); continue
+  fi
+  if echo "$file_names" | grep -qF "$rem_id" 2>/dev/null; then
+    skipped=$((skipped + 1)); continue
+  fi
+
+  # If CLI doesn't work, don't try to add via CLI — the set-reminder
+  # fallback already wrote to jobs.json. Just skip.
+  if [ "$CLI_WORKS" = false ]; then
     skipped=$((skipped + 1))
     continue
   fi
 
-  cron_result="$(openclaw cron add \
+  cron_result="$(timeout 10 openclaw cron add \
     --name "sync-$rem_id" \
     --at "$datetime" \
     --session isolated \
@@ -73,4 +99,5 @@ jq -c -n \
   --argjson synced "$synced" \
   --argjson skipped "$skipped" \
   --argjson errors "$errors" \
-  '{status:"ok", synced:$synced, skipped:$skipped, errors:$errors}'
+  --argjson cliAvailable "$( [ "$CLI_WORKS" = true ] && echo true || echo false)" \
+  '{status:"ok", synced:$synced, skipped:$skipped, errors:$errors, cliAvailable:$cliAvailable}'

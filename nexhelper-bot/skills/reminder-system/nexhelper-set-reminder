@@ -1,8 +1,10 @@
 #!/bin/bash
-# nexhelper-set-reminder - Schedule a reminder via OpenClaw cron CLI
+# nexhelper-set-reminder - Schedule a reminder via OpenClaw cron
 #
-# Creates a one-shot cron job with announce delivery (no LLM turn)
-# and a canonical reminder record for listing/auditing.
+# Strategy: try CLI first (registers in Gateway memory, clean dedup).
+# If CLI fails (WebSocket timeout on some deployments), fall back to
+# direct jobs.json write. Canonical reminder is always created for
+# listing/auditing regardless of which path succeeds.
 
 set -euo pipefail
 
@@ -62,10 +64,11 @@ fi
 
 JOB_NAME="reminder-$(date +%s)-$$"
 MESSAGE_TEXT="⏰ ERINNERUNG: $TEXT"
+CREATED_VIA=""
+JOB_ID=""
 
-# Create cron job via CLI so the Gateway picks it up immediately in-memory.
-# Uses --announce for direct delivery (no LLM agent turn, zero token cost).
-CRON_RESULT="$(openclaw cron add \
+# --- Path 1: CLI (preferred — registers in Gateway memory) ---
+CRON_RESULT="$(timeout 10 openclaw cron add \
   --name "$JOB_NAME" \
   --at "$ABSOLUTE_TIME" \
   --session isolated \
@@ -78,6 +81,49 @@ CRON_RESULT="$(openclaw cron add \
 
 JOB_ID="$(echo "$CRON_RESULT" | jq -r '.id // .jobId // empty' 2>/dev/null || echo "")"
 
+if [ -n "$JOB_ID" ]; then
+  CREATED_VIA="cli"
+else
+  # --- Path 2: Direct jobs.json write (fallback for WebSocket timeout) ---
+  JOBS_FILE="$HOME/.openclaw/cron/jobs.json"
+  mkdir -p "$(dirname "$JOBS_FILE")" 2>/dev/null || true
+
+  JOB_ID="$(cat /proc/sys/kernel/random/uuid 2>/dev/null || uuidgen 2>/dev/null | tr '[:upper:]' '[:lower:]' || echo "job-$(date +%s)-$$")"
+  NOW_MS="$(($(date +%s) * 1000))"
+
+  NEW_JOB="$(jq -c -n \
+    --arg id "$JOB_ID" \
+    --arg name "$JOB_NAME" \
+    --argjson createdAtMs "$NOW_MS" \
+    --argjson updatedAtMs "$NOW_MS" \
+    --arg atTime "$ABSOLUTE_TIME" \
+    --arg message "$MESSAGE_TEXT" \
+    --arg channel "$CHANNEL" \
+    --arg toUser "$USER_ID" \
+    '{
+      id: $id,
+      name: $name,
+      createdAtMs: $createdAtMs,
+      updatedAtMs: $updatedAtMs,
+      schedule: { kind: "at", at: $atTime },
+      sessionTarget: "isolated",
+      deleteAfterRun: true,
+      payload: { kind: "agentTurn", message: $message, lightContext: true },
+      delivery: { mode: "announce", channel: $channel, to: $toUser, bestEffort: true }
+    }')"
+
+  if [ -f "$JOBS_FILE" ]; then
+    EXISTING="$(cat "$JOBS_FILE" 2>/dev/null || echo '{"version":1,"jobs":[]}')"
+  else
+    EXISTING='{"version":1,"jobs":[]}'
+  fi
+  echo "$EXISTING" | jq --argjson j "$NEW_JOB" '.jobs += [$j]' > "$JOBS_FILE"
+
+  CREATED_VIA="file"
+fi
+
+# Always create canonical reminder for listing/auditing.
+# Tag with cronJobName so nexhelper-reminder-sync can skip it.
 CANONICAL_ID=""
 if command -v nexhelper-reminder >/dev/null 2>&1; then
   CANONICAL_RESULT="$(nexhelper-reminder create --user "$USER_ID" --text "$TEXT" --datetime "$TIME_ARG" --channel "$CHANNEL" 2>/dev/null || echo "{}")"
@@ -89,9 +135,10 @@ jq -c -n \
   --arg jobId "$JOB_ID" \
   --arg jobName "$JOB_NAME" \
   --arg canonicalId "$CANONICAL_ID" \
+  --arg createdVia "$CREATED_VIA" \
   --arg text "$TEXT" \
   --arg time "$ABSOLUTE_TIME" \
   --arg originalTime "$TIME_ARG" \
   --arg user "$USER_ID" \
   --arg channel "$CHANNEL" \
-  '{status:$status, jobId:$jobId, jobName:$jobName, canonicalId:$canonicalId, text:$text, time:$time, originalTime:$originalTime, user:$user, channel:$channel}'
+  '{status:$status, jobId:$jobId, jobName:$jobName, canonicalId:$canonicalId, createdVia:$createdVia, text:$text, time:$time, originalTime:$originalTime, user:$user, channel:$channel}'

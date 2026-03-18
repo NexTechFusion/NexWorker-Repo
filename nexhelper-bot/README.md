@@ -530,6 +530,81 @@ nexhelper-bot/
 
 ---
 
+## Updating a Running Instance
+
+When you change skills, configs, or the provision template and need to push those changes to an already-running customer container.
+
+### Skills only (most common)
+
+Skills are mounted as a read-only volume from the host. Restart the container to pick up changes:
+
+```bash
+cd customers/<slug>
+docker compose restart
+```
+
+### Config changes (openclaw.json, auth-profiles.json)
+
+Config files are also mounted from `config/`. A restart is sufficient:
+
+```bash
+cd customers/<slug>
+docker compose restart
+```
+
+The docker-compose entrypoint applies a runtime `jq` patch on every start (tool allowlist cleanup, `commands.text = false`, etc.), so config-level fixes take effect automatically.
+
+### Full reprovision (docker-compose.yaml or .env changed)
+
+When you change environment variables, port mappings, volume mounts, or the entrypoint script itself, you need a full down/up cycle:
+
+```bash
+cd customers/<slug>
+docker compose down && docker compose up -d
+```
+
+### Updating the OpenClaw base image
+
+Rebuild the image and recreate:
+
+```bash
+docker build --no-cache -t nexhelper:latest nexhelper-bot/
+cd customers/<slug>
+docker compose down && docker compose up -d
+```
+
+### Pushing to a remote VPS
+
+If you develop locally and deploy to a VPS:
+
+```bash
+# 1. Push changes to git
+git add -A && git commit -m "fix: ..." && git push
+
+# 2. On the VPS: pull and restart
+cd /path/to/NexWorker-Repo/nexhelper-bot
+git pull
+cd customers/<slug>
+docker compose restart          # skills/config only
+# OR
+docker compose down && docker compose up -d   # if docker-compose.yaml/.env changed
+```
+
+### Clearing stale OpenClaw state
+
+If the Gateway cached bad config in its Docker volume (e.g. old `commands` settings), remove the volume and recreate:
+
+```bash
+cd customers/<slug>
+docker compose down
+docker volume rm <slug>_nexhelper-data-<slug>   # check name with: docker volume ls --filter name=<slug>
+docker compose up -d
+```
+
+> **Warning:** This wipes OpenClaw's internal state (session history, cron jobs, device pairings). Customer data in `storage/` is safe — it's a bind mount, not a Docker volume.
+
+---
+
 ## Known Edges
 
 | Area | Status | Notes |
@@ -543,3 +618,5 @@ nexhelper-bot/
 | CRLF on Windows | enforced | `.gitattributes` + container startup `tr -d '\r'` eliminates shebang corruption. |
 | Cloudflare tunnel CORS | pre-permitted | `*.trycloudflare.com` allowlisted in `openclaw.json`; exact URL injected at tunnel start. |
 | whisper-cli on Windows | path issue | Default `WHISPER_MODEL_DIR=/opt/whisper-models` requires sudo on Git Bash. Override: `WHISPER_MODEL_DIR=$HOME/whisper-models`. |
+| OpenClaw CLI WebSocket | varies by host | `openclaw cron add/list` may time out on some deployments (WS handshake failure on `127.0.0.1:3434`). `nexhelper-set-reminder` tries CLI first, falls back to direct `jobs.json` write. Check `createdVia` in output: `cli` = healthy, `file` = fallback active. |
+| `/status` command leak | fixed | OpenClaw's built-in `/status` inline shortcut exposed internals to users. Fix: `commands.text = false` in `openclaw.json` + runtime `jq` patch in entrypoint. User-facing stats command renamed to `/stats`. |
