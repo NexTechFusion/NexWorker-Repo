@@ -65,9 +65,20 @@ Reminders are stored in two places:
 
 | Command | Description |
 |---------|-------------|
-| `nexhelper-set-reminder --text "..." --time "..." --user ID` | Create reminder |
+| `nexhelper-set-reminder --text "..." --time "..." --user ID [--channel CH]` | Create reminder |
 | `nexhelper-reminder list --user ID` | List all reminders |
 | `nexhelper-reminder delete --id ID` | Delete reminder |
+
+### Channel Auto-Detection
+
+When `--channel` is not specified, the system auto-detects from `--user` ID format:
+- User ID starts with `+` (e.g., `+491606301723`) → **WhatsApp**
+- User ID is all digits (e.g., `579539601`) → **Telegram**
+
+For explicit channel selection:
+```bash
+nexhelper-set-reminder --text "Meeting" --time "14:00" --user "+491606301723" --channel whatsapp
+```
 
 ## Natural Language Time Parsing
 

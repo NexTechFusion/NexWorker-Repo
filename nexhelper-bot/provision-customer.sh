@@ -1106,7 +1106,7 @@ Ablauf:
 2. Berechne ISO-Timestamp oder Dauer (z.B. 5m, 1h, 2d)
 3. **Rufe das exec tool auf** mit diesem Befehl:
 
-`nexhelper-set-reminder --text 'ERINNERUNGSTEXT' --time 'ISO_ODER_DAUER' --user SENDER_ID`
+`nexhelper-set-reminder --text 'ERINNERUNGSTEXT' --time 'ISO_ODER_DAUER' --user SENDER_ID --channel KANAL`
 
 | Nutzer sagt | --time Wert |
 |-------------|-------------|
@@ -1115,13 +1115,28 @@ Ablauf:
 | "morgen um 14 Uhr" | 2026-03-14T14:00:00 |
 | "Freitag" | ISO des nächsten Freitags |
 
-**KONKRETES BEISPIEL:**
+| Nachricht kam via | --channel Wert |
+|-------------------|----------------|
+| WhatsApp | whatsapp |
+| Telegram | telegram |
 
-Nutzer sagt: "Erinnere mich in 5 Minuten an Test"
+**WICHTIG:** Immer `--channel` angeben! Wenn du die Nachricht auf WhatsApp erhalten hast, nutze `--channel whatsapp`.
+
+**KONKRETES BEISPIELE:**
+
+**WhatsApp (User-ID startet mit +):**
+Nutzer sagt auf WhatsApp: "Erinnere mich in 5 Minuten an Test"
+Sender-ID: +491606301723
+
+Du rufst das exec tool auf mit command:
+`nexhelper-set-reminder --text 'Test' --time '5m' --user '+491606301723' --channel whatsapp`
+
+**Telegram (User-ID ist numerisch):**
+Nutzer sagt auf Telegram: "Erinnere mich in 5 Minuten an Test"
 Sender-ID: 579539601
 
 Du rufst das exec tool auf mit command:
-`nexhelper-set-reminder --text 'Test' --time '5m' --user 579539601`
+`nexhelper-set-reminder --text 'Test' --time '5m' --user 579539601 --channel telegram`
 
 WICHTIG: Du musst das exec TOOL aufrufen, NICHT einen Code-Block schreiben.
 NICHT ` ``` ` verwenden. Das exec Tool direkt als Tool-Call aufrufen.
