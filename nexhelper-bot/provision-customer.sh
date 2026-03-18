@@ -500,11 +500,11 @@ cat <<EOF > "$CUSTOMER_DIR/config/openclaw.json"
     "port": $PORT,
     "mode": "local",
     "bind": "lan",
-    "reload": { "mode": "hybrid" },
-    "auth": { "token": "$GATEWAY_TOKEN" },
     "controlUi": {
-      "dangerouslyAllowHostHeaderOriginFallback": true
-    }
+      "enabled": false
+    },
+    "reload": { "mode": "hybrid" },
+    "auth": { "token": "$GATEWAY_TOKEN" }
   },
 
   "agents": {
