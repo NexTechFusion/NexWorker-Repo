@@ -1,6 +1,6 @@
 #!/bin/bash
 # NexHelper Cron Wrapper - Routes cron commands via external gateway
-# 
+#
 # OpenClaw CLI inside container cannot connect to its own gateway (handshake timeout bug).
 # This wrapper routes cron commands through the Docker bridge gateway instead.
 #
@@ -11,9 +11,24 @@
 
 set -e
 
+# Dynamically detect Docker bridge gateway IP
+# The default gateway is usually at x.x.x.1 in the Docker subnet
+detect_docker_gateway() {
+  local port="${NEXHELPER_PORT:-3434}"
+  # Try to detect gateway from routing table
+  local gateway_ip
+  gateway_ip=$(ip route | grep default | awk '{print $3}' 2>/dev/null | head -1)
+  # Fallback: try common Docker bridge gateway patterns
+  if [ -z "$gateway_ip" ]; then
+    gateway_ip="10.0.0.1"
+  fi
+  echo "$gateway_ip"
+}
+
 # Gateway connection via Docker bridge (external path)
 # The container's gateway is exposed via port mapping
-GATEWAY_URL="${NEXHELPER_GATEWAY_URL:-ws://10.0.0.1:${NEXHELPER_PORT:-3434}}"
+GATEWAY_IP="$(detect_docker_gateway)"
+GATEWAY_URL="${NEXHELPER_GATEWAY_URL:-ws://${GATEWAY_IP}:${NEXHELPER_PORT:-3434}}"
 GATEWAY_TOKEN="${NEXHELPER_GATEWAY_TOKEN:-}"
 
 # Allow insecure private WS (Docker bridge is trusted)
