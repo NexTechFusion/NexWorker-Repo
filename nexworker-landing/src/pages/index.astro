@@ -79,8 +79,8 @@ import Layout from '../layouts/Layout.astro';
                     </p>
                     
                     <div class="flex flex-col sm:flex-row gap-4">
-                        <a href="#cta" class="bg-brand hover:bg-brand-dark text-white px-8 py-4 rounded-xl font-medium text-base transition-all shadow-glow hover:shadow-lg transform hover:-translate-y-1 text-center flex items-center justify-center gap-2">
-                            In 15 Min. einrichten
+                        <a href="#kontakt" class="bg-brand hover:bg-brand-dark text-white px-8 py-4 rounded-xl font-medium text-base transition-all shadow-glow hover:shadow-lg transform hover:-translate-y-1 text-center flex items-center justify-center gap-2">
+                            Kostenlos testen
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
                         </a>
                         <a href="#tagesablauf" class="bg-white border hover:border-slate-300 text-slate-700 px-8 py-4 rounded-xl font-medium text-base transition-colors text-center shadow-sm hover:shadow">
@@ -820,6 +820,21 @@ import Layout from '../layouts/Layout.astro';
                 <p class="text-lg text-slate-500">Alle Messenger, alle Features. Skaliert mit Ihrem Team.</p>
             </div>
 
+            <!-- Pilot Offer -->
+            <div class="bg-gradient-to-r from-brand to-brand-dark rounded-3xl p-8 mb-12 text-white relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32"></div>
+                <div class="relative z-10 md:flex md:items-center md:justify-between">
+                    <div>
+                        <span class="inline-block bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full mb-4">Pilot-Phase – Nur 10 Betriebe</span>
+                        <h3 class="text-2xl font-bold mb-2">€49/Monat für 3 Monate</h3>
+                        <p class="text-white/80">Danach €99 – nur wenn Sie bleiben wollen. Jederzeit kündbar.</p>
+                    </div>
+                    <a href="#kontakt" class="mt-4 md:mt-0 inline-block bg-white text-brand px-6 py-3 rounded-xl font-semibold hover:bg-slate-100 transition-colors">
+                        Pilot werden
+                    </a>
+                </div>
+            </div>
+
             <div class="grid md:grid-cols-3 gap-8">
                 <!-- Starter -->
                 <div class="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm hover:shadow-xl transition-all">
@@ -918,6 +933,37 @@ import Layout from '../layouts/Layout.astro';
         </div>
     </section>
 
+    <!-- Founder Note -->
+    <section class="py-16 bg-white border-b border-slate-200">
+        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="bg-slate-50 rounded-2xl p-8 border border-slate-200">
+                <h3 class="text-xl font-bold text-surface mb-4">Warum Pilot?</h3>
+                <p class="text-slate-600 leading-relaxed mb-4">
+                    Wir sind klein und bauen NexWorker gerade erst. Statt Ihnen ein fertiges Produkt zu verkaufen, 
+                    wollen wir mit 10 Betrieben gemeinsam die perfekte Lösung bauen.
+                </p>
+                <div class="grid md:grid-cols-2 gap-6 mb-4">
+                    <div>
+                        <p class="font-semibold text-surface text-sm mb-2">Ihr Vorteil:</p>
+                        <ul class="text-sm text-slate-600 space-y-1">
+                            <li>• €49 statt €99 (3 Monate)</li>
+                            <li>• Ihre Wünsche werden priorisiert</li>
+                            <li>• Direkter Support vom Gründer</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <p class="font-semibold text-surface text-sm mb-2">Unser Vorteil:</p>
+                        <ul class="text-sm text-slate-600 space-y-1">
+                            <li>• Ehrliches Feedback aus der Praxis</li>
+                            <li>• Referenzen für spätere Kunden</li>
+                        </ul>
+                    </div>
+                </div>
+                <p class="text-surface font-semibold">Fair?</p>
+            </div>
+        </div>
+    </section>
+
     <!-- Call To Action -->
     <section id="cta" class="py-24 bg-white border-b border-slate-200 relative overflow-hidden">
         <div class="absolute inset-0 bg-slate-50/50"></div>
@@ -942,16 +988,32 @@ import Layout from '../layouts/Layout.astro';
                 Kein Formular, kein Ticket-System. Einfach eine E-Mail an unser Team.
             </p>
             
-            <div class="bg-white rounded-2xl p-8 shadow-soft border border-slate-200 max-w-md mx-auto">
-                <div class="flex items-center justify-center gap-3 mb-4">
-                    <div class="w-12 h-12 bg-brand/10 rounded-xl flex items-center justify-center">
-                        <svg class="w-6 h-6 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
-                    </div>
+            <div class="bg-white rounded-2xl p-8 shadow-soft border border-slate-200 max-w-lg mx-auto">
+                <p class="text-center text-slate-600 mb-6">Sprechen Sie direkt mit dem Gründer – keine Vertriebsfalle.</p>
+                
+                <div class="grid md:grid-cols-2 gap-4">
+                    <a href="tel:+4915234950589" class="flex items-center gap-3 p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                        <div class="w-10 h-10 bg-brand/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <svg class="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-400">Anrufen</p>
+                            <p class="font-bold text-surface">+49 152 3495 0589</p>
+                        </div>
+                    </a>
+                    
+                    <a href="mailto:dom@nextech-fusion.com" class="flex items-center gap-3 p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                        <div class="w-10 h-10 bg-brand/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <svg class="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-400">E-Mail</p>
+                            <p class="font-bold text-surface">dom@nextech-fusion.com</p>
+                        </div>
+                    </a>
                 </div>
-                <p class="text-sm text-slate-400 mb-2">E-Mail an</p>
-                <a href="mailto:info@nextech-fusion.com" class="text-xl font-bold text-brand hover:text-brand-dark transition-colors">
-                    info@nextech-fusion.com
-                </a>
+                
+                <p class="text-center text-xs text-slate-400 mt-4">Dom – Gründer, Nextech Fusion</p>
             </div>
         </div>
     </section>
