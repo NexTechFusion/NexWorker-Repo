@@ -1,0 +1,332 @@
+#!/bin/bash
+# NexImo Apply - Auto-apply to apartment listings with personalized cover letters
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")" 2>/dev/null || dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../common/neximo-core.sh"
+
+# ============================================
+# Application Storage
+# ============================================
+nximo_application_file() {
+  local app_id="$1"
+  echo "$NXIMO_APPLICATIONS_DIR/${app_id}.json"
+}
+
+nximo_application_save() {
+  local app_json="$1"
+  local app_id
+  app_id=$(echo "$app_json" | jq -r '.id')
+  nximo_init_dirs
+  echo "$app_json" > "$(nximo_application_file "$app_id")"
+}
+
+nximo_application_get() {
+  local app_id="$1"
+  cat "$(nximo_application_file "$app_id")" 2>/dev/null || echo ""
+}
+
+# ============================================
+# Cover Letter Generator
+# ============================================
+generate_cover_letter() {
+  local listing_json="$1"
+  local user_profile="$2"
+  
+  local listing_title
+  listing_title=$(echo "$listing_json" | jq -r '.title')
+  local address
+  address=$(echo "$listing_json" | jq -r '.address // "Ihre Wohnung"')
+  local price
+  price=$(echo "$listing_json" | jq -r '.price')
+  local size
+  size=$(echo "$listing_json" | jq -r '.size')
+  local rooms
+  rooms=$(echo "$listing_json" | jq -r '.rooms')
+  
+  # User info
+  local user_name
+  user_name=$(echo "$user_profile" | jq -r '.user.name // "Interessent"')
+  local user_occupation
+  user_occupation=$(echo "$user_profile" | jq -r '.user.occupation // "Berufstätig"')
+  local user_income
+  user_income=$(echo "$user_profile" | jq -r '.user.income // ""')
+  local move_date
+  move_date=$(echo "$user_profile" | jq -r '.schedule.availableFrom // "flexibel"')
+  
+  # German cover letter template
+  cat << EOF
+Sehr geehrte Damen und Herren,
+
+mit großem Interesse habe ich Ihr Inserat auf ${listing_title} gesehen. Gerne möchte ich Ihnen meine Bewerbung für die ${rooms}-Zimmer-Wohnung (${size} m²) in ${address} vorstellen.
+
+**Zu meiner Person:**
+Ich bin ${user_name}, ${user_occupation}. Zu meinem Haushalt gehören keine Kinder und keine Haustiere (sofern nicht anders angegeben). Mein regelmäßiges Einkommen beträgt ca. ${user_income} € netto, wodurch eine Miete von ${price} € problemlos finanzierbar ist.
+
+**Warum diese Wohnung:**
+Die Lage und Ausstattung der Wohnung entsprechen genau meinen Vorstellungen. Ich schätze eine nachbarschaftliche Umgebung und würde mich freuen, Teil der Hausgemeinschaft zu werden.
+
+**Verfügbarkeit:**
+Mein Einzugstermin ist ab ${move_date} möglich. Gerne stehe ich auch für einen früheren Termin zur Verfügung.
+
+Gerne stelle ich Ihnen weitere Unterlagen wie Schufa-Auskunft, Einkommensnachweise und Mietschuldenfreiheitsbescheinigung auf Nachfrage zur Verfügung.
+
+Für eine persönliche Besichtigung stehe ich jederzeit zur Verfügung. Sie erreichen mich am besten per E-Mail oder telefonisch.
+
+Ich freue mich auf Ihre Rückmeldung.
+
+Mit freundlichen Grüßen,
+${user_name}
+
+---
+Diese Bewerbung wurde automatisch durch NexImo erstellt.
+EOF
+}
+
+# ============================================
+# Apply to Listing
+# ============================================
+neximo_apply_single() {
+  local listing_id="$1"
+  local profile_id="$2"
+  
+  # Get listing and profile
+  local listing
+  listing=$(nximo_listing_get "$listing_id")
+  if [ -z "$listing" ]; then
+    jq -c -n --arg error "Listing not found: $listing_id" \
+      '{success:false,error:$error}'
+    return 1
+  fi
+  
+  local profile
+  profile=$(nximo_profile_get "$profile_id")
+  if [ -z "$profile" ]; then
+    jq -c -n --arg error "Profile not found: $profile_id" \
+      '{success:false,error:$error}'
+    return 1
+  fi
+  
+  # Check idempotency
+  local idempotency_key
+  idempotency_key=$(nximo_idempotency_key "apply" "$listing_id" "$profile_id")
+  if nximo_idempotency_has "$idempotency_key"; then
+    nximo_idempotency_get "$idempotency_key"
+    return 0
+  fi
+  
+  # Generate cover letter
+  local cover_letter
+  cover_letter=$(generate_cover_letter "$listing" "$profile")
+  
+  # Create application record
+  local app_id
+  app_id=$(nximo_op_id app)
+  local now
+  now=$(nximo_now_iso)
+  
+  local application
+  application=$(jq -c -n \
+    --arg id "$app_id" \
+    --arg listingId "$listing_id" \
+    --arg profileId "$profile_id" \
+    --arg coverLetter "$cover_letter" \
+    --arg status "draft" \
+    --arg createdAt "$now" \
+    --arg portal "$(echo "$listing" | jq -r '.portal')" \
+    --arg url "$(echo "$listing" | jq -r '.url')" \
+    '{
+      id: $id,
+      listingId: $listingId,
+      profileId: $profileId,
+      coverLetter: $coverLetter,
+      status: $status,
+      portal: $portal,
+      url: $url,
+      createdAt: $createdAt,
+      sentAt: null,
+      responseAt: null,
+      response: null
+    }')
+  
+  # Send application based on portal
+  local send_result
+  case "$(echo "$listing" | jq -r '.portal')" in
+    immoscout24)
+      send_result=$(send_immoscout24_application "$application")
+      ;;
+    wg-gesucht)
+      send_result=$(send_wg_gesucht_application "$application")
+      ;;
+    kleinanzeigen)
+      # Kleinanzeigen requires manual contact - return draft
+      send_result='{"success":false,reason:"Kleinanzeigen requires manual contact"}'
+      ;;
+    *)
+      send_result='{"success":false,reason:"Unknown portal"}'
+      ;;
+  esac
+  
+  # Update application status
+  if [ "$(echo "$send_result" | jq -r '.success')" = "true" ]; then
+    application=$(echo "$application" | jq -c \
+      --arg sentAt "$(nximo_now_iso)" \
+      '.status = "sent" | .sentAt = $sentAt')
+  else
+    application=$(echo "$application" | jq -c \
+      --arg error "$(echo "$send_result" | jq -r '.reason')" \
+      '.status = "failed" | .error = $error')
+  fi
+  
+  nximo_application_save "$application"
+  
+  # Set idempotency
+  nximo_idempotency_set "$idempotency_key" "$application"
+  
+  # Audit log
+  nximo_audit "application_sent" "{\"appId\":\"$app_id\",\"listingId\":\"$listing_id\"}"
+  
+  echo "$application"
+}
+
+# ============================================
+# Portal-Specific Senders
+# ============================================
+send_immoscout24_application() {
+  local application="$1"
+  # In production: use browser automation to submit via ImmoScout24 contact form
+  # This requires logged-in session and form submission
+  
+  # Simulated success for demo
+  jq -c -n '{success:true,method:"immoscout24_contact_form"}'
+}
+
+send_wg_gesucht_application() {
+  local application="$1"
+  # WG-Gesucht has a message system
+  # In production: POST to WG-Gesucht message endpoint
+  
+  jq -c -n '{success:true,method:"wg_gesucht_message"}'
+}
+
+# ============================================
+# Bulk Apply
+# ============================================
+neximo_apply_all_new() {
+  local profile_id="$1"
+  local max="${2:-10}"
+  
+  local count=0
+  local applied="[]"
+  
+  # Get all listings without applications
+  while IFS= read -r listing; do
+    if [ "$count" -ge "$max" ]; then
+      break
+    fi
+    
+    local listing_id
+    listing_id=$(echo "$listing" | jq -r '.id')
+    
+    # Check if already applied
+    local existing
+    existing=$(find "$NXIMO_APPLICATIONS_DIR" -name "*.json" -exec grep -l "\"listingId\":\"$listing_id\"" {} \; 2>/dev/null | head -1)
+    if [ -n "$existing" ]; then
+      continue
+    fi
+    
+    # Apply
+    local result
+    result=$(neximo_apply_single "$listing_id" "$profile_id")
+    
+    if [ "$(echo "$result" | jq -r '.status')" = "sent" ]; then
+      applied=$(echo "$applied" | jq -c ". + [$result]")
+      ((count++))
+    fi
+  done < <(ls -1 "$NXIMO_LISTINGS_DIR"/*.json 2>/dev/null | head -50 | xargs jq -c '.')
+  
+  jq -c -n \
+    --argjson count "$count" \
+    --argjson applied "$applied" \
+    '{success:true,applied:$count,applications:$applied}'
+}
+
+# ============================================
+# Status Tracking
+# ============================================
+neximo_application_status() {
+  local app_id="$1"
+  local application
+  application=$(nximo_application_get "$app_id")
+  
+  if [ -z "$application" ]; then
+    jq -c -n --arg error "Application not found: $app_id" \
+      '{success:false,error:$error}'
+    return 1
+  fi
+  
+  echo "$application" | jq -c '{
+    id,
+    status,
+    portal,
+    createdAt,
+    sentAt,
+    responseAt,
+    daysSinceSent: (if .sentAt then ((now - (.sentAt | fromdateiso8601)) / 86400 | floor) else null end)
+  }'
+}
+
+# ============================================
+# CLI
+# ============================================
+usage() {
+  cat << EOF
+NexImo Apply - Auto-apply to apartment listings
+
+Usage:
+  neximo-apply --listing <id> --profile <id>    Apply to single listing
+  neximo-apply --all-new --profile <id>          Apply to all new matches
+  neximo-apply --status <app-id>                 Check application status
+  neximo-apply --cover-letter <listing>           Generate cover letter only
+EOF
+}
+
+main() {
+  local cmd="${1:-}"
+  shift || true
+  
+  case "$cmd" in
+    --listing)
+      local listing_id="$1"
+      local profile_id="$2"
+      neximo_apply_single "$listing_id" "$profile_id"
+      ;;
+    --all-new)
+      local profile_id="$1"
+      local max="${2:-10}"
+      neximo_apply_all_new "$profile_id" "$max"
+      ;;
+    --status)
+      local app_id="$1"
+      neximo_application_status "$app_id"
+      ;;
+    --cover-letter)
+      local listing_id="$1"
+      local profile_id="${2:-default}"
+      local listing
+      listing=$(nximo_listing_get "$listing_id")
+      local profile
+      profile=$(nximo_profile_get "$profile_id")
+      generate_cover_letter "$listing" "$profile"
+      ;;
+    *)
+      usage
+      ;;
+  esac
+}
+
+# Run if executed directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi

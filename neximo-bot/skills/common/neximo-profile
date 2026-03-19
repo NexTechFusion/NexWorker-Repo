@@ -1,0 +1,271 @@
+#!/bin/bash
+# NexImo Profile - User search profile management
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")" 2>/dev/null || dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../common/neximo-core.sh"
+
+# ============================================
+# Create Profile
+# ============================================
+create_profile() {
+  local user_id="$1"
+  local criteria_json="$2"
+  local title="${3:-Meine Suche}"
+  
+  local profile_id
+  profile_id=$(nximo_op_id profile)
+  
+  local profile
+  profile=$(jq -c -n \
+    --arg id "$profile_id" \
+    --arg userId "$user_id" \
+    --arg title "$title" \
+    --argjson criteria "$criteria_json" \
+    --arg createdAt "$(nximo_now_iso)" \
+    '{
+      id: $id,
+      userId: $userId,
+      title: $title,
+      active: true,
+      criteria: $criteria,
+      notifications: {
+        channels: ["telegram"],
+        frequency: "instant"
+      },
+      stats: {
+        totalMatches: 0,
+        applicationsSent: 0,
+        responses: 0
+      },
+      createdAt: $createdAt,
+      updatedAt: $createdAt
+    }')
+  
+  nximo_profile_save "$profile"
+  nximo_audit "profile_created" "{\"profileId\":\"$profile_id\",\"userId\":\"$user_id\"}"
+  
+  echo "$profile"
+}
+
+# ============================================
+# Parse Natural Language Criteria
+# ============================================
+parse_search_criteria() {
+  local text="$1"
+  
+  # Use AI to parse natural language into structured criteria
+  # This would call the OpenClaw AI in production
+  
+  # Simple regex-based parsing for demo
+  local city=""
+  local max_price=9999
+  local min_rooms=0
+  local min_size=0
+  local must_have="[]"
+  
+  # Extract city
+  if [[ "$text" =~ in[[:space:]]+([A-Za-zäöüÄÖÜß]+) ]]; then
+    city="${BASH_REMATCH[1]}"
+  fi
+  
+  # Extract max price
+  if [[ "$text" =~ max[[:space:]]*[0-9]+ ]]; then
+    max_price=$(echo "$text" | grep -oE 'max[[:space:]]*[0-9]+' | grep -oE '[0-9]+')
+  elif [[ "$text" =~ [0-9]+[[:space:]]*€ ]]; then
+    max_price=$(echo "$text" | grep -oE '[0-9]+[[:space:]]*€' | grep -oE '[0-9]+' | head -1)
+  fi
+  
+  # Extract rooms
+  if [[ "$text" =~ ([0-9]+)[[:space:]]*zimmer ]]; then
+    min_rooms="${BASH_REMATCH[1]}"
+  fi
+  
+  # Extract features
+  local features="[]"
+  if [[ "$text" =~ [Bb]alkon ]]; then
+    features=$(echo "$features" | jq -c '. + ["balcony"]')
+    must_have=$(echo "$must_have" | jq -c '. + ["balcony"]')
+  fi
+  if [[ "$text" =~ [Aa]ufzug ]]; then
+    features=$(echo "$features" | jq -c '. + ["elevator"]')
+  fi
+  if [[ "$text" =~ [Pp]arkplatz|[Gg]arage ]]; then
+    features=$(echo "$features" | jq -c '. + ["parking"]')
+  fi
+  if [[ "$text" =~ [Hh]austier ]]; then
+    features=$(echo "$features" | jq -c '. + ["pets_allowed"]')
+  fi
+  
+  # Build criteria JSON
+  jq -c -n \
+    --arg city "$city" \
+    --argjson maxPrice "$max_price" \
+    --argjson minRooms "$min_rooms" \
+    --argjson minSize "$min_size" \
+    --argjson features "$features" \
+    --argjson mustHave "$must_have" \
+    '{
+      location: {
+        city: $city,
+        districts: [],
+        maxDistance: 20
+      },
+      budget: {
+        min: 0,
+        max: $maxPrice
+      },
+      rooms: {
+        min: $minRooms,
+        max: 99
+      },
+      size: {
+        min: $minSize,
+        max: 9999
+      },
+      features: $features,
+      must_have: $mustHave,
+      nice_to_have: []
+    }'
+}
+
+# ============================================
+# Update Profile
+# ============================================
+update_profile() {
+  local profile_id="$1"
+  local updates="$2"
+  
+  local profile
+  profile=$(nximo_profile_get "$profile_id")
+  
+  if [ -z "$profile" ]; then
+    jq -c -n --arg error "Profile not found: $profile_id" \
+      '{success:false,error:$error}'
+    return 1
+  fi
+  
+  # Merge updates
+  profile=$(echo "$profile" "$updates" | jq -s '.[0] * .[1] | .updatedAt = "'"$(nximo_now_iso)"'"')
+  
+  nximo_profile_save "$profile"
+  nximo_audit "profile_updated" "{\"profileId\":\"$profile_id\"}"
+  
+  echo "$profile"
+}
+
+# ============================================
+# List Profiles
+# ============================================
+list_profiles() {
+  local user_id="${1:-}"
+  
+  if [ -n "$user_id" ]; then
+    nximo_profile_list | jq -c "select(.userId == \"$user_id\")"
+  else
+    nximo_profile_list
+  fi
+}
+
+# ============================================
+# Pause/Resume Profile
+# ============================================
+pause_profile() {
+  local profile_id="$1"
+  update_profile "$profile_id" '{"active":false}'
+}
+
+resume_profile() {
+  local profile_id="$1"
+  update_profile "$profile_id" '{"active":true}'
+}
+
+# ============================================
+# Delete Profile
+# ============================================
+delete_profile() {
+  local profile_id="$1"
+  local file
+  file=$(nximo_profile_file "$profile_id")
+  
+  if [ -f "$file" ]; then
+    rm "$file"
+    nximo_audit "profile_deleted" "{\"profileId\":\"$profile_id\"}"
+    jq -c -n --arg profileId "$profile_id" '{success:true,deleted:$profileId}'
+  else
+    jq -c -n --arg error "Profile not found: $profile_id" '{success:false,error:$error}'
+  fi
+}
+
+# ============================================
+# CLI
+# ============================================
+usage() {
+  cat << EOF
+NexImo Profile - Search profile management
+
+Usage:
+  neximo-profile create <user-id> "<criteria-json>" [title]
+  neximo-profile parse "<natural-language-search>"
+  neximo-profile list [user-id]
+  neximo-profile get <profile-id>
+  neximo-profile update <profile-id> '<json-updates>'
+  neximo-profile pause <profile-id>
+  neximo-profile resume <profile-id>
+  neximo-profile delete <profile-id>
+
+Examples:
+  neximo-profile parse "2 Zimmer in Berlin Kreuzberg max 1000€ Balkon"
+  neximo-profile create telegram:12345 '{"location":{"city":"Berlin"},...}' "Berlin Suche"
+  neximo-profile list
+  neximo-profile pause profile-abc123
+EOF
+}
+
+main() {
+  local cmd="${1:-}"
+  shift || true
+  
+  case "$cmd" in
+    create)
+      local user_id="$1"
+      local criteria="$2"
+      local title="${3:-Meine Suche}"
+      create_profile "$user_id" "$criteria" "$title"
+      ;;
+    parse)
+      local text="$1"
+      parse_search_criteria "$text"
+      ;;
+    list)
+      list_profiles "$1"
+      ;;
+    get)
+      local profile_id="$1"
+      nximo_profile_get "$profile_id"
+      ;;
+    update)
+      local profile_id="$1"
+      local updates="$2"
+      update_profile "$profile_id" "$updates"
+      ;;
+    pause)
+      pause_profile "$1"
+      ;;
+    resume)
+      resume_profile "$1"
+      ;;
+    delete)
+      delete_profile "$1"
+      ;;
+    *)
+      usage
+      ;;
+  esac
+}
+
+# Run if executed directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi

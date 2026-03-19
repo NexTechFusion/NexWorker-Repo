@@ -1,0 +1,301 @@
+#!/bin/bash
+# NexImo Search - Multi-portal apartment search
+# Searches ImmoScout24, WG-Gesucht, eBay Kleinanzeigen
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")" 2>/dev/null || dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../common/neximo-core.sh"
+
+# ============================================
+# Portal Configuration
+# ============================================
+IMMOBILIENSCOUT24_BASE="https://www.immobilienscout24.de"
+WG_GESUCHT_BASE="https://www.wg-gesucht.de"
+KLEINANZEIGEN_BASE="https://www.ebay-kleinanzeigen.de"
+
+# ============================================
+# ImmoScout24 Search
+# ============================================
+search_immoscout24() {
+  local city="$1"
+  local max_price="${2:-9999}"
+  local min_rooms="${3:-0}"
+  local min_size="${4:-0}"
+  local districts="${5:-}"
+  
+  # Build search URL
+  local url="$IMMOBILIENSCOUT24_BASE/Suche/de/$city/wohnung-mieten"
+  local params="numberofrooms=${min_rooms}.0-&price=-${max_price}&livingspace=${min_size}.0-"
+  
+  if [ -n "$districts" ]; then
+    url="$IMMOBILIENSCOUT24_BASE/Suche/radius/wohnung-mieten"
+    params="$params&centerofsearchaddress=$city"
+  fi
+  
+  url="$url?$params"
+  
+  # Use camoufox-cli or Puppeteer for scraping
+  # This is a simplified version - production would use browser automation
+  local results="[]"
+  
+  # Simulated response structure for demo
+  # In production: camoufox-cli snapshot | parse listings
+  echo "$results"
+}
+
+parse_immoscout24_listing() {
+  local raw="$1"
+  # Parse the accessibility tree output from camoufox
+  # Extract: title, price, size, rooms, url, features
+  jq -c -n \
+    --arg portal "immoscout24" \
+    --arg title "" \
+    --arg price "" \
+    --arg size "" \
+    --arg rooms "" \
+    --arg url "" \
+    --arg address "" \
+    --argjson features '[]' \
+    '{
+      id: ($portal + ":" + ($url | split("/")[-1])),
+      portal: $portal,
+      title: $title,
+      price: ($price | gsub("[^0-9]"; "") | tonumber),
+      size: ($size | gsub("[^0-9]"; "") | tonumber),
+      rooms: ($rooms | tonumber),
+      url: $url,
+      address: $address,
+      features: $features,
+      scrapedAt: (now | todate)
+    }'
+}
+
+# ============================================
+# WG-Gesucht Search
+# ============================================
+search_wg_gesucht() {
+  local city="$1"
+  local max_price="${2:-9999}"
+  local min_rooms="${3:-0}"
+  
+  local url="$WG_GESUCHT_BASE/wg-zimmer-in-$city"
+  
+  # WG-Gesucht is easier to scrape - often has JSON endpoints
+  local results="[]"
+  
+  echo "$results"
+}
+
+parse_wg_gesucht_listing() {
+  local raw="$1"
+  jq -c -n \
+    --arg portal "wg-gesucht" \
+    --arg title "" \
+    --arg price "" \
+    --arg size "" \
+    --arg url "" \
+    '{
+      id: ($portal + ":" + ($url | split("/")[-1])),
+      portal: $portal,
+      title: $title,
+      price: ($price | tonumber),
+      size: ($size | tonumber),
+      rooms: 1,
+      url: $url,
+      features: ["wg"],
+      scrapedAt: (now | todate)
+    }'
+}
+
+# ============================================
+# eBay Kleinanzeigen Search
+# ============================================
+search_kleinanzeigen() {
+  local city="$1"
+  local max_price="${2:-9999}"
+  local min_rooms="${3:-0}"
+  
+  local url="$KLEINANZEIGEN_BASE/s-wohnung-mieten/$city/k0c227"
+  
+  local results="[]"
+  
+  echo "$results"
+}
+
+parse_kleinanzeigen_listing() {
+  local raw="$1"
+  jq -c -n \
+    --arg portal "kleinanzeigen" \
+    --arg title "" \
+    --arg price "" \
+    --arg url "" \
+    '{
+      id: ($portal + ":" + ($url | split("/")[-1])),
+      portal: $portal,
+      title: $title,
+      price: ($price | gsub("[^0-9]"; "") | tonumber),
+      url: $url,
+      features: ["private"],
+      scrapedAt: (now | todate)
+    }'
+}
+
+# ============================================
+# Unified Search
+# ============================================
+neximo_search_all() {
+  local profile_id="$1"
+  
+  if ! nximo_profile_exists "$profile_id"; then
+    jq -c -n --arg error "Profile not found: $profile_id" \
+      '{success:false,error:$error}'
+    return 1
+  fi
+  
+  local profile
+  profile=$(nximo_profile_get "$profile_id")
+  
+  local city
+  city=$(echo "$profile" | jq -r '.criteria.location.city')
+  local max_price
+  max_price=$(echo "$profile" | jq -r '.criteria.budget.max')
+  local min_rooms
+  min_rooms=$(echo "$profile" | jq -r '.criteria.rooms.min')
+  local min_size
+  min_size=$(echo "$profile" | jq -r '.criteria.size.min')
+  local districts
+  districts=$(echo "$profile" | jq -r '.criteria.location.districts | join(",") // empty')
+  
+  nximo_audit "search_start" "{\"profileId\":\"$profile_id\",\"city\":\"$city\"}"
+  
+  # Run all searches in parallel
+  local immoscout_results wg_results klein_results
+  
+  immoscout_results=$(search_immoscout24 "$city" "$max_price" "$min_rooms" "$min_size" "$districts")
+  wg_results=$(search_wg_gesucht "$city" "$max_price" "$min_rooms")
+  klein_results=$(search_kleinanzeigen "$city" "$max_price" "$min_rooms")
+  
+  # Merge results
+  local all_results
+  all_results=$(echo "$immoscout_results $wg_results $klein_results" | jq -s 'add')
+  
+  # Filter against criteria
+  local matched="[]"
+  while IFS= read -r listing; do
+    if nximo_matches_criteria "$listing" "$(echo "$profile" | jq -c '.criteria')"; then
+      matched=$(echo "$matched" | jq -c ". + [$listing]")
+    fi
+  done < <(echo "$all_results" | jq -c '.[]')
+  
+  # Deduplicate by listing ID
+  matched=$(echo "$matched" | jq -c 'unique_by(.id)')
+  
+  # Save new listings
+  local new_count=0
+  while IFS= read -r listing; do
+    local listing_id
+    listing_id=$(echo "$listing" | jq -r '.id')
+    if ! nximo_listing_exists "$listing_id"; then
+      nximo_listing_save "$listing"
+      ((new_count++))
+    fi
+  done < <(echo "$matched" | jq -c '.[]')
+  
+  nximo_audit "search_complete" "{\"profileId\":\"$profile_id\",\"total\":$(echo "$matched" | jq 'length'),\"new\":$new_count}"
+  
+  jq -c -n \
+    --argjson total "$(echo "$matched" | jq 'length')" \
+    --argjson new "$new_count" \
+    --argjson listings "$matched" \
+    '{success:true,total:$total,new:$new,listings:$listings}'
+}
+
+# ============================================
+# Search Commands
+# ============================================
+usage() {
+  cat << EOF
+NexImo Search - Multi-portal apartment search
+
+Usage:
+  neximo-search --profile <profile-id>           Search with saved profile
+  neximo-search --quick <city> <max-price>        Quick search
+  neximo-search --portal <name> <city> <max>      Single portal search
+  neximo-search --scan                            Background scan all profiles
+
+Portals: immoscout24, wg-gesucht, kleinanzeigen
+EOF
+}
+
+main() {
+  local cmd="${1:-}"
+  shift || true
+  
+  case "$cmd" in
+    --profile)
+      neximo_search_all "$1"
+      ;;
+    --quick)
+      local city="${1:-Berlin}"
+      local max_price="${2:-1000}"
+      # Create temporary profile
+      local temp_profile
+      temp_profile=$(jq -c -n \
+        --arg id "temp-$(date +%s)" \
+        --arg city "$city" \
+        --arg max "$max_price" \
+        '{
+          id: $id,
+          title: "Quick search",
+          active: true,
+          criteria: {
+            location: {city: $city, districts: [], maxDistance: 20},
+            budget: {min: 0, max: ($max | tonumber)},
+            rooms: {min: 1, max: 99},
+            size: {min: 0, max: 9999}
+          }
+        }')
+      nximo_profile_save "$temp_profile"
+      neximo_search_all "$(echo "$temp_profile" | jq -r '.id')"
+      ;;
+    --portal)
+      local portal="$1"
+      local city="$2"
+      local max_price="${3:-9999}"
+      local min_rooms="${4:-0}"
+      case "$portal" in
+        immoscout24)
+          search_immoscout24 "$city" "$max_price" "$min_rooms"
+          ;;
+        wg-gesucht)
+          search_wg_gesucht "$city" "$max_price" "$min_rooms"
+          ;;
+        kleinanzeigen)
+          search_kleinanzeigen "$city" "$max_price" "$min_rooms"
+          ;;
+        *)
+          echo "Unknown portal: $portal" >&2
+          exit 1
+          ;;
+      esac
+      ;;
+    --scan)
+      # Scan all active profiles
+      while IFS= read -r profile; do
+        local profile_id
+        profile_id=$(echo "$profile" | jq -r '.id')
+        echo "Scanning profile: $profile_id"
+        neximo_search_all "$profile_id"
+      done < <(nximo_profile_list | jq -c 'select(.active == true)')
+      ;;
+    *)
+      usage
+      ;;
+  esac
+}
+
+# Run if executed directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi

@@ -1,0 +1,207 @@
+#!/bin/bash
+# NexImo Scanner - Background scanner loop for all active profiles
+# Runs as a native loop (zero LLM cost) inside the container
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")" 2>/dev/null || dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../common/neximo-core.sh"
+
+SCAN_INTERVAL="${NXIMO_SCAN_INTERVAL:-300}"  # 5 minutes default
+STATE_FILE="$NXIMO_STORAGE_DIR/.scanner-state.json"
+
+# ============================================
+# State Management
+# ============================================
+init_state() {
+  if [ ! -f "$STATE_FILE" ]; then
+    jq -c -n \
+      --arg lastScan "$(nximo_now_iso)" \
+      --argjson totalScans 0 \
+      --argjson newListings 0 \
+      '{
+        lastScan: $lastScan,
+        totalScans: $totalScans,
+        newListings: $newListings,
+        errors: []
+      }' > "$STATE_FILE"
+  fi
+}
+
+get_state() {
+  cat "$STATE_FILE" 2>/dev/null || echo '{"lastScan":null}'
+}
+
+update_state() {
+  local key="$1"
+  local value="$2"
+  local tmp="${STATE_FILE}.tmp"
+  jq --argjson v "$value" ".$key = \$v" "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
+}
+
+# ============================================
+# Scan Single Profile
+# ============================================
+scan_profile() {
+  local profile_id="$1"
+  
+  local profile
+  profile=$(nximo_profile_get "$profile_id")
+  
+  if [ -z "$profile" ]; then
+    echo "Profile not found: $profile_id" >&2
+    return 1
+  fi
+  
+  # Run search
+  local result
+  result=$(neximo-search --profile "$profile_id" 2>/dev/null || echo '{"success":false}')
+  
+  if [ "$(echo "$result" | jq -r '.success')" = "true" ]; then
+    local new_count
+    new_count=$(echo "$result" | jq -r '.new')
+    
+    # Notify if new listings found
+    if [ "$new_count" -gt 0 ]; then
+      local listings
+      listings=$(echo "$result" | jq -c '.listings[:5]')  # Top 5 new
+      
+      # Build notification message
+      local msg="🏠 *$new_count neue Wohnungen gefunden!*\n\n"
+      while IFS= read -r listing; do
+        local title
+        title=$(echo "$listing" | jq -r '.title')
+        local price
+        price=$(echo "$listing" | jq -r '.price')
+        local url
+        url=$(echo "$listing" | jq -r '.url')
+        msg="${msg}• ${price}€ - ${title}\n"
+      done < <(echo "$listings" | jq -c '.[]')
+      
+      msg="${msg}\nAntworte mit 'Bewerben' um dich auf alle zu bewerben."
+      
+      # Get user chat ID from profile
+      local chat_id
+      chat_id=$(echo "$profile" | jq -r '.userId')
+      
+      # Send notification (integrate with OpenClaw message tool)
+      nximo_notify "$msg" "telegram" "$chat_id"
+    fi
+    
+    echo "$result"
+  else
+    echo "$result" >&2
+    return 1
+  fi
+}
+
+# ============================================
+# Scan All Active Profiles
+# ============================================
+scan_all_profiles() {
+  local total_new=0
+  local profiles_scanned=0
+  local errors=0
+  
+  while IFS= read -r profile_line; do
+    local profile_id
+    profile_id=$(echo "$profile_line" | jq -r '.id')
+    
+    echo "Scanning profile: $profile_id"
+    
+    if scan_profile "$profile_id" 2>/dev/null; then
+      ((profiles_scanned++))
+      total_new=$((total_new + $(get_state | jq -r '.lastNewCount // 0')))
+    else
+      ((errors++))
+    fi
+    
+  done < <(nximo_profile_list | jq -c 'select(.active == true)')
+  
+  # Update state
+  update_state "lastScan" "\"$(nximo_now_iso)\""
+  update_state "totalScans" "$(get_state | jq '.totalScans + 1')"
+  update_state "newListings" "$(get_state | jq ".newListings + $total_new")"
+  
+  jq -c -n \
+    --argjson profilesScanned "$profiles_scanned" \
+    --argjson totalNew "$total_new" \
+    --argjson errors "$errors" \
+    '{success:true,profilesScanned:$profilesScanned,totalNew:$totalNew,errors:$errors}'
+}
+
+# ============================================
+# Main Scanner Loop
+# ============================================
+scanner_loop() {
+  echo "Starting NexImo Scanner..."
+  echo "Interval: ${SCAN_INTERVAL}s"
+  init_state
+  
+  while true; do
+    echo "=== Scan started at $(date) ==="
+    
+    if scan_all_profiles; then
+      echo "Scan completed successfully"
+    else
+      echo "Scan completed with errors"
+    fi
+    
+    echo "Next scan in ${SCAN_INTERVAL}s..."
+    sleep "$SCAN_INTERVAL"
+  done
+}
+
+# ============================================
+# One-shot Scan (for cron)
+# ============================================
+single_scan() {
+  init_state
+  scan_all_profiles
+}
+
+# ============================================
+# CLI
+# ============================================
+usage() {
+  cat << EOF
+NexImo Scanner - Background apartment scanner
+
+Usage:
+  neximo-scanner --loop              Run continuous scanner loop
+  neximo-scanner --once              Single scan (for cron)
+  neximo-scanner --profile <id>      Scan specific profile
+  neximo-scanner --status            Show scanner state
+
+Environment:
+  NXIMO_SCAN_INTERVAL    Scan interval in seconds (default: 300)
+EOF
+}
+
+main() {
+  local cmd="${1:-}"
+  shift || true
+  
+  case "$cmd" in
+    --loop)
+      scanner_loop
+      ;;
+    --once)
+      single_scan
+      ;;
+    --profile)
+      scan_profile "$1"
+      ;;
+    --status)
+      get_state | jq .
+      ;;
+    *)
+      usage
+      ;;
+  esac
+}
+
+# Run if executed directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi

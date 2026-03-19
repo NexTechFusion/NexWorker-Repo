@@ -1,0 +1,249 @@
+#!/bin/bash
+# NexImo Notify - Push notifications for apartment matches
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")" 2>/dev/null || dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../common/neximo-core.sh"
+
+# ============================================
+# Notification Templates
+# ============================================
+
+# New listings notification
+format_new_listings_msg() {
+  local listings="$1"
+  local count
+  count=$(echo "$listings" | jq 'length')
+  
+  local msg="🏠 *$count neue Wohnungen gefunden!*\n\n"
+  
+  local i=1
+  while IFS= read -r listing; do
+    local title
+    title=$(echo "$listing" | jq -r '.title // "Wohnung"')
+    local price
+    price=$(echo "$listing" | jq -r '.price // "?"')
+    local size
+    size=$(echo "$listing" | jq -r '.size // "?"')
+    local rooms
+    rooms=$(echo "$listing" | jq -r '.rooms // "?"')
+    local address
+    address=$(echo "$listing" | jq -r '.address // ""')
+    local url
+    url=$(echo "$listing" | jq -r '.url')
+    local portal
+    portal=$(echo "$listing" | jq -r '.portal')
+    
+    local portal_emoji="🏠"
+    case "$portal" in
+      immoscout24) portal_emoji="🏡" ;;
+      wg-gesucht) portal_emoji="👥" ;;
+      kleinanzeigen) portal_emoji="📰" ;;
+    esac
+    
+    msg="${msg}*${i}.* ${portal_emoji} ${price}€ | ${size}m² | ${rooms} Zimmer\n"
+    if [ -n "$address" ]; then
+      msg="${msg}   📍 ${address}\n"
+    fi
+    msg="${msg}   [Ansehen](${url})\n\n"
+    
+    ((i++))
+  done < <(echo "$listings" | jq -c '.[]')
+  
+  msg="${msg} Antworte mit *Bewerben* um dich auf alle zu bewerben."
+  
+  echo -e "$msg"
+}
+
+# Application sent notification
+format_application_sent_msg() {
+  local application="$1"
+  
+  local listing_id
+  listing_id=$(echo "$application" | jq -r '.listingId')
+  local portal
+  portal=$(echo "$application" | jq -r '.portal')
+  
+  local msg="✅ *Bewerbung verschickt!*\n\n"
+  msg="${msg}Portal: ${portal}\n"
+  msg="${msg}ID: ${listing_id}\n\n"
+  msg="${msg}Ich werde dich benachrichtigen, wenn der Vermieter antwortet."
+  
+  echo -e "$msg"
+}
+
+# Response received notification
+format_response_msg() {
+  local application="$1"
+  local response="$2"
+  
+  local msg="📬 *Antwort erhalten!*\n\n"
+  msg="${msg}$(echo "$response" | jq -r '.message')\n\n"
+  msg="${msg}Antworte direkt oder sage mir, was du tun möchtest."
+  
+  echo -e "$msg"
+}
+
+# Price drop notification
+format_price_drop_msg() {
+  local listing="$1"
+  local old_price="$2"
+  local new_price="$3"
+  
+  local msg="📉 *Preis gesunken!*\n\n"
+  msg="${msg}Die Wohnung wurde reduziert:\n"
+  msg="${msg}~~${old_price}€~~ → *${new_price}€*\n\n"
+  msg="${msg}$(echo "$listing" | jq -r '.title')\n"
+  msg="${msg}[Jetzt ansehen]($(echo "$listing" | jq -r '.url'))"
+  
+  echo -e "$msg"
+}
+
+# Viewing reminder
+format_viewing_reminder_msg() {
+  local viewing="$1"
+  
+  local msg="📅 *Besichtigungserinnerung*\n\n"
+  msg="${msg}Wann: $(echo "$viewing" | jq -r '.datetime')\n"
+  msg="${msg}Wo: $(echo "$viewing" | jq -r '.address')\n\n"
+  msg="${msg}Viel Erfolg! 🍀"
+  
+  echo -e "$msg"
+}
+
+# ============================================
+# Send Notification
+# ============================================
+neximo_notify_send() {
+  local user_id="$1"
+  local message="$2"
+  local buttons="${3:-}"
+  
+  # Determine channel from user_id format
+  local channel="telegram"
+  if [[ "$user_id" == whatsapp:* ]]; then
+    channel="whatsapp"
+  fi
+  
+  local chat_id
+  chat_id=$(echo "$user_id" | sed 's/^[^:]*://')
+  
+  # In production, this calls OpenClaw's message tool
+  # For demo, we just echo
+  echo "[SEND][$channel:$chat_id] $message"
+  
+  if [ -n "$buttons" ]; then
+    echo "Buttons: $buttons"
+  fi
+  
+  # Log notification
+  nximo_audit "notification_sent" "{\"userId\":\"$user_id\",\"channel\":\"$channel\"}"
+  
+  return 0
+}
+
+# ============================================
+# Notify Commands
+# ============================================
+notify_new_listings() {
+  local user_id="$1"
+  local listings="$2"
+  
+  local msg
+  msg=$(format_new_listings_msg "$listings")
+  
+  # Create inline buttons
+  local buttons
+  buttons=$(jq -c -n \
+    --argjson listings "$(echo "$listings" | jq 'limit(5; .)')" \
+    '[["bewerben", "bewerben"], ["später", "later"]]')
+  
+  neximo_notify_send "$user_id" "$msg" "$buttons"
+}
+
+notify_application_sent() {
+  local user_id="$1"
+  local application="$2"
+  
+  local msg
+  msg=$(format_application_sent_msg "$application")
+  neximo_notify_send "$user_id" "$msg"
+}
+
+notify_response() {
+  local user_id="$1"
+  local application="$2"
+  local response="$3"
+  
+  local msg
+  msg=$(format_response_msg "$application" "$response")
+  neximo_notify_send "$user_id" "$msg"
+}
+
+notify_price_drop() {
+  local user_id="$1"
+  local listing="$2"
+  local old_price="$3"
+  local new_price="$4"
+  
+  local msg
+  msg=$(format_price_drop_msg "$listing" "$old_price" "$new_price")
+  neximo_notify_send "$user_id" "$msg"
+}
+
+notify_viewing_reminder() {
+  local user_id="$1"
+  local viewing="$2"
+  
+  local msg
+  msg=$(format_viewing_reminder_msg "$viewing")
+  neximo_notify_send "$user_id" "$msg"
+}
+
+# ============================================
+# CLI
+# ============================================
+usage() {
+  cat << EOF
+NexImo Notify - Push notifications
+
+Usage:
+  neximo-notify listings <user-id> '<listings-json>'
+  neximo-notify application <user-id> '<application-json>'
+  neximo-notify response <user-id> '<application-json>' '<response-json>'
+  neximo-notify price-drop <user-id> '<listing-json>' <old-price> <new-price>
+  neximo-notify viewing <user-id> '<viewing-json>'
+EOF
+}
+
+main() {
+  local cmd="${1:-}"
+  shift || true
+  
+  case "$cmd" in
+    listings)
+      notify_new_listings "$1" "$2"
+      ;;
+    application)
+      notify_application_sent "$1" "$2"
+      ;;
+    response)
+      notify_response "$1" "$2" "$3"
+      ;;
+    price-drop)
+      notify_price_drop "$1" "$2" "$3" "$4"
+      ;;
+    viewing)
+      notify_viewing_reminder "$1" "$2"
+      ;;
+    *)
+      usage
+      ;;
+  esac
+}
+
+# Run if executed directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi
