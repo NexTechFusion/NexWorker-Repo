@@ -60,50 +60,51 @@ const { title, description = "Baudokumentation per WhatsApp ohne neue App. Monte
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
-		<!-- Tailwind CSS -->
-		<script src="https://cdn.tailwindcss.com"></script>
+		<!-- GSAP from unpkg -->
+		<script src="https://unpkg.com/gsap@3.12.5/dist/gsap.min.js"></script>
+		<script src="https://unpkg.com/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
 
-		<!-- GSAP for Animations -->
-		<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-		<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
-
-		<!-- Tailwind Configuration -->
-		<script>
-			tailwind.config = {
-				theme: {
-					extend: {
-						fontFamily: {
-							sans: ['Inter', 'sans-serif'],
-							mono: ['JetBrains Mono', 'monospace'],
-						},
-						colors: {
-							brand: {
-								DEFAULT: '#4F46E5',
-								dark: '#3730A3',
-								light: '#818CF8',
-								50: '#EEF2FF'
-							},
-							surface: {
-								DEFAULT: '#0F172A',
-								light: '#1E293B',
-								dark: '#020617'
-							},
-							chat: {
-								bg: '#F8FAFC',
-								user: '#E0F2FE',
-								bot: '#FFFFFF'
-							}
-						},
-						boxShadow: {
-							'soft': '0 4px 20px -2px rgba(15, 23, 42, 0.05)',
-							'floating': '0 20px 40px -10px rgba(15, 23, 42, 0.1)',
-							'inner-light': 'inset 0 2px 4px 0 rgba(255, 255, 255, 0.1)',
-							'glow': '0 0 20px rgba(79, 70, 229, 0.3)',
-						}
-					}
-				}
+		<!-- Tailwind Configuration via CSS Variables -->
+		<style is:global>
+			:root {
+				--color-brand: #4F46E5;
+				--color-brand-dark: #3730A3;
+				--color-brand-light: #818CF8;
+				--color-surface: #0F172A;
+				--color-surface-light: #1E293B;
 			}
-		</script>
+			
+			/* WhatsApp Animation Keyframes */
+			@keyframes wa-typing {
+				0%, 60%, 100% { transform: translateY(0); }
+				30% { transform: translateY(-6px); }
+			}
+			.wa-dot {
+				animation: wa-typing 1s ease-in-out infinite;
+			}
+			
+			/* WhatsApp message sequence */
+			#typing-indicator {
+				animation: wa-fade-out 0.3s ease-out 1.5s forwards;
+			}
+			@keyframes wa-fade-out {
+				to { opacity: 0; visibility: hidden; }
+			}
+			
+			#msg-1 {
+				opacity: 0;
+				animation: wa-slide-in 0.4s ease-out 1.8s forwards;
+			}
+			@keyframes wa-slide-in {
+				from { opacity: 0; transform: translateY(8px); }
+				to { opacity: 1; transform: translateY(0); }
+			}
+			
+			#msg-2 {
+				opacity: 0;
+				animation: wa-slide-in 0.4s ease-out 2.3s forwards;
+			}
+		</style>
 
 		<!-- Custom CSS -->
 		<style>
@@ -158,6 +159,52 @@ const { title, description = "Baudokumentation per WhatsApp ohne neue App. Monte
 			.perspective-1000 {
 				perspective: 1000px;
 			}
+
+			/* Chat Animation */
+			@keyframes slideIn {
+				from {
+					opacity: 0;
+					transform: translateY(10px);
+				}
+				to {
+					opacity: 1;
+					transform: translateY(0);
+				}
+			}
+
+			/* WhatsApp Animation Keyframes */
+			@keyframes bounce-dot {
+				0%, 60%, 100% { transform: translateY(0); }
+				30% { transform: translateY(-4px); }
+			}
+			.animate-bounce {
+				animation: bounce-dot 1.4s ease-in-out infinite;
+			}
+			@keyframes slide-in {
+				from { opacity: 0; transform: translateY(10px); }
+				to { opacity: 1; transform: translateY(0); }
+			}
+			.animate-slide-in {
+				animation: slide-in 0.4s ease-out forwards;
+			}
+			@keyframes fade-in {
+				from { opacity: 0; }
+				to { opacity: 1; }
+			}
+			.animate-fade-in {
+				animation: fade-in 0.3s ease-out forwards;
+			}
+			/* Voice message wave animation */
+			@keyframes voice-wave {
+				0%, 100% { height: 4px; }
+				50% { height: 16px; }
+			}
+			.voice-wave-bar {
+				animation: voice-wave 0.8s ease-in-out infinite;
+			}
+			.voice-wave-bar:nth-child(2) { animation-delay: 0.1s; }
+			.voice-wave-bar:nth-child(3) { animation-delay: 0.2s; }
+			.voice-wave-bar:nth-child(4) { animation-delay: 0.3s; }
 		</style>
 	</head>
 	<body class="selection:bg-brand selection:text-white relative">
