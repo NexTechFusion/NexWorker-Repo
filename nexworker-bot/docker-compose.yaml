@@ -1,0 +1,48 @@
+# NexWorker Docker Compose
+# Baustellen-Assistent mit RAG Wissensbasis
+
+version: '3.8'
+
+services:
+  nexworker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: nexworker:latest
+    container_name: nexworker-bot
+    restart: unless-stopped
+    ports:
+      - "3002:3002"
+    volumes:
+      - ./config:/app/config
+      - ./storage:/app/storage
+      - ./logs:/app/logs
+    environment:
+      # Core
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-${OPENROUTER_API_KEY:-}}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://openrouter.ai/api/v1}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-${OPENAI_API_KEY:-}}
+      - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      - USE_OPENROUTER=1
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-8606116891:AAEnKrjvQEGzeL47APZCCi2AJIDZSIZmMdY}
+      - PORT=3002
+      - NODE_ENV=production
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  default:
+    name: nexworker-network
+    external: false

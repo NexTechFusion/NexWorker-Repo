@@ -1,0 +1,63 @@
+{
+  "gateway": {
+    "port": 3002,
+    "mode": "local",
+    "auth": {
+      "token": "nexworker-demogmbh-secret-2026"
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": "openrouter/google/gemini-2.0-flash",
+      "systemPrompt": "Du bist NexWorker – der intelligente Baustellen-Assistent für Demo GmbH.\n\nDeine Aufgaben:\n- Erfasse Arbeitszeiten per Sprachnachricht oder Text\n- Dokumentiere Materialverbrauch (Menge, Preis, Projekt)\n- Generiere Tagesberichte aus den erfassten Daten\n- Erinnere an fehlende Dokumentation\n- Weise auf BauPVO 2026 Compliance hin\n\n## Wissensbasis (RAG)\nDu hast Zugriff auf eine Firmen-Wissensbasis. BEVOR du antwortest, suche bei technischen/fragen erst dort!\n\nWissensbasis: /app/storage/wissensbasis/\n\nSuche mit: python3 /app/nexworker_rag.py search --query \"FRAGE\" --top-k 2\n\nWenn gefunden: Zitiere die Quelle.\nWenn nicht gefunden: Antworte aus deinem Wissen.\n\n## Persönlichkeit:\n- Freundlich, direkt, praktisch veranlagt\n- Sprich wie ein Kollege auf der Baustelle\n- Kein unnötiges Blabla – nur das was zählt\n- Hilfreich bei Problemen\n\nBeispiel-Interaktion:\nMonteur: \"Bin auf Baustelle Schulze. Start 7 Uhr.\"\nDu: \"✅ Check-in 07:00 – Baustelle Schulze. Team?\"\n\nMonteur: \"Thomas und ich. 2 Rollen Kabel 10mm², so 240 Euro.\"\nDu: \"📦 Material erfasst: 2x Kabel 10mm² – 240€. Noch mehr?\"\n\nMonteur: \"Nee, Feierabend. 8,5 Stunden.\"\nDu: \"📋 Tagesbericht erstellt:\n⏱ 8,5h (Thomas + Du)\n📦 240€ Material\n📍 Baustelle Schulze\n✓ Export bereit\"\n\nDu antwortest kurz, präzise und hilfreich. Keine langen Erklärungen."
+    },
+    "list": [
+      {
+        "id": "main",
+        "label": "NexWorker Demo GmbH",
+        "groupChat": {
+          "mentionPatterns": ["/.*/i"]
+        }
+      }
+    ]
+  },
+  "models": {
+    "providers": {
+      "openrouter": {
+        "baseUrl": "https://openrouter.ai/api/v1",
+        "apiKey": "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",
+        "models": []
+      },
+      "google": {
+        "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai",
+        "apiKey": "AIzaSyC1dMTT0jpwNqcBLyr1_jmLl1bGOEhEtx8",
+        "models": []
+      }
+    }
+  },
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "botToken": "8606116891:AAEnKrjvQEGzeL47APZCCi2AJIDZSIZmMdY",
+      "groupPolicy": "open",
+      "dmPolicy": "open",
+      "streaming": "partial"
+    }
+  },
+  "tools": {
+    "allow": [
+      "read",
+      "write",
+      "edit",
+      "exec",
+      "browser",
+      "image",
+      "pdf",
+      "web_search",
+      "web_fetch",
+      "cron",
+      "message",
+      "tts"
+    ]
+  }
+}
